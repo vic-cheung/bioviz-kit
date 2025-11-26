@@ -51,11 +51,7 @@ Design Notes
 Licensing
 ---------
 
-- `rpy-bridge` is released under the MIT License © 2025 Victoria Cheung.
-- The project depends on [`rpy2`](https://rpy2.github.io) which is licensed
-  under the GNU General Public License v2 (or later). Distributing binaries that
-  bundle `rpy2` must comply with the GPL terms. When you install `rpy-bridge`
-  as a dependency, `rpy2` is resolved directly from its upstream maintainers.
+- `bioviz-kit` is released under the MIT License © 2025 Victoria Cheung.
 
 ### Thanks
 
