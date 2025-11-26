@@ -46,11 +46,18 @@ Design Notes
 
 - The package is intentionally agnostic to any company-specific styling. A lightweight
 	`DefaultStyle` is provided.
-- Project-specific themes (for example, RevMed's `RVMDStyle`) should live in the consuming
-	repository (`tm-toolbox`) as shims that adapt `DefaultStyle` or extend configuration models.
 
-License
--------
 
-This project is released under the MIT License (see `LICENSE`).
+Licensing
+---------
 
+- `rpy-bridge` is released under the MIT License © 2025 Victoria Cheung.
+- The project depends on [`rpy2`](https://rpy2.github.io) which is licensed
+  under the GNU General Public License v2 (or later). Distributing binaries that
+  bundle `rpy2` must comply with the GPL terms. When you install `rpy-bridge`
+  as a dependency, `rpy2` is resolved directly from its upstream maintainers.
+
+### Thanks
+
+This package was spun out of internal tooling at Revolution Medicines.
+Many thanks to the team there for allowing the code to be open sourced.
