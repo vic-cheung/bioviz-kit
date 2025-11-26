@@ -1,7 +1,8 @@
 bioviz
 ======
 
-A small, framework-agnostic plotting utilities package extracted from `tm-toolbox`.
+A small, framework-agnostic plotting utilities package for plotting common
+clinical bioinformatics visualizations with a clean, publication-ready style.
 
 Installation
 ------------
