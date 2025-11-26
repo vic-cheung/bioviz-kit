@@ -1,0 +1,42 @@
+# --- Python Bytecode and Build Artifacts ---
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info/
+.pytest_cache/
+
+# --- Virtual Environments ---
+.venv/
+renv/*
+
+# --- Jupyter Notebooks ---
+.ipynb_checkpoints/
+
+# --- R and RStudio Files ---
+*.Rproj
+*.Rproj.user/
+*.Rhistory
+*.RData
+*.Ruserdata
+*.Rapp.history
+Rprof.out
+
+# --- Data and Output Files ---
+*.csv
+*.json
+*.png
+*.pdf
+*.pptx
+*.zip
+
+# --- Exceptions ---
+!tm_toolbox/plots/fonts/*.ttf
+
+# --- Logs and Temporary Files ---
+*.log
+
+# --- System Files ---
+*.DS_Store
+
