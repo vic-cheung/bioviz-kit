@@ -1,0 +1,11 @@
+pandas>=2.0
+matplotlib>=3.6
+seaborn>=0.12
+adjusttext>=0.8
+loguru>=0.7
+pydantic<3,>=1.10
+ipykernel>=7.1.0
+pytest>=9.0.1
+
+[testing]
+pytest
