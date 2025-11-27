@@ -7,7 +7,7 @@ Run inside your project venv where `bioviz` deps are installed.
 # %%
 import matplotlib
 
-# matplotlib.use("Agg")
+matplotlib.use("Agg")
 import pandas as pd
 
 from bioviz.configs import (
@@ -114,44 +114,21 @@ plotter.shift_row_group_bars_and_labels(
 # After shifting, redraw to get updated text bounding boxes
 fig_oncoplot.canvas.draw()
 
-# Save PDF (opaque). Ensure the saved PDF facecolor matches the axes so the
-# extra canvas introduced by `bbox_inches='tight'` uses the same color.
-# Keep the axes facecolor as the plotting code set it (white) and use that
-# as the PDF facecolor to avoid viewer white/transparent mismatches.
-pdf_face = ax.get_facecolor() if ax is not None else "white"
-if pdf_face in (None, "none"):
-    pdf_face = "white"
 fig_oncoplot.savefig(
     "oncoplot.pdf",
     bbox_inches="tight",
     pad_inches=0.1,
     dpi=150,
-    facecolor=pdf_face,
+    facecolor="white",
 )
 
-# Transparent raster save: explicitly set figure patch transparent and save a
-# PNG with `transparent=True`. Do not set `ax` facecolor to 'none' here as
-# the heatmap cells rely on an opaque axes background for correct rendering.
-fig_oncoplot.patch.set_facecolor("none")
-fig_oncoplot.patch.set_alpha(0.0)
+
 fig_oncoplot.savefig(
-    "oncoplot_transparent.png",
+    "oncoplot.png",
     bbox_inches="tight",
     pad_inches=0.1,
     dpi=150,
     transparent=True,
 )
-
-# Debug save: contrasting figure background to reveal any remaining layers.
-# Leave `ax` as white so heatmap cells remain visible.
-fig_oncoplot.patch.set_facecolor("#ff00ff")
-fig_oncoplot.savefig(
-    "oncoplot_debug_bg.png",
-    bbox_inches="tight",
-    pad_inches=0.1,
-    dpi=150,
-)
-
-print("Saved oncoplot.pdf, oncoplot_transparent.png, and debug image")
 
 # %%

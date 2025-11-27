@@ -54,6 +54,11 @@ class OncoplotConfig(BaseModel):
     value_legend_title: Annotated[str | None, Field(default=None)]
     remove_unused_keys_in_legend: Annotated[bool, Field(default=True)]
 
+    # Figure-level display controls. Keep axes facecolor opaque; these
+    # control the `Figure` patch used for export/transparent backgrounds.
+    figure_facecolor: Annotated[str | None, Field(default=None)]
+    figure_transparent: Annotated[bool, Field(default=False)]
+
     # Provide a default color mapping so a basic heatmap legend can be generated
     row_values_color_dict: Annotated[
         dict[str, str] | None,

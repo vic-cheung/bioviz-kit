@@ -768,8 +768,23 @@ class OncoplotPlotter:
         ax.set_xlim(-1, ncols)
         ax.set_ylim(-1, nrows)
         ax.set_aspect("auto")
+        # Keep the axes facecolor opaque for correct cell rendering
         ax.set_facecolor("white")
-        fig.patch.set_facecolor("white")
+
+        # Figure patch: configurable by OncoplotConfig. Use an explicit
+        # figure_facecolor when provided; otherwise default to white.
+        fig_face = getattr(config, "figure_facecolor", None)
+        if fig_face is not None:
+            fig.patch.set_facecolor(fig_face)
+        else:
+            fig.patch.set_facecolor("white")
+
+        # If requested, make the figure background transparent while leaving
+        # the axes background opaque (so cell fills remain visible).
+        if getattr(config, "figure_transparent", False):
+            fig.patch.set_alpha(0.0)
+        else:
+            fig.patch.set_alpha(1.0)
 
         bottom_left_values = getattr(heatmap_annotation, "bottom_left_triangle_values", ["SNV"])
         upper_right_values = getattr(heatmap_annotation, "upper_right_triangle_values", ["CNV"])
