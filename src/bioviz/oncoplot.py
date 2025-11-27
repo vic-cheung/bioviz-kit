@@ -44,6 +44,22 @@ def is_white_color(color) -> bool:
         return False
 
 
+def _ensure_opaque_color(color, default="white"):
+    """Return a color that is opaque. If `color` is None or transparent,
+    return `default` (default: 'white')."""
+    if color is None:
+        return default
+    try:
+        rgba = mcolors.to_rgba(color)
+        # If alpha==0 treat as transparent and replace with default
+        if len(rgba) >= 4 and rgba[3] == 0:
+            return default
+        return color
+    except Exception:
+        # If color cannot be parsed, return it as-is (matplotlib may raise later)
+        return color
+
+
 def diagonal_fill(
     ax: plt.Axes,
     x: float,
@@ -59,7 +75,12 @@ def diagonal_fill(
         coords = [(x + width, y), (x, y), (x + width, y + height)]
     else:
         raise ValueError("which_half must be 'bottom_left' or 'upper_right'")
-    poly = mpatches.Polygon(coords, closed=True, color=color, linewidth=0)
+    # Always draw an opaque background so the other half of the cell is white
+    bg = _ensure_opaque_color(None, default="white")
+    rect = mpatches.Rectangle((x, y), width, height, color=bg, linewidth=0, zorder=1)
+    ax.add_patch(rect)
+    color = _ensure_opaque_color(color, default="white")
+    poly = mpatches.Polygon(coords, closed=True, color=color, linewidth=0, zorder=2)
     ax.add_patch(poly)
 
 
@@ -74,6 +95,8 @@ def my_shape_func(
     bottom_left_values: list[str],
     upper_right_values: list[str],
 ) -> None:
+    # Ensure we do not draw transparent/None colors for heatmap cells
+    color = _ensure_opaque_color(color, default="white")
     if value in bottom_left_values:
         diagonal_fill(ax, x, y, width, height, color, which_half="bottom_left")
     elif value in upper_right_values:
@@ -558,15 +581,30 @@ class OncoplotPlotter:
                 raise ValueError(
                     "Either heatmap_annotation or row_values_color_dict must be provided"
                 )
+            # Build a HeatmapAnnotationConfig from the oncoplot-level defaults.
             self.heatmap_annotation = HeatmapAnnotationConfig(
                 values=config.value_col,
                 colors=config.row_values_color_dict,
                 legend_title=(
                     config.value_legend_title if config.value_legend_title else config.value_col
                 ),
+                bottom_left_triangle_values=getattr(
+                    config, "heatmap_bottom_left_triangle_values", ["SNV"]
+                ),
+                upper_right_triangle_values=getattr(
+                    config, "heatmap_upper_right_triangle_values", ["CNV"]
+                ),
             )
         else:
             self.heatmap_annotation = config.heatmap_annotation
+
+        # If the user supplied a HeatmapAnnotationConfig but left `colors` empty,
+        # fall back to the oncoplot-level `row_values_color_dict` so defaults
+        # from `OncoplotConfig` apply as expected.
+        if getattr(self.heatmap_annotation, "colors", None) in (None, {}) and getattr(
+            config, "row_values_color_dict", None
+        ):
+            self.heatmap_annotation.colors = config.row_values_color_dict
 
         if isinstance(self.heatmap_annotation.values, str):
             self.value_col = self.heatmap_annotation.values
@@ -600,7 +638,7 @@ class OncoplotPlotter:
         legend_fontsize = self.legend_fontsize
         legend_title_fontsize = self.legend_title_fontsize
         rotate_left_annotation_label = self.rotate_left_annotation_label
-        legend_category_order = self.legend_category_order
+        # use self.legend_category_order directly where needed
         heatmap_annotation = self.heatmap_annotation
         value_col = self.value_col
         fig_title = getattr(config, "fig_title", None)
@@ -662,6 +700,18 @@ class OncoplotPlotter:
         gene_to_idx = {g: i for g, i in zip(genes_ordered, row_positions)}
         patient_to_idx = {p: i for p, i in zip(patients, col_positions)}
 
+        # If requested, auto-adjust the figure size so each data cell is
+        # approximately `target_cell_width` x `target_cell_height` inches.
+        if getattr(config, "auto_adjust_cell_size", False):
+            cell_w = getattr(config, "target_cell_width", 0.5)
+            cell_h = getattr(config, "target_cell_height", 0.5)
+            # Add padding for row labels/legend (inches). These are heuristics
+            # to ensure labels/legends don't overlap the heatmap area.
+            horiz_padding = 2.5
+            vert_padding = 1.5
+            adj_fig_w = max(1.0, ncols * float(cell_w) + horiz_padding)
+            adj_fig_h = max(1.0, nrows * float(cell_h) + vert_padding)
+            figsize = (adj_fig_w, adj_fig_h)
         fig, ax = plt.subplots(figsize=figsize)
         fig_top_margin = self.fig_top_margin
         if not (
@@ -679,10 +729,39 @@ class OncoplotPlotter:
             )
         else:
             bottom_margin = self.fig_bottom_margin
-        fig.subplots_adjust(
-            top=fig_top_margin,
-            bottom=bottom_margin,
-        )
+        # Adjust subplot margins. If auto-adjust is enabled, compute left/right/top/bottom
+        # so the axes area has approximately `ncols * target_cell_width` x
+        # `nrows * target_cell_height` inches of drawing space.
+        if getattr(config, "auto_adjust_cell_size", False):
+            fig.set_size_inches(figsize)
+            fig_w, fig_h = fig.get_size_inches()
+            cell_w = float(getattr(config, "target_cell_width", 1.5))
+            cell_h = float(getattr(config, "target_cell_height", 1.5))
+            desired_axes_w = max(0.1, ncols * cell_w)
+            desired_axes_h = max(0.1, nrows * cell_h)
+            axes_w_frac = min(0.98, desired_axes_w / fig_w)
+            axes_h_frac = min(0.98, desired_axes_h / fig_h)
+
+            # Heuristic left/bottom margins to accommodate row labels and legends
+            left = 0.12
+            bottom = max(0.06, bottom_margin)
+            right = left + axes_w_frac
+            top = bottom + axes_h_frac
+
+            # Clamp values into valid range
+            if right > 0.98:
+                right = 0.98
+                left = max(0.02, right - axes_w_frac)
+            if top > 0.98:
+                top = 0.98
+                bottom = max(0.02, top - axes_h_frac)
+
+            fig.subplots_adjust(left=left, right=right, top=top, bottom=bottom)
+        else:
+            fig.subplots_adjust(
+                top=fig_top_margin,
+                bottom=bottom_margin,
+            )
         set_title_later = False
         if fig_title:
             set_title_later = True
@@ -692,8 +771,16 @@ class OncoplotPlotter:
         ax.set_facecolor("white")
         fig.patch.set_facecolor("white")
 
-        bottom_left_values = getattr(heatmap_annotation, "bottom_left_triangle_values", ["SV"])
+        bottom_left_values = getattr(heatmap_annotation, "bottom_left_triangle_values", ["SNV"])
         upper_right_values = getattr(heatmap_annotation, "upper_right_triangle_values", ["CNV"])
+
+        # Draw an opaque white background for every cell so empty cells
+        # are filled (important for transparent PNG exports).
+        bg_color = _ensure_opaque_color(None, default="white")
+        for y in row_positions:
+            for x in col_positions:
+                bg_rect = mpatches.Rectangle((x, y), 1, 1, color=bg_color, linewidth=0, zorder=0)
+                ax.add_patch(bg_rect)
 
         for _, row in df.iterrows():
             gene, patient = row.get(y_col), row.get(x_col)
@@ -757,7 +844,8 @@ class OncoplotPlotter:
             if not any(val in values for val in bottom_left_values + upper_right_values):
                 for value in values:
                     color = heatmap_annotation.colors.get(value, "white")
-                    rect = mpatches.Rectangle((x, y), 1, 1, color=color, linewidth=0)
+                    face = _ensure_opaque_color(color, default="white")
+                    rect = mpatches.Rectangle((x, y), 1, 1, color=face, linewidth=0)
                     ax.add_patch(rect)
 
         for y in row_positions:
@@ -813,7 +901,8 @@ class OncoplotPlotter:
 
         legend_categories = {}
         heatmap_legend_title = heatmap_annotation.legend_title
-        mutation_handles = [Patch(facecolor="none", edgecolor="none", label=heatmap_legend_title)]
+        # mutation handles: do not include a title patch here, assembly will add it
+        mutation_handles = []
         mutation_value_order = heatmap_annotation.legend_value_order
         remove_unused_keys = getattr(config, "remove_unused_keys_in_legend", False)
         if remove_unused_keys:
@@ -841,17 +930,18 @@ class OncoplotPlotter:
                         else:
                             needs_border = is_white_color(color)
 
+                        face = _ensure_opaque_color(color, default="white")
                         if needs_border:
                             mutation_handles.append(
                                 Patch(
-                                    facecolor=color,
+                                    facecolor=face,
                                     edgecolor=heatmap_border_color,
                                     linewidth=heatmap_border_width,
                                     label=label,
                                 )
                             )
                         else:
-                            mutation_handles.append(Patch(facecolor=color, label=label))
+                            mutation_handles.append(Patch(facecolor=face, label=label))
         else:
             for label, color in heatmap_annotation.colors.items():
                 if not remove_unused_keys or label in present_values:
@@ -862,22 +952,24 @@ class OncoplotPlotter:
                     else:
                         needs_border = is_white_color(color)
 
+                    face = _ensure_opaque_color(color, default="white")
                     if needs_border:
                         mutation_handles.append(
                             Patch(
-                                facecolor=color,
+                                facecolor=face,
                                 edgecolor=heatmap_border_color,
                                 linewidth=heatmap_border_width,
                                 label=label,
                             )
                         )
                     else:
-                        mutation_handles.append(Patch(facecolor=color, label=label))
+                        mutation_handles.append(Patch(facecolor=face, label=label))
         legend_categories[heatmap_legend_title] = mutation_handles
         if top_annotations:
             for ann_name, ann_config in top_annotations.items():
                 legend_title = ann_config.legend_title or ann_name
-                annotation_handles = [Patch(color="none", label=legend_title)]
+                # annotation handles: do not include a title patch here, assembly will add it
+                annotation_handles = []
                 value_order = ann_config.legend_value_order or sorted(ann_config.colors.keys())
 
                 ann_draw_border = getattr(ann_config, "draw_border", False)
@@ -902,17 +994,18 @@ class OncoplotPlotter:
                             else:
                                 needs_border = is_white_color(color)
 
+                            face = _ensure_opaque_color(color, default="white")
                             if needs_border:
                                 annotation_handles.append(
                                     Patch(
-                                        facecolor=color,
+                                        facecolor=face,
                                         edgecolor=ann_border_color,
                                         linewidth=ann_border_width,
                                         label=str(value),
                                     )
                                 )
                             else:
-                                annotation_handles.append(Patch(facecolor=color, label=str(value)))
+                                annotation_handles.append(Patch(facecolor=face, label=str(value)))
                 if remove_unused_keys:
                     if ann_values.isna().any():
                         annotation_handles.append(Patch(color=ann_config.na_color, label="NA"))
@@ -921,30 +1014,50 @@ class OncoplotPlotter:
                         annotation_handles.append(Patch(color=ann_config.na_color, label="NA"))
                 legend_categories[legend_title] = annotation_handles
         legend_handles = []
-        if legend_category_order:
-            for category in legend_category_order:
-                if category in legend_categories:
-                    legend_handles.extend(legend_categories[category])
-                    legend_handles.append(Patch(color="none", label=""))
-                else:
-                    print(
-                        (
-                            f"Warning: Legend category '{category}' not found."
-                            f"Available categories: {list(legend_categories.keys())}"
-                        )
-                    )
-            for category, handles in legend_categories.items():
-                if category not in legend_category_order:
-                    legend_handles.extend(handles)
-                    legend_handles.append(Patch(color="none", label=""))
+
+        def legend_label_patch(label):
+            return Patch(color="none", label=label)
+
+        # Build legend order and deduplicate
+        if self.legend_category_order:
+            legend_order = []
+            seen = set()
+            for cat in self.legend_category_order:
+                if cat in legend_categories and cat not in seen:
+                    legend_order.append(cat)
+                    seen.add(cat)
         else:
-            legend_handles.extend(legend_categories.get(heatmap_legend_title, []))
-            legend_handles.append(Patch(color="none", label=""))
+            legend_order = []
+            if heatmap_legend_title in legend_categories:
+                legend_order.append(heatmap_legend_title)
             for ann_name, ann_config in (top_annotations or {}).items():
                 legend_title = ann_config.legend_title or ann_name
-                if legend_title != heatmap_legend_title:
-                    legend_handles.extend(legend_categories.get(legend_title, []))
-                    legend_handles.append(Patch(color="none", label=""))
+                if (
+                    legend_title != heatmap_legend_title
+                    and legend_title in legend_categories
+                    and legend_title not in legend_order
+                ):
+                    legend_order.append(legend_title)
+
+        # Determine the heatmap legend label
+        heatmap_legend_label = (
+            getattr(self.config, "value_legend_title", None)
+            or getattr(self.heatmap_annotation, "values", None)
+            or heatmap_legend_title
+        )
+
+        legend_handles = []
+        for idx, cat in enumerate(legend_order):
+            # Add a label patch for each category
+            if cat == heatmap_legend_title:
+                legend_handles.append(legend_label_patch(heatmap_legend_label))
+            else:
+                legend_handles.append(legend_label_patch(cat))
+            # Add the actual legend handles for this category
+            legend_handles.extend(legend_categories[cat])
+            # Add a spacer between categories, except after the last
+            if idx < len(legend_order) - 1:
+                legend_handles.append(Patch(color="none", label=""))
 
         ax.set_aspect(cell_aspect)
         fig.canvas.draw()
@@ -970,32 +1083,17 @@ class OncoplotPlotter:
             text._is_row_label = True
             gene_labels.append(text)
 
-        dynamic_xoffset = self.xticklabel_xoffset
-        dynamic_yoffset = self.xticklabel_yoffset
-        aspect_ratio = getattr(self.config, "aspect", 1.0)
-        row_count = len(row_positions)
-        col_count = len(col_positions)
-        if row_count <= 10:
-            dynamic_yoffset = max(0.15, self.xticklabel_yoffset * 0.8)
-        elif row_count <= 20:
-            dynamic_yoffset = max(0.25, self.xticklabel_yoffset * 1.2)
-        else:
-            dynamic_yoffset = max(0.4, self.xticklabel_yoffset * 1.5)
-        if col_count <= 6:
-            dynamic_xoffset = max(0.15, self.xticklabel_xoffset * 1.5)
-        else:
-            dynamic_xoffset = self.xticklabel_xoffset
-
+        # Place x-tick labels below the heatmap, using xticklabel_yoffset
+        y_xtick = nrows + float(self.xticklabel_yoffset)
         for i, (x, p) in enumerate(zip(col_positions, patients)):
             ax.text(
-                x + cell_aspect / 2 + dynamic_xoffset,
-                nrows + dynamic_yoffset,
+                x + cell_aspect / 2,
+                y_xtick,
                 p,
-                ha="right",
-                va="center",
+                ha="center",
+                va="bottom",
                 fontsize=column_label_fontsize,
                 rotation=90,
-                rotation_mode="anchor",
                 clip_on=False,
             )
 

@@ -7,7 +7,7 @@ Ported and adapted from tm_toolbox. Uses neutral `DefaultStyle`.
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from bioviz.plot_configs import StyledTableConfig
+from bioviz.configs import StyledTableConfig
 from bioviz.style import DefaultStyle
 
 DefaultStyle().apply_theme()

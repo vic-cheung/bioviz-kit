@@ -21,6 +21,8 @@ setup: ensure-uv
 	uv run python -m ipykernel install --user --name=bioviz-kit --display-name "bioviz-kit"
 
 # Install main dependencies + your package in editable mode
+install:
+	uv pip install -e .
 install-all:
 	uv pip install -e ".[dev]"
 

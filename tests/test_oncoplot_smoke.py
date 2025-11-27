@@ -1,6 +1,7 @@
 import math
 from bioviz.oncoplot import OncoplotPlotter
-from bioviz.plot_configs import OncoplotConfig, HeatmapAnnotationConfig
+from bioviz.configs import OncoplotConfig
+from bioviz.plot_configs import HeatmapAnnotationConfig
 import pandas as pd
 
 

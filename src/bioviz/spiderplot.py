@@ -15,11 +15,11 @@ from adjustText import adjust_text
 from matplotlib import font_manager
 from matplotlib.lines import Line2D
 
-from bioviz.plot_configs import (
+from bioviz.configs import (
     ScanOverlayPlotConfig,
     StyledSpiderPlotConfig,
 )
-from bioviz.plot_utils import adjust_legend, forward_fill_groups
+from bioviz.plot_utils import adjust_legend
 from bioviz.style import DefaultStyle
 
 DefaultStyle().apply_theme()
@@ -41,13 +41,12 @@ def generate_styled_spiderplot(
     else:
         fig = ax.figure
 
-    df = forward_fill_groups(
-        df,
-        group_cols=[config.group_col],
-        x=config.x,
-        y=config.y,
-        sort_order=list(df[config.x].cat.categories),
-    )
+    # Validate required long-format columns; adapters should perform any
+    # forward-fill or reshaping before calling bioviz.
+    required_cols = {config.group_col, config.x, config.y}
+    missing = [c for c in required_cols if c not in df.columns]
+    if missing:
+        raise ValueError(f"Input DataFrame is missing required columns for spiderplot: {missing}")
 
     if config.linestyle_col and config.linestyle_col not in df.columns:
         raise ValueError(f"Style column '{config.linestyle_col}' not found in DataFrame.")

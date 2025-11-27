@@ -13,8 +13,7 @@ from adjustText import adjust_text
 from matplotlib import font_manager
 from matplotlib.lines import Line2D
 
-from bioviz.plot_configs import StyledLinePlotConfig
-from bioviz.plot_utils import forward_fill_groups
+from bioviz.configs import StyledLinePlotConfig
 from bioviz.style import DefaultStyle
 
 DefaultStyle().apply_theme()
@@ -56,6 +55,16 @@ def generate_styled_lineplot(
         )
         return None
 
+    # Ensure long-format required columns exist; bioviz expects callers to
+    # supply long-format data. Forward-fill (if desired) should be done by
+    # adapters (e.g. tm_toolbox) before calling bioviz.
+    required_cols = {config.x, config.y, config.label_col, config.secondary_group_col}
+    missing = [c for c in required_cols if c not in df.columns]
+    if missing:
+        raise ValueError(
+            f"Input DataFrame is missing required columns for long-format plotting: {missing}"
+        )
+
     df = df.dropna(subset=[config.y]).copy()
 
     if config.x in df and hasattr(df[config.x].dtype, "categories"):
@@ -64,16 +73,6 @@ def generate_styled_lineplot(
             df[config.x] = cleaned
         except Exception:
             pass
-
-    df = forward_fill_groups(
-        df,
-        group_cols=[config.label_col, "Variant_type"],
-        x=config.x,
-        y=config.y,
-        sort_order=list(df[config.x].cat.categories)
-        if config.x in df and hasattr(df[config.x].dtype, "categories")
-        else None,
-    )
 
     # Map categorical Timepoint to numeric position for x-axis plotting
     cat_to_pos = (
@@ -112,10 +111,8 @@ def generate_styled_lineplot(
     # Create figure
     if ax is None:
         fig, ax = plt.subplots(figsize=config.figsize)
-        created_fig = True
     else:
         fig = ax.figure
-        created_fig = False
 
     sns.lineplot(
         data=df,

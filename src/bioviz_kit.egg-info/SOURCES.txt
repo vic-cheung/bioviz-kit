@@ -9,6 +9,14 @@ src/bioviz/plot_utils.py
 src/bioviz/spiderplot.py
 src/bioviz/style.py
 src/bioviz/table.py
+src/bioviz/configs/__init__.py
+src/bioviz/configs/annotations_cfg.py
+src/bioviz/configs/base_cfg.py
+src/bioviz/configs/line_cfg.py
+src/bioviz/configs/oncoplot_cfg.py
+src/bioviz/configs/scan_overlay_cfg.py
+src/bioviz/configs/spider_cfg.py
+src/bioviz/configs/table_cfg.py
 src/bioviz_kit.egg-info/PKG-INFO
 src/bioviz_kit.egg-info/SOURCES.txt
 src/bioviz_kit.egg-info/dependency_links.txt

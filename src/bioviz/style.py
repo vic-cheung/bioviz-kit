@@ -30,9 +30,9 @@ class DefaultStyle:
         self.base_fontsize = 12
         # a small, neutral palette; consumers can override fully
         self.palette = {
-            "mutant": "#1f77b4",
-            "wildtype": "#d3d3d3",
-            "background": "#ffffff",
+            "SNV": "#EC745C",
+            "CNV": "#44A9CC",
+            "Fusion": "#FFB600",
         }
 
     def apply_theme(self, rc_overrides: Optional[dict] = None) -> None:

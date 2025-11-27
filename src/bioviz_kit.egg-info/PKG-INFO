@@ -25,6 +25,9 @@ License: MIT License
         OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
         SOFTWARE.
         
+        Acknowledgement: This project builds on work originally developed at
+        Revolution Medicines.
+        
 Project-URL: Homepage, https://github.com/vic-cheung/bioviz-kit
 Project-URL: Issue Tracker, https://github.com/vic-cheung/bioviz-kit/issues
 Classifier: License :: OSI Approved :: MIT License
@@ -50,7 +53,8 @@ Dynamic: license-file
 bioviz
 ======
 
-A small, framework-agnostic plotting utilities package extracted from `tm-toolbox`.
+A small, framework-agnostic plotting utilities package for plotting common
+clinical bioinformatics visualizations with a clean, publication-ready style.
 
 Installation
 ------------
@@ -95,11 +99,14 @@ Design Notes
 
 - The package is intentionally agnostic to any company-specific styling. A lightweight
 	`DefaultStyle` is provided.
-- Project-specific themes (for example, RevMed's `RVMDStyle`) should live in the consuming
-	repository (`tm-toolbox`) as shims that adapt `DefaultStyle` or extend configuration models.
 
-License
--------
 
-This project is released under the MIT License (see `LICENSE`).
+Licensing
+---------
 
+- `bioviz-kit` is released under the MIT License © 2025 Victoria Cheung.
+
+### Thanks
+
+This package was spun out of internal tooling at Revolution Medicines.
+Many thanks to the team there for allowing the code to be open sourced.
