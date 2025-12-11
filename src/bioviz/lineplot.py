@@ -67,10 +67,14 @@ def generate_styled_lineplot(
 
     df = df.dropna(subset=[config.y]).copy()
 
-    if config.x in df and hasattr(df[config.x].dtype, "categories"):
+    # Ensure x is categorical; if not, coerce using appearance order to keep caller intent.
+    if config.x in df and not pd.api.types.is_categorical_dtype(df[config.x]):
+        df[config.x] = pd.Categorical(
+            df[config.x], categories=list(pd.unique(df[config.x])), ordered=True
+        )
+    elif config.x in df and hasattr(df[config.x].dtype, "categories"):
         try:
-            cleaned = df[config.x].cat.remove_unused_categories()
-            df[config.x] = cleaned
+            df[config.x] = df[config.x].cat.remove_unused_categories()
         except Exception:
             pass
 
@@ -175,38 +179,77 @@ def generate_styled_lineplot(
 
     ylim = (ymin_padded, ymax_padded)
 
+    # Honor user-specified ylim if provided; use computed value when bound is None
+    if getattr(config, "ylim", None) is not None:
+        y0, y1 = config.ylim
+        if y0 is not None or y1 is not None:
+            ymin = y0 if y0 is not None else ymin_padded
+            ymax = y1 if y1 is not None else ymax_padded
+            ylim = (ymin, ymax)
+
     if cat_to_pos:
         xmax = max(cat_to_pos.values()) + config.xlim_padding
     else:
         xmax = 1
 
+    # Honor user-specified xlim if provided; otherwise use padding-based default.
+    xlim = (-1 * config.xlim_padding, xmax)
+    if getattr(config, "xlim", None) is not None:
+        xl0, xl1 = config.xlim
+        if xl0 is not None or xl1 is not None:
+            left = xl0 if xl0 is not None else xlim[0]
+            right = xl1 if xl1 is not None else xlim[1]
+            xlim = (left, right)
+
     if config.threshold:
         ax.axhline(
             y=config.threshold,
-            color="#C0C0C0",
-            linestyle="--",
+            color=getattr(config, "threshold_color", "#C0C0C0"),
+            linestyle=getattr(config, "threshold_style", "--"),
             dashes=(5, 5),
-            linewidth=1,
+            linewidth=getattr(config, "threshold_width", 1.0),
             zorder=0,
         )
         yticks = ax.get_yticks()
         spacing = yticks[1] - yticks[0] if len(yticks) > 1 else 1
-        text_y = config.threshold + 0.1 * spacing
-        ax.text(
-            xmax - 0.25,
-            text_y,
-            r"$LoD_{95}$",
-            fontsize=14,
-            fontweight="normal",
-            color="#C0C0C0",
-            zorder=0,
-        )
+        label_text = getattr(config, "threshold_label", None)
+        if label_text:
+            text_y = config.threshold + 0.1 * spacing
+            # Place near the right edge of the plotting range for better stability with custom xlim
+            x_span = xlim[1] - xlim[0]
+            text_x = xlim[1] - 0.02 * x_span
+            ax.text(
+                text_x,
+                text_y,
+                label_text,
+                fontsize=14,
+                fontweight="normal",
+                color="#C0C0C0",
+                zorder=0,
+                ha="right",
+            )
 
     xlabel = config.xlabel if config.xlabel is not None else config.x
     ylabel = config.ylabel if config.ylabel is not None else config.y
-    ax.set(xlabel=xlabel, ylabel=ylabel, xlim=(-1 * config.xlim_padding, xmax), ylim=ylim)
+    ax.set(xlabel=xlabel, ylabel=ylabel, xlim=xlim, ylim=ylim)
     ax.set_xlabel(ax.get_xlabel(), fontweight="bold")
     ax.set_ylabel(ax.get_ylabel(), fontweight="bold")
+
+    # Override fontsizes if provided
+    if getattr(config, "xlabel_fontsize", None) is not None:
+        ax.xaxis.label.set_size(config.xlabel_fontsize)
+    if getattr(config, "ylabel_fontsize", None) is not None:
+        ax.yaxis.label.set_size(config.ylabel_fontsize)
+    tick_kwargs = {}
+    if getattr(config, "xtick_fontsize", None) is not None:
+        tick_kwargs["labelsize"] = config.xtick_fontsize
+    if tick_kwargs:
+        ax.tick_params(axis="x", **tick_kwargs)
+    tick_kwargs = {}
+    if getattr(config, "ytick_fontsize", None) is not None:
+        tick_kwargs["labelsize"] = config.ytick_fontsize
+    if tick_kwargs:
+        ax.tick_params(axis="y", **tick_kwargs)
     ax.set_title(title, loc="left", fontweight="bold")
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
@@ -322,6 +365,13 @@ def generate_styled_lineplot(
 
     plt.subplots_adjust(right=config.rhs_pdf_padding)
     ax.set_facecolor("white")
-    fig.patch.set_alpha(0.0)
+
+    # Figure background is configurable; default to opaque white for exports. Use getattr
+    # for backward compatibility with configs created before the new fields existed.
+    face_cfg = getattr(config, "figure_facecolor", None)
+    transparent_cfg = getattr(config, "figure_transparent", False)
+    face = face_cfg if face_cfg is not None else "white"
+    fig.patch.set_facecolor(face)
+    fig.patch.set_alpha(0.0 if transparent_cfg else 1.0)
 
     return fig

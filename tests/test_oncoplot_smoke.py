@@ -1,10 +1,14 @@
+# %%
 import math
+import numpy as np
+import pandas as pd
+import matplotlib.colors as mcolors
 from bioviz.oncoplot import OncoplotPlotter
 from bioviz.configs import OncoplotConfig
 from bioviz.plot_configs import HeatmapAnnotationConfig
-import pandas as pd
 
 
+# %%
 def test_oncoplot_shapes_centered():
     pdf = pd.DataFrame(
         [
@@ -95,3 +99,59 @@ def test_oncoplot_cell_alignment(tmp_path):
 
     rounded = {(round(cx, 2), round(cy, 2)) for cx, cy in centers}
     assert expected.issubset(rounded), f"Expected centers {expected} in {rounded}"
+
+
+def test_oncoplot_transparent_figure_patch():
+    pdf = pd.DataFrame(
+        [
+            {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV"},
+            {"patient_id": "P2", "gene": "TP53", "mut_type": "SNV"},
+        ]
+    )
+
+    heat = HeatmapAnnotationConfig(values="mut_type", colors={"SNV": "#EC745C"})
+    cfg = OncoplotConfig(
+        heatmap_annotation=heat,
+        x_col="patient_id",
+        y_col="gene",
+        figure_facecolor="#123456",
+        figure_transparent=True,
+    )
+    fig = OncoplotPlotter(pdf, config=cfg).plot()
+
+    assert fig.patch.get_alpha() == 0.0
+    face = fig.patch.get_facecolor()
+    # Face color should retain the provided RGB even when fully transparent
+    expected_rgb = mcolors.to_rgba("#123456")[:3]
+    assert tuple(round(v, 3) for v in face[:3]) == tuple(round(v, 3) for v in expected_rgb)
+
+
+def test_oncoplot_forces_opaque_cell_colors():
+    pdf = pd.DataFrame(
+        [
+            {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV"},
+            {"patient_id": "P1", "gene": "KRAS", "mut_type": "CNV"},
+        ]
+    )
+
+    # Provide fully transparent colors; renderer should coerce to opaque fills
+    heat = HeatmapAnnotationConfig(
+        values="mut_type", colors={"SNV": (1, 0, 0, 0), "CNV": (0, 1, 0, 0)}
+    )
+    cfg = OncoplotConfig(heatmap_annotation=heat, x_col="patient_id", y_col="gene")
+    fig = OncoplotPlotter(pdf, config=cfg).plot()
+    ax = fig.axes[0]
+
+    alphas = []
+    for patch in ax.patches:
+        face = patch.get_facecolor()
+        if isinstance(face, np.ndarray):
+            face = face[0] if face.ndim > 1 else face
+        if len(face) >= 4:
+            alphas.append(face[3])
+
+    assert alphas, "No patch facecolors found"
+    assert min(alphas) > 0.01
+
+
+# %%

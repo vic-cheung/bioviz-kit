@@ -27,5 +27,12 @@ class StyledSpiderPlotConfig(BasePlotConfig):
     absolute_ylim: Annotated[tuple[float, float] | None, Field(default=None)]
     absolute_yticks: Annotated[list[float] | None, Field(default=None)]
 
+    # Optional horizontal baseline line (e.g., at 0). If provided, a dashed line is drawn.
+    baseline: Annotated[float | None, Field(default=None)]
+    baseline_color: Annotated[str, Field(default="#C0C0C0")]
+    baseline_style: Annotated[str, Field(default="--")]
+    baseline_width: Annotated[float, Field(default=1.0)]
+    baseline_dashes: Annotated[tuple[float, float] | None, Field(default=(5, 5))]
+
     # no per-config data preparation here — bioviz operates on long-format data
     # and leaves forward-fill/reshaping responsibilities to callers/adapters.

@@ -24,10 +24,10 @@ class TopAnnotationConfig(BaseModel):
         - merge_labels=False, show_category_labels=False:
           No labels displayed inside annotation bars (colors only).
 
-    Border controls:
-        - draw_border=True (default): draws borders around annotation blocks.
-        - border_categories: list of category values that should have borders
-          (None = all categories if draw_border=True).
+        Border controls:
+                - draw_border=False (default): no border unless enabled or the color is white.
+                - border_categories: list of category values that should have borders
+                    (None = all categories if draw_border=True).
     """
 
     if ConfigDict is not None:
@@ -36,7 +36,7 @@ class TopAnnotationConfig(BaseModel):
         model_config = BaseModel.model_config if hasattr(BaseModel, "model_config") else {}
     values: Annotated[pd.Series | dict[Any, Any] | Sequence[Any] | str, Any]
     colors: Annotated[dict, Any]
-    height: Annotated[float, Any] = 0.45
+    height: Annotated[float, Any] = 1
     fontsize: Annotated[int, Any] = 16
     display_name: Annotated[str | None, Any] = None
     legend_title: Annotated[str | None, Any] = None
@@ -46,8 +46,8 @@ class TopAnnotationConfig(BaseModel):
     label_fontsize: Annotated[int, Any] = 12
     label_text_colors: Annotated[dict | None, Any] = None
     na_color: Annotated[str, Any] = "gainsboro"
-    # show border by default for clearer separation
-    draw_border: Annotated[bool, Any] = True
+    # Borders off by default; white cells still get a border for visibility
+    draw_border: Annotated[bool, Any] = False
     border_categories: Annotated[list[str] | None, Any] = None
     border_color: Annotated[str, Any] = "black"
     border_width: Annotated[float, Any] = 0.8

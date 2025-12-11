@@ -1,7 +1,6 @@
 from typing import Annotated, Any
 
 from pydantic import BaseModel, Field
-import pandas as pd
 
 from .annotations_cfg import TopAnnotationConfig, HeatmapAnnotationConfig
 
@@ -16,6 +15,10 @@ class OncoplotConfig(BaseModel):
     col_sort_by: Annotated[list[str], Field(default_factory=list)]
     figsize: Annotated[tuple[float, float], Field(default=(12, 8))]
     bar_width: Annotated[float, Field(default=0.1)]
+    # Optional post-draw row-group shifts to mimic manual helper calls
+    apply_post_row_group_shift: Annotated[bool, Field(default=True)]
+    row_group_post_bar_shift: Annotated[float, Field(default=-5.5)]
+    row_group_post_label_shift: Annotated[float, Field(default=-5.0)]
     row_group_label_fontsize: Annotated[float | int, Field(default=16)]
     row_label_fontsize: Annotated[float | int, Field(default=16)]
     column_label_fontsize: Annotated[float | int, Field(default=16)]
@@ -33,20 +36,20 @@ class OncoplotConfig(BaseModel):
     cell_aspect: Annotated[float, Field(default=1.0)]
     # Target rendered cell size (inches) used when auto-computing `figsize`.
     # Lowering these reduces the physical size of each cell on the figure.
-    target_cell_width: Annotated[float, Field(default=1.5)]
-    target_cell_height: Annotated[float, Field(default=1.5)]
+    target_cell_width: Annotated[float, Field(default=0.55)]
+    target_cell_height: Annotated[float, Field(default=0.55)]
     # Whether the automatic cell-size adjustment logic in the sizing helper runs
     auto_adjust_cell_size: Annotated[bool, Field(default=True)]
     top_annotations: Annotated[dict[str, Any] | None, Field(default_factory=dict)]
-    top_annotation_inter_spacer: Annotated[float, Field(default=0.7)]
-    top_annotation_intra_spacer: Annotated[float, Field(default=0.15)]
+    top_annotation_inter_spacer: Annotated[float, Field(default=1.3)]
+    top_annotation_intra_spacer: Annotated[float, Field(default=0.17)]
     col_split_gap: Annotated[float, Field(default=0.25)]
     row_split_gap: Annotated[float, Field(default=0.25)]
     bar_offset: Annotated[float, Field(default=2.5)]
-    bar_buffer: Annotated[float, Field(default=0.5)]
+    bar_buffer: Annotated[float, Field(default=0)]
     legend_category_order: Annotated[list[str] | None, Field(default=None)]
     xticklabel_xoffset: Annotated[float, Field(default=0.0)]
-    xticklabel_yoffset: Annotated[float, Field(default=0.6)]
+    xticklabel_yoffset: Annotated[float, Field(default=0.7)]
     legend_bbox_to_anchor: Annotated[tuple[float, float] | None, Field(default=None)]
     legend_offset: Annotated[float, Field(default=0.1)]
     fig_y_margin: Annotated[float, Field(default=0.02)]
@@ -60,16 +63,10 @@ class OncoplotConfig(BaseModel):
     figure_transparent: Annotated[bool, Field(default=False)]
 
     # Provide a default color mapping so a basic heatmap legend can be generated
-    row_values_color_dict: Annotated[
-        dict[str, str] | None,
-        Field(default_factory=lambda: {"SNV": "#EC745C", "CNV": "#44A9CC", "Fusion": "#FFB600"}),
-    ]
+    # Optional color mapping for heatmap values. Default None for generic use.
+    row_values_color_dict: Annotated[dict[str, str] | None, Field(default=None)]
     # Defaults for rendering triangles in heatmap cells. These are passed
     # through to the constructed `HeatmapAnnotationConfig` when the
     # caller doesn't provide one explicitly.
-    heatmap_bottom_left_triangle_values: Annotated[
-        list[str], Field(default_factory=lambda: ["SNV"])
-    ]
-    heatmap_upper_right_triangle_values: Annotated[
-        list[str], Field(default_factory=lambda: ["CNV"])
-    ]
+    heatmap_bottom_left_triangle_values: Annotated[list[str], Field(default_factory=list)]
+    heatmap_upper_right_triangle_values: Annotated[list[str], Field(default_factory=list)]

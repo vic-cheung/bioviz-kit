@@ -16,6 +16,23 @@ class BasePlotConfig(BaseModel):
     figsize: Annotated[tuple[int, int], Field(default=(9, 6), description="Figure size.")]
     legend_loc: Annotated[str, Field(default="upper left", description="Legend location.")]
 
+    xlabel_fontsize: Annotated[
+        float | int | None,
+        Field(default=20, description="Optional x-axis label font size (default 20)."),
+    ]
+    ylabel_fontsize: Annotated[
+        float | int | None,
+        Field(default=20, description="Optional y-axis label font size (default 20)."),
+    ]
+    xtick_fontsize: Annotated[
+        float | int | None,
+        Field(default=16, description="Optional x-tick label font size (default 16)."),
+    ]
+    ytick_fontsize: Annotated[
+        float | int | None,
+        Field(default=16, description="Optional y-tick label font size (default 16)."),
+    ]
+
     col_vals_to_include_in_title: Annotated[
         list[str],
         Field(
@@ -36,6 +53,14 @@ class BasePlotConfig(BaseModel):
             default=0.8, description="Padding on the right side to avoid clipping in PDF exports."
         ),
     ]
+
+    # Optional label for threshold annotations (e.g., LoD). Default is None for neutrality.
+    threshold_label: Annotated[str | None, Field(default=None)]
+
+    # Figure-level display controls; keep axes facecolor opaque. These
+    # configure the Figure patch used for export/transparent backgrounds.
+    figure_facecolor: Annotated[str | None, Field(default=None)]
+    figure_transparent: Annotated[bool, Field(default=False)]
 
     @field_validator("palette")
     @classmethod

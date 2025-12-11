@@ -352,9 +352,14 @@ def create_custom_legend_patch(
 
 class OncoplotPlotter:
     def shift_row_group_bars_and_labels(
-        self, ax, row_groups, bar_shift=2.75, label_shift=2.5
+        self, ax, row_groups, bar_shift=-6, label_shift=-5.5
     ) -> None:
+        # Preserve current limits to avoid autoscale expanding the layout when users
+        # call this post-plot (common in older usage). This keeps spacing stable.
         current_xlim = ax.get_xlim()
+        current_ylim = ax.get_ylim()
+        autoscale_state = ax.get_autoscale_on()
+        ax.set_autoscale_on(False)
         referenced_bars = getattr(self, "_row_group_bar_patches", [])
         referenced_labels = getattr(self, "_row_group_label_texts", [])
         for patch in referenced_bars:
@@ -391,9 +396,15 @@ class OncoplotPlotter:
                             leftmost_x = bbox.x0
                     except Exception:
                         continue
+
+        target_xlim = current_xlim
         if leftmost_x < current_xlim[0] and leftmost_x != float("inf"):
             padding = abs(current_xlim[0] - leftmost_x) + 1
-            ax.set_xlim(current_xlim[0] - padding, current_xlim[1])
+            target_xlim = (current_xlim[0] - padding, current_xlim[1])
+
+        ax.set_xlim(target_xlim)
+        ax.set_ylim(current_ylim)
+        ax.set_autoscale_on(autoscale_state)
         ax.figure.canvas.draw_idle()
 
     def move_row_group_labels(self, ax, new_bar_x, bar_width=None) -> None:
@@ -700,18 +711,45 @@ class OncoplotPlotter:
         gene_to_idx = {g: i for g, i in zip(genes_ordered, row_positions)}
         patient_to_idx = {p: i for p, i in zip(patients, col_positions)}
 
-        # If requested, auto-adjust the figure size so each data cell is
-        # approximately `target_cell_width` x `target_cell_height` inches.
-        if getattr(config, "auto_adjust_cell_size", False):
-            cell_w = getattr(config, "target_cell_width", 0.5)
-            cell_h = getattr(config, "target_cell_height", 0.5)
-            # Add padding for row labels/legend (inches). These are heuristics
-            # to ensure labels/legends don't overlap the heatmap area.
-            horiz_padding = 2.5
-            vert_padding = 1.5
-            adj_fig_w = max(1.0, ncols * float(cell_w) + horiz_padding)
-            adj_fig_h = max(1.0, nrows * float(cell_h) + vert_padding)
-            figsize = (adj_fig_w, adj_fig_h)
+        auto_adjust = getattr(config, "auto_adjust_cell_size", False)
+
+        # If requested, auto-compute the figure size so each data cell is close to
+        # `target_cell_width` x `target_cell_height` inches without having to pass
+        # an explicit `figsize`. Padding accounts for row labels, row-group bars,
+        # legends, and top annotations.
+        if auto_adjust:
+            cell_w = float(getattr(config, "target_cell_width", 1.5))
+            cell_h = float(getattr(config, "target_cell_height", 1.5))
+
+            # Approximate how much horizontal room row labels and row-group bars need.
+            longest_row_label = max((len(str(g)) for g in genes_ordered), default=0)
+            approx_char_width = 0.55 * row_label_fontsize / 72.0  # crude inches/char
+            label_block_in = longest_row_label * approx_char_width
+            bar_padding = max(0.0, abs(bar_offset) * 0.2) + bar_buffer
+            post_shift_padding = 0.0
+            if getattr(config, "apply_post_row_group_shift", False):
+                post_shift_padding = abs(getattr(config, "row_group_post_label_shift", 0.0)) * 0.1
+            left_padding_in = 0.6 + label_block_in + bar_padding + post_shift_padding
+            right_padding_in = 0.8  # leave room for the legend gutter
+
+            # Account for stacked top annotations, their spacers, and an optional title.
+            top_annotations = top_annotations or {}
+            num_top = len(top_annotations)
+            top_blocks_in = sum(getattr(cfg, "height", 0.45) for cfg in top_annotations.values())
+            top_spacers_in = 0.0
+            if num_top:
+                top_spacers_in += (num_top - 1) * top_annotation_intra_spacer
+                top_spacers_in += top_annotation_inter_spacer
+            title_padding_in = (fig_title_fontsize / 72.0) * 1.1 if fig_title else 0.0
+            top_padding_in = 0.35 + top_blocks_in + top_spacers_in + title_padding_in
+
+            # Leave space for rotated xtick labels and bottom gutter.
+            bottom_padding_in = max(0.4, (column_label_fontsize / 72.0) * 1.6)
+
+            fig_w = max(1.0, ncols * cell_w + left_padding_in + right_padding_in)
+            fig_h = max(1.0, nrows * cell_h + top_padding_in + bottom_padding_in)
+            figsize = (fig_w, fig_h)
+
         fig, ax = plt.subplots(figsize=figsize)
         fig_top_margin = self.fig_top_margin
         if not (
@@ -729,39 +767,13 @@ class OncoplotPlotter:
             )
         else:
             bottom_margin = self.fig_bottom_margin
-        # Adjust subplot margins. If auto-adjust is enabled, compute left/right/top/bottom
-        # so the axes area has approximately `ncols * target_cell_width` x
-        # `nrows * target_cell_height` inches of drawing space.
-        if getattr(config, "auto_adjust_cell_size", False):
-            fig.set_size_inches(figsize)
-            fig_w, fig_h = fig.get_size_inches()
-            cell_w = float(getattr(config, "target_cell_width", 1.5))
-            cell_h = float(getattr(config, "target_cell_height", 1.5))
-            desired_axes_w = max(0.1, ncols * cell_w)
-            desired_axes_h = max(0.1, nrows * cell_h)
-            axes_w_frac = min(0.98, desired_axes_w / fig_w)
-            axes_h_frac = min(0.98, desired_axes_h / fig_h)
-
-            # Heuristic left/bottom margins to accommodate row labels and legends
-            left = 0.12
-            bottom = max(0.06, bottom_margin)
-            right = left + axes_w_frac
-            top = bottom + axes_h_frac
-
-            # Clamp values into valid range
-            if right > 0.98:
-                right = 0.98
-                left = max(0.02, right - axes_w_frac)
-            if top > 0.98:
-                top = 0.98
-                bottom = max(0.02, top - axes_h_frac)
-
-            fig.subplots_adjust(left=left, right=right, top=top, bottom=bottom)
-        else:
-            fig.subplots_adjust(
-                top=fig_top_margin,
-                bottom=bottom_margin,
-            )
+        # Use standard subplot margins; auto-adjust only determines figsize so spacing
+        # stays closer to the manual helper look without requiring a user-provided
+        # figsize.
+        fig.subplots_adjust(
+            top=fig_top_margin,
+            bottom=bottom_margin,
+        )
         set_title_later = False
         if fig_title:
             set_title_later = True
@@ -1055,10 +1067,11 @@ class OncoplotPlotter:
                     legend_order.append(legend_title)
 
         # Determine the heatmap legend label
+        # Prefer explicit override, then the configured legend title, then the values column name.
         heatmap_legend_label = (
             getattr(self.config, "value_legend_title", None)
-            or getattr(self.heatmap_annotation, "values", None)
             or heatmap_legend_title
+            or getattr(self.heatmap_annotation, "values", None)
         )
 
         legend_handles = []
@@ -1124,10 +1137,13 @@ class OncoplotPlotter:
             title_fontsize=legend_title_fontsize,
             **legend_kwargs,
         )
+        # Bold the header labels we injected (heatmap header + annotation headers)
+        bold_labels = {heatmap_legend_label}
+        bold_labels.update(
+            (ann_config.legend_title or n) for n, ann_config in (top_annotations or {}).items()
+        )
         for text in lgd.get_texts():
-            if text.get_text() in [heatmap_legend_title] + [
-                (ann_config.legend_title or n) for n, ann_config in (top_annotations or {}).items()
-            ]:
+            if text.get_text() in bold_labels:
                 text.set_fontweight("bold")
 
         leftmost_x = float("inf")
@@ -1261,6 +1277,17 @@ class OncoplotPlotter:
 
         if set_title_later:
             fig.suptitle(fig_title, fontsize=fig_title_fontsize)
+
+        if getattr(self.config, "apply_post_row_group_shift", False):
+            # Ensure text positions are finalized before measuring/shifting
+            fig.canvas.draw()
+            self.shift_row_group_bars_and_labels(
+                ax,
+                row_groups,
+                getattr(self.config, "row_group_post_bar_shift", 0.0),
+                getattr(self.config, "row_group_post_label_shift", 0.0),
+            )
+            fig.canvas.draw_idle()
         return fig
 
     def _get_split_patients(

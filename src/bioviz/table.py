@@ -31,6 +31,7 @@ def generate_styled_table(
             created_fig, ax = plt.subplots(figsize=figsize)
         else:
             created_fig, ax = plt.subplots()
+    fig = ax.figure
 
     ax.axis("off")
 
@@ -38,8 +39,9 @@ def generate_styled_table(
         config.header_row_height if config.header_row_height is not None else config.row_height
     )
 
-    table_left = 0.05
-    table_bottom = 0.15
+    # Reduce margins so saved output is tight around the table
+    table_left = 0.0
+    table_bottom = 0.0
 
     table = ax.table(
         cellText=df.values.tolist(),
@@ -108,7 +110,20 @@ def generate_styled_table(
             transform=ax.transAxes,
         )
 
+    # Tighten layout and adjust figure size to content. Use sensible minimums so very
+    # small configs still produce a readable figure.
+    padding_w, padding_h = 0.4, 0.4
+    scale_w, scale_h = config.table_scale
+    scale_norm = 12  # default scale; use as baseline to avoid huge figures
+    content_width = config.table_width * max(1.0, scale_w / scale_norm)
+    content_height = total_height * max(1.0, scale_h / scale_norm)
+    min_width, min_height = 2.0, 1.5
+    fig.set_size_inches(
+        max(content_width + padding_w, min_width),
+        max(content_height + padding_h, min_height),
+    )
+    fig.subplots_adjust(left=0, right=1, top=1, bottom=0)
     if created_fig is not None:
         created_fig.tight_layout()
 
-    return created_fig
+    return created_fig or fig

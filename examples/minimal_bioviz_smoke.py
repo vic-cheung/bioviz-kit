@@ -1,14 +1,12 @@
-"""Minimal smoke examples demonstrating bioviz line/spider/oncoplot/table.
+"""
+Minimal smoke examples demonstrating bioviz line/spider/oncoplot/table.
 
 Run inside your project venv where `bioviz` deps are installed.
 """
 
 # %%
-import matplotlib
-
-matplotlib.use("Agg")
 import pandas as pd
-
+import matplotlib.pyplot as plt
 from bioviz.configs import (
     StyledLinePlotConfig,
     StyledSpiderPlotConfig,
@@ -33,7 +31,19 @@ line_df = pd.DataFrame(
         "Variant_type": ["SNV", "SNV"],
     }
 )
-line_cfg = StyledLinePlotConfig(patient_id="p1")
+line_cfg = StyledLinePlotConfig(
+    patient_id="p1",
+    label_points=True,  # show point labels like the prior defaults
+    threshold=0.6,  # optional threshold line
+    threshold_label=r"$LoD_{95}$",  # optional threshold label
+    figure_transparent=True,
+    ylim=(0, 1.2),
+    xlim=None,
+    # xlabel_fontsize=20, font size overrides
+    # ylabel_fontsize=20,
+    # xtick_fontsize=16,
+    # ytick_fontsize=16,
+)
 fig = generate_styled_lineplot(line_df, line_cfg)
 if fig:
     fig.savefig("line_smoke.pdf")
@@ -46,22 +56,34 @@ spider_df = pd.DataFrame(
         "Timepoint": pd.Categorical(
             ["T1", "T2", "T1", "T2"], categories=["T1", "T2"], ordered=True
         ),
-        "Value": [10, 12, 5, 6],
+        "Value": [0, 12, 0, -6],
     }
 )
-spider_cfg = StyledSpiderPlotConfig(group_col="group", x="Timepoint", y="Value")
+spider_cfg = StyledSpiderPlotConfig(
+    group_col="group",
+    x="Timepoint",
+    y="Value",
+    title=r"$\Delta$ Value from First Timepoint",
+    ylabel=r"$\Delta$ Value from First Timepoint",
+    baseline=0,
+)
 fig_spider, handles, labels = generate_styled_spiderplot(spider_df, spider_cfg)
+plt.show()
 fig_spider.savefig("spider_smoke.pdf")
 print("spider_smoke.pdf")
 
 # %%
 # 3) Table minimal data
-table_df = pd.DataFrame({"A": [1, 2], "B": ["x", "y"]})
-table_cfg = StyledTableConfig()
+table_df = pd.DataFrame({"A": [1, 2, 3], "B": ["x", "y", "z"]})
+table_cfg = StyledTableConfig(
+    table_width=2,
+    row_height=0.3,
+    title="Minimal Table Example",
+)
 fig_table = generate_styled_table(table_df, table_cfg)
 if fig_table:
-    fig_table.savefig("table_smoke.pdf")
-print("table_smoke.pdf")
+    # fig_table.savefig("table_smoke.pdf", bbox_inches="tight", pad_inches=0.05)
+    print("table_smoke.pdf")
 
 # %%
 # 4) Oncoplot minimal data with pathway (row-group) bars
@@ -111,6 +133,8 @@ top_ann = TopAnnotationConfig(
         "A": "#003975",
         "B": "#9d0ca2",
     },
+    legend_title="Cohort",
+    legend_value_order=["A", "B"],
     merge_labels=False,
     show_category_labels=False,
 )
@@ -121,6 +145,8 @@ dose_ann = TopAnnotationConfig(
         "100 mg": "#007352",
         "200 mg": "#860F0F",
     },
+    legend_title="Dose",
+    legend_value_order=["100 mg", "200 mg"],
     merge_labels=False,
     show_category_labels=False,
 )
@@ -132,32 +158,34 @@ heat_ann = HeatmapAnnotationConfig(
         "SNV"
     ],  # these render as bottom-left triangles. make empty list to disable.
     upper_right_triangle_values=["CNV"],  # these render as top-right triangles
+    legend_title="Variant Type",
+    legend_value_order=["SNV", "CNV", "Fusion"],
 )
 
 onc_cfg = OncoplotConfig(
-    heatmap_annotation=heat_ann, top_annotations={"Cohort": top_ann, "Dose": dose_ann}, aspect=1
+    heatmap_annotation=heat_ann,
+    top_annotations={"Cohort": top_ann, "Dose": dose_ann},
+    legend_category_order=["Dose", "Cohort", "Variant Type"],
 )
 plotter = OncoplotPlotter(
-    mut_df, onc_cfg, row_groups=row_groups, row_groups_color_dict=row_groups_color_dict
+    mut_df,
+    onc_cfg,
+    row_groups=row_groups,
+    row_groups_color_dict=row_groups_color_dict,
 )
 fig_oncoplot = plotter.plot()
 
-ax = fig_oncoplot.axes[0]
+# ax = fig_oncoplot.axes[0]
 
 # Shift pathway bars and labels to the left (negative values move left)
 # bar_shift: how far to move the bars horizontally
 # label_shift: how far to move the labels horizontally
-plotter.shift_row_group_bars_and_labels(
-    ax,
-    row_groups,
-    bar_shift=-3.5,  # move bars 3 units left
-    label_shift=-3,  # move labels 3 units left (slightly more than bars)
-)
-
+# this needs to get moved since we dont always know how long the gene names are.
 # After shifting, redraw to get updated text bounding boxes
-fig_oncoplot.canvas.draw()
+# fig_oncoplot.canvas.draw()
 
 fig_oncoplot.savefig("oncoplot.pdf", bbox_inches="tight", pad_inches=0.1, dpi=150)
 print("Saved oncoplot.pdf with shifted pathway bars")
+
 
 # %%

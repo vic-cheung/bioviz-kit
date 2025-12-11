@@ -41,6 +41,17 @@ def generate_styled_spiderplot(
     else:
         fig = ax.figure
 
+    # Ensure x is categorical; coerce if caller passed a plain series.
+    if config.x in df and not pd.api.types.is_categorical_dtype(df[config.x]):
+        df[config.x] = pd.Categorical(
+            df[config.x], categories=list(pd.unique(df[config.x])), ordered=True
+        )
+    elif config.x in df and hasattr(df[config.x].dtype, "categories"):
+        try:
+            df[config.x] = df[config.x].cat.remove_unused_categories()
+        except Exception:
+            pass
+
     # Validate required long-format columns; adapters should perform any
     # forward-fill or reshaping before calling bioviz.
     required_cols = {config.group_col, config.x, config.y}
@@ -122,10 +133,35 @@ def generate_styled_spiderplot(
     ax.spines["right"].set_visible(False)
 
     ax.set_xlabel(config.xlabel or config.x, fontweight="bold")
-    ax.set_ylabel(config.ylabel or r"$\Delta$ from First Timepoint", fontweight="bold")
-    ax.set_title(
-        config.title or r"$\Delta$ ddPCR Value from First Timepoint", loc="left", fontweight="bold"
-    )
+    ax.set_ylabel(config.ylabel or str(config.y), fontweight="bold")
+    ax.set_title(config.title or "Change over Time", loc="left", fontweight="bold")
+
+    # Override fontsizes if provided
+    if getattr(config, "xlabel_fontsize", None) is not None:
+        ax.xaxis.label.set_size(config.xlabel_fontsize)
+    if getattr(config, "ylabel_fontsize", None) is not None:
+        ax.yaxis.label.set_size(config.ylabel_fontsize)
+    tick_kwargs = {}
+    if getattr(config, "xtick_fontsize", None) is not None:
+        tick_kwargs["labelsize"] = config.xtick_fontsize
+    if tick_kwargs:
+        ax.tick_params(axis="x", **tick_kwargs)
+    tick_kwargs = {}
+    if getattr(config, "ytick_fontsize", None) is not None:
+        tick_kwargs["labelsize"] = config.ytick_fontsize
+    if tick_kwargs:
+        ax.tick_params(axis="y", **tick_kwargs)
+
+    # Optional baseline line (e.g., at 0)
+    if getattr(config, "baseline", None) is not None:
+        ax.axhline(
+            y=config.baseline,
+            color=getattr(config, "baseline_color", "#C0C0C0"),
+            linestyle=getattr(config, "baseline_style", "--"),
+            linewidth=getattr(config, "baseline_width", 1.0),
+            dashes=getattr(config, "baseline_dashes", (5, 5)),
+            zorder=1,
+        )
 
     handles = []
     if config.color_dict_subgroup:
@@ -217,6 +253,14 @@ def generate_styled_spiderplot(
         if leg:
             leg.remove()
 
+    # Figure background configurable; default to opaque white for exports. Use getattr for
+    # backward compatibility with configs created before these fields existed.
+    face_cfg = getattr(config, "figure_facecolor", None)
+    transparent_cfg = getattr(config, "figure_transparent", False)
+    face = face_cfg if face_cfg is not None else "white"
+    fig.patch.set_facecolor(face)
+    fig.patch.set_alpha(0.0 if transparent_cfg else 1.0)
+
     return fig, handles, labels
 
 
@@ -241,14 +285,46 @@ def generate_styled_spiderplot_with_scan_overlay(
     )
     ax2 = None
 
+    # Figure background configurable; prefer spider_config, fall back to scan_overlay_config.
+    face = None
+    transparent = False
+    if spider_config is not None:
+        face = getattr(spider_config, "figure_facecolor", None)
+        transparent = getattr(spider_config, "figure_transparent", False)
+    elif scan_overlay_config is not None:
+        face = getattr(scan_overlay_config, "figure_facecolor", None)
+        transparent = getattr(scan_overlay_config, "figure_transparent", False)
+    fig.patch.set_facecolor(face if face is not None else "white")
+    fig.patch.set_alpha(0.0 if transparent else 1.0)
+
     all_timepoints = set()
     if has_df:
         x_col = spider_config.x
-        df_cats = df[x_col].cat.remove_unused_categories().cat.categories
+        if not pd.api.types.is_categorical_dtype(df[x_col]):
+            df[x_col] = pd.Categorical(
+                df[x_col], categories=list(pd.unique(df[x_col])), ordered=True
+            )
+        else:
+            try:
+                df[x_col] = df[x_col].cat.remove_unused_categories()
+            except Exception:
+                pass
+        df_cats = df[x_col].cat.categories
         all_timepoints |= set(df_cats)
     if has_scan:
         scan_x_col = scan_overlay_config.x
-        scan_cats = scan_data[scan_x_col].cat.remove_unused_categories().cat.categories
+        if not pd.api.types.is_categorical_dtype(scan_data[scan_x_col]):
+            scan_data[scan_x_col] = pd.Categorical(
+                scan_data[scan_x_col],
+                categories=list(pd.unique(scan_data[scan_x_col])),
+                ordered=True,
+            )
+        else:
+            try:
+                scan_data[scan_x_col] = scan_data[scan_x_col].cat.remove_unused_categories()
+            except Exception:
+                pass
+        scan_cats = scan_data[scan_x_col].cat.categories
         all_timepoints |= set(scan_cats)
     all_timepoints = sorted(all_timepoints)
     cat_to_pos = {cat: i for i, cat in enumerate(all_timepoints)}
