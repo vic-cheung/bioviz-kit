@@ -158,14 +158,14 @@ heat_ann = HeatmapAnnotationConfig(
         "SNV"
     ],  # these render as bottom-left triangles. make empty list to disable.
     upper_right_triangle_values=["CNV"],  # these render as top-right triangles
-    legend_title="Variant Type",
+    legend_title="Mutation Type",
     legend_value_order=["SNV", "CNV", "Fusion"],
 )
 
 onc_cfg = OncoplotConfig(
     heatmap_annotation=heat_ann,
     top_annotations={"Cohort": top_ann, "Dose": dose_ann},
-    legend_category_order=["Dose", "Cohort", "Variant Type"],
+    legend_category_order=["Dose", "Cohort", "Mutation Type"],
 )
 plotter = OncoplotPlotter(
     mut_df,
@@ -174,15 +174,6 @@ plotter = OncoplotPlotter(
     row_groups_color_dict=row_groups_color_dict,
 )
 fig_oncoplot = plotter.plot()
-
-# ax = fig_oncoplot.axes[0]
-
-# Shift pathway bars and labels to the left (negative values move left)
-# bar_shift: how far to move the bars horizontally
-# label_shift: how far to move the labels horizontally
-# this needs to get moved since we dont always know how long the gene names are.
-# After shifting, redraw to get updated text bounding boxes
-# fig_oncoplot.canvas.draw()
 
 fig_oncoplot.savefig("oncoplot.pdf", bbox_inches="tight", pad_inches=0.1, dpi=150)
 print("Saved oncoplot.pdf with shifted pathway bars")
