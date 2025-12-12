@@ -33,6 +33,11 @@ class BasePlotConfig(BaseModel):
         Field(default=16, description="Optional y-tick label font size (default 16)."),
     ]
 
+    title_fontsize: Annotated[
+        float | int | None,
+        Field(default=20, description="Optional title font size (default 20)."),
+    ]
+
     col_vals_to_include_in_title: Annotated[
         list[str],
         Field(

@@ -1,5 +1,5 @@
 """
-Minimal smoke examples demonstrating bioviz line/spider/oncoplot/table.
+Minimal smoke examples demonstrating bioviz line/line+annotation/oncoplot/table.
 
 Run inside your project venv where `bioviz` deps are installed.
 """
@@ -8,15 +8,16 @@ Run inside your project venv where `bioviz` deps are installed.
 import pandas as pd
 import matplotlib.pyplot as plt
 from bioviz.configs import (
-    StyledLinePlotConfig,
-    StyledSpiderPlotConfig,
+    LinePlotConfig,
     OncoplotConfig,
     HeatmapAnnotationConfig,
     StyledTableConfig,
     TopAnnotationConfig,
 )
-from bioviz.lineplot import generate_styled_lineplot
-from bioviz.spiderplot import generate_styled_spiderplot
+from bioviz.lineplot import (
+    generate_lineplot,
+    generate_lineplot_twinx,
+)
 from bioviz.oncoplot import OncoplotPlotter
 from bioviz.table import generate_styled_table
 
@@ -31,26 +32,26 @@ line_df = pd.DataFrame(
         "Variant_type": ["SNV", "SNV"],
     }
 )
-line_cfg = StyledLinePlotConfig(
-    patient_id="p1",
+line_cfg = LinePlotConfig(
+    entity_id="p1",
+    label_col="label",
+    x="Timepoint",
+    y="Value",
+    secondary_group_col="Variant_type",
     label_points=True,  # show point labels like the prior defaults
     threshold=0.6,  # optional threshold line
     threshold_label=r"$LoD_{95}$",  # optional threshold label
     figure_transparent=True,
     ylim=(0, 1.2),
     xlim=None,
-    # xlabel_fontsize=20, font size overrides
-    # ylabel_fontsize=20,
-    # xtick_fontsize=16,
-    # ytick_fontsize=16,
 )
-fig = generate_styled_lineplot(line_df, line_cfg)
+fig = generate_lineplot(line_df, line_cfg)
 if fig:
     fig.savefig("line_smoke.pdf")
 print("line_smoke.pdf")
 # %%
-# 2) Spider plot minimal data
-spider_df = pd.DataFrame(
+# 2) Line overlay (multi-group trajectories)
+primary_df = pd.DataFrame(
     {
         "group": ["g1", "g1", "g2", "g2"],
         "Timepoint": pd.Categorical(
@@ -59,18 +60,123 @@ spider_df = pd.DataFrame(
         "Value": [0, 12, 0, -6],
     }
 )
-spider_cfg = StyledSpiderPlotConfig(
+primary_config = LinePlotConfig(
     group_col="group",
     x="Timepoint",
     y="Value",
     title=r"$\Delta$ Value from First Timepoint",
     ylabel=r"$\Delta$ Value from First Timepoint",
     baseline=0,
+    align_first_tick_to_origin=True,
 )
-fig_spider, handles, labels = generate_styled_spiderplot(spider_df, spider_cfg)
+fig = generate_lineplot(primary_df, primary_config)
 plt.show()
-fig_spider.savefig("spider_smoke.pdf")
-print("spider_smoke.pdf")
+if fig:
+    fig.savefig("line_overlay_smoke.pdf")
+print("line_overlay_smoke.pdf")
+
+# %%
+# 3a) Line + twin x-axis overlay
+# Use a second LinePlotConfig for the overlay, specifying overlay_* fields and shared x.
+twinx_df = pd.DataFrame(
+    {
+        "Timepoint": pd.Categorical(
+            ["T1", "T1", "T2", "T2"], categories=["T1", "T2"], ordered=True
+        ),
+        "DiameterChange": [5, -20, 10, -15],
+        "Location": ["Lung", "Liver", "Lung", "Liver"],
+        "Assessment": ["BL", "BL", "EOT", "EOT"],
+    }
+)
+secondary_config = LinePlotConfig(
+    x="Timepoint",
+    y="DiameterChange",
+    label_col="Location",
+    overlay_col="Assessment",
+    title="Twin x-axis overlay",
+    align_first_tick_to_origin=False,
+)
+fig_combined = generate_lineplot_twinx(
+    df=primary_df,
+    twinx_data=twinx_df,
+    primary_config=primary_config,
+    secondary_config=secondary_config,
+)
+fig_combined.savefig("line_plus_annotation_smoke.pdf")
+print("line_plus_annotation_smoke.pdf")
+
+# %%
+# 3a-raw) Line + twin x-axis overlay with raw values on secondary axis
+raw_twin_df = pd.DataFrame(
+    {
+        "Timepoint": pd.Categorical(
+            ["T1", "T1", "T2", "T2"], categories=["T1", "T2"], ordered=True
+        ),
+        "RawDiameterMM": [32, 28, 24, 18],
+        "Location": ["Lung", "Liver", "Lung", "Liver"],
+        "Assessment": ["BL", "BL", "EOT", "EOT"],
+    }
+)
+raw_secondary_cfg = LinePlotConfig(
+    x="Timepoint",
+    y="RawDiameterMM",  # twin axis uses standard y/hue; overlay_* inferred automatically
+    label_col="Location",
+    overlay_col="Assessment",
+    title="Twin overlay (raw values)",
+    symmetric_ylim=False,
+)
+# Set independent limits per axis: primary -100..100, secondary 0..100
+primary_config.ylim = (-101, 101)
+raw_secondary_cfg.ylim = (-0.5, 100.5)
+fig_combined_raw = generate_lineplot_twinx(
+    df=primary_df,
+    twinx_data=raw_twin_df,
+    primary_config=primary_config,
+    secondary_config=raw_secondary_cfg,
+)
+fig_combined_raw.savefig("line_plus_annotation_raw_smoke.pdf")
+print("line_plus_annotation_raw_smoke.pdf")
+
+# %%
+# 3b) Line + twin x-axis overlay reusing a single DataFrame
+# Here we keep everything in one long DataFrame and let the overlay config pull its columns.
+twin_single_df = pd.DataFrame(
+    {
+        "group": ["g1", "g1", "g2", "g2"],
+        "Timepoint": pd.Categorical(
+            ["T1", "T2", "T1", "T2"], categories=["T1", "T2"], ordered=True
+        ),
+        "Value": [0, 12, 0, -6],
+        # Mirror the overlay points used in 3a so each Location spans both timepoints.
+        "DiameterChange": [5, 10, -20, -15],
+        "Location": ["Lung", "Lung", "Liver", "Liver"],
+        "Assessment": ["BL", "EOT", "BL", "EOT"],
+    }
+)
+twin_single_cfg_main = LinePlotConfig(
+    group_col="group",
+    x="Timepoint",
+    y="Value",
+    title=r"$\Delta$ Value (single df)",
+    ylabel=r"$\Delta$ Value",
+    baseline=0,  # optional baseline line
+    align_first_tick_to_origin=False,
+)
+twin_single_cfg_overlay = LinePlotConfig(
+    x="Timepoint",
+    y="DiameterChange",
+    label_col="Location",
+    overlay_col="Assessment",
+    title="Twin overlay (single df)",
+)
+fig_combined_single_df = generate_lineplot_twinx(
+    df=twin_single_df,
+    twinx_data=None,  # reuses df for overlay layer
+    primary_config=twin_single_cfg_main,
+    secondary_config=twin_single_cfg_overlay,
+)
+fig_combined_single_df.savefig("line_plus_annotation_single_df_smoke.pdf")
+print("line_plus_annotation_single_df_smoke.pdf")
 
 # %%
 # 3) Table minimal data
@@ -176,7 +282,7 @@ plotter = OncoplotPlotter(
 fig_oncoplot = plotter.plot()
 
 fig_oncoplot.savefig("oncoplot.pdf", bbox_inches="tight", pad_inches=0.1, dpi=150)
-print("Saved oncoplot.pdf with shifted pathway bars")
+print("Saved oncoplot.pdf")
 
 
 # %%

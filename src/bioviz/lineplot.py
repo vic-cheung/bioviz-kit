@@ -16,58 +16,86 @@ from adjustText import adjust_text
 from matplotlib import font_manager
 from matplotlib.lines import Line2D
 
-from bioviz.configs import (
-    StyledLinePlotConfig,
-    StyledLinePlotOverlayConfig,
-    XAxisAnnotationOverlayConfig,
-    LineplotOverlayConfig,
-)
+from bioviz.configs import LinePlotConfig
 from bioviz.plot_utils import adjust_legend
 from bioviz.style import DefaultStyle
 
 DefaultStyle().apply_theme()
-
 # Expose public function
 __all__ = [
+    "generate_lineplot",
     "generate_styled_lineplot",
-    "generate_styled_lineplot_overlay",
-    "generate_styled_lineplot_with_x_axis_annotation_overlay",
+    "generate_styled_multigroup_lineplot",
+    "generate_lineplot_twinx",
 ]
+
+
+def generate_lineplot(
+    df: pd.DataFrame,
+    config: LinePlotConfig,
+    ax: plt.Axes | None = None,
+    draw_legend: bool = True,
+) -> plt.Figure | None:
+    """Unified entry point; dispatches to single- or multi-group plots based on config.
+
+    - If `group_col` is set, renders multi-group trajectories.
+    - Else if `label_col` is set, renders a single-series plot with hue.
+    - If both are set, multi-group takes precedence.
+    """
+
+    has_group = bool(getattr(config, "group_col", None))
+    has_label = bool(getattr(config, "label_col", None))
+
+    if has_group:
+        fig, *_ = generate_styled_multigroup_lineplot(
+            df=df, config=config, ax=ax, draw_legend=draw_legend
+        )
+        return fig
+
+    if has_label:
+        return generate_styled_lineplot(df=df, config=config, ax=ax)
+
+    raise ValueError("LinePlotConfig must set either group_col or label_col for line plotting.")
 
 
 def generate_styled_lineplot(
     df: pd.DataFrame,
-    config: StyledLinePlotConfig,
+    config: LinePlotConfig,
     ax: plt.Axes | None = None,
 ) -> plt.Figure | None:
+    if not config.label_col:
+        raise ValueError("line plot requires label_col (hue) to be set in LinePlotConfig.")
+    if not config.x or not config.y:
+        raise ValueError("line plot requires x and y to be set in LinePlotConfig.")
+    entity_id = getattr(config, "entity_id", None) or getattr(config, "patient_id", None)
     if df.empty:
-        print(f"No data for id '{config.patient_id}': DataFrame is empty.")
+        print(f"No data for id '{entity_id}': DataFrame is empty.")
         return None
 
     if config.label_col not in df:
-        print(f"No data for id '{config.patient_id}': column '{config.label_col}' does not exist.")
+        print(f"No data for id '{entity_id}': column '{config.label_col}' does not exist.")
         return None
 
     if df[config.label_col].dropna().empty:
         print(
-            f"No data for id '{config.patient_id}': column '{config.label_col}' contains only missing values."
+            f"No data for id '{entity_id}': column '{config.label_col}' contains only missing values."
         )
         return None
 
     if config.y not in df:
-        print(f"No data for id '{config.patient_id}': column '{config.y}' does not exist.")
+        print(f"No data for id '{entity_id}': column '{config.y}' does not exist.")
         return None
 
     if df[config.y].dropna().empty:
-        print(
-            f"No data for id '{config.patient_id}': column '{config.y}' contains only missing values."
-        )
+        print(f"No data for id '{entity_id}': column '{config.y}' contains only missing values.")
         return None
 
     # Ensure long-format required columns exist; bioviz expects callers to
     # supply long-format data. Forward-fill (if desired) should be done by
     # adapters (e.g. tm_toolbox) before calling bioviz.
-    required_cols = {config.x, config.y, config.label_col, config.secondary_group_col}
+    required_cols = [
+        c for c in (config.x, config.y, config.label_col, config.secondary_group_col) if c
+    ]
     missing = [c for c in required_cols if c not in df.columns]
     if missing:
         raise ValueError(
@@ -196,17 +224,22 @@ def generate_styled_lineplot(
             ylim = (ymin, ymax)
 
     if cat_to_pos:
-        xmax = max(cat_to_pos.values()) + config.xlim_padding
+        xmax = max(cat_to_pos.values())
     else:
-        xmax = 1
+        xmax = 0
+
+    if getattr(config, "align_first_tick_to_origin", False):
+        xlim_default = (0, xmax + config.xlim_padding)
+    else:
+        xlim_default = (-1 * config.xlim_padding, xmax + config.xlim_padding)
 
     # Honor user-specified xlim if provided; otherwise use padding-based default.
-    xlim = (-1 * config.xlim_padding, xmax)
+    xlim = xlim_default
     if getattr(config, "xlim", None) is not None:
         xl0, xl1 = config.xlim
         if xl0 is not None or xl1 is not None:
-            left = xl0 if xl0 is not None else xlim[0]
-            right = xl1 if xl1 is not None else xlim[1]
+            left = xl0 if xl0 is not None else xlim_default[0]
+            right = xl1 if xl1 is not None else xlim_default[1]
             xlim = (left, right)
 
     if config.threshold:
@@ -258,7 +291,9 @@ def generate_styled_lineplot(
         tick_kwargs["labelsize"] = config.ytick_fontsize
     if tick_kwargs:
         ax.tick_params(axis="y", **tick_kwargs)
-    ax.set_title(title, loc="left", fontweight="bold")
+    ax.set_title(
+        title, loc="left", fontweight="bold", fontsize=getattr(config, "title_fontsize", 20)
+    )
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
 
@@ -334,7 +369,13 @@ def generate_styled_lineplot(
         detection_handles.extend(
             [
                 Line2D([0], [0], linewidth=0, label="", color="black"),
-                Line2D([0], [0], linewidth=0, label="Detection Status", color="black"),
+                Line2D(
+                    [0],
+                    [0],
+                    linewidth=0,
+                    label=config.threshold_legend_title or "Threshold",
+                    color="black",
+                ),
                 Line2D(
                     [0],
                     [0],
@@ -344,7 +385,7 @@ def generate_styled_lineplot(
                     markeredgecolor="black",
                     markersize=config.markersize,
                     linewidth=0,
-                    label="Not detected",
+                    label=config.threshold_below_label or "Below Threshold",
                 ),
                 Line2D(
                     [0],
@@ -355,7 +396,7 @@ def generate_styled_lineplot(
                     markeredgecolor="white",
                     markersize=config.markersize,
                     linewidth=0,
-                    label="Detected",
+                    label=config.threshold_above_label or "Above Threshold",
                 ),
             ]
         )
@@ -374,7 +415,7 @@ def generate_styled_lineplot(
             if label in color_dict:
                 text.set_color(color_dict[label])
                 text.set_fontweight("bold")
-            elif label in {"Variant", "Detection Status"}:
+            elif label in {"Variant", config.threshold_legend_title or "Threshold"}:
                 text.set_color("black")
                 text.set_fontweight("bold")
                 text.set_fontsize(16)
@@ -393,12 +434,16 @@ def generate_styled_lineplot(
     return fig
 
 
-def generate_styled_lineplot_overlay(
+def generate_styled_multigroup_lineplot(
     df: pd.DataFrame,
-    config: StyledLinePlotOverlayConfig,
+    config: LinePlotConfig,
     ax: plt.Axes | None = None,
     draw_legend: bool = True,
 ) -> tuple[plt.Figure, list[Line2D], list[str]]:
+    if not config.group_col:
+        raise ValueError("overlay plot requires group_col to be set in LinePlotConfig.")
+    if not config.x or not config.y:
+        raise ValueError("overlay plot requires x and y to be set in LinePlotConfig.")
     if ax is None:
         fig, ax = plt.subplots(figsize=config.figsize)
     else:
@@ -413,7 +458,7 @@ def generate_styled_lineplot_overlay(
         except Exception:
             pass
 
-    required_cols = {config.group_col, config.x, config.y}
+    required_cols = [config.group_col, config.x, config.y]
     missing = [c for c in required_cols if c not in df.columns]
     if missing:
         raise ValueError(
@@ -484,18 +529,29 @@ def generate_styled_lineplot_overlay(
         )
 
     cat_to_pos = {cat: i for i, cat in enumerate(df[config.x].cat.categories)}
+    xpad = getattr(config, "xlim_padding", 0.8)
+    align_origin = getattr(config, "align_first_tick_to_origin", False)
     if cat_to_pos:
         xmax = max(cat_to_pos.values())
-        ax.set_xlim(0, xmax + 0.5)
+        x_start = 0 if align_origin else -1 * xpad
+        x_end = xmax + xpad
+        ax.set_xlim(x_start, x_end)
         ax.set_xticks(list(cat_to_pos.values()))
         ax.set_xticklabels(list(cat_to_pos.keys()))
+    else:
+        ax.set_xlim(-1 * xpad, xpad)
 
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
 
     ax.set_xlabel(config.xlabel or config.x, fontweight="bold")
     ax.set_ylabel(config.ylabel or str(config.y), fontweight="bold")
-    ax.set_title(config.title or "Change over Time", loc="left", fontweight="bold")
+    ax.set_title(
+        config.title or "Change over Time",
+        loc="left",
+        fontweight="bold",
+        fontsize=getattr(config, "title_fontsize", 20),
+    )
 
     if getattr(config, "xlabel_fontsize", None) is not None:
         ax.xaxis.label.set_size(config.xlabel_fontsize)
@@ -621,49 +677,80 @@ def generate_styled_lineplot_overlay(
     return fig, handles, labels
 
 
-def generate_styled_lineplot_with_x_axis_annotation_overlay(
+def generate_lineplot_twinx(
     df: pd.DataFrame | None,
-    scan_data: pd.DataFrame | None,
-    overlay_config: LineplotOverlayConfig | None = None,
-    line_config: StyledLinePlotOverlayConfig | None = None,
-    scan_overlay_config: XAxisAnnotationOverlayConfig | None = None,
+    twinx_data: pd.DataFrame | None,
+    primary_config: LinePlotConfig | None = None,
+    secondary_config: LinePlotConfig | None = None,
     annotation_color_dict: dict[str, str] | None = None,
+    annotation_source: str = "auto",
 ) -> plt.Figure:
-    if overlay_config is not None:
-        if line_config is None:
-            line_config = overlay_config.line
-        if scan_overlay_config is None:
-            scan_overlay_config = overlay_config.annotations
+    ann_cfg = secondary_config or primary_config
+
+    source_preference = (annotation_source or "auto").lower()
+    # Backward-compat aliases: line/left -> primary axis (main), overlay/right -> secondary axis (twin).
+    if source_preference in {"primary", "left"}:
+        source_preference = "primary"
+    elif source_preference in {"secondary", "right"}:
+        source_preference = "secondary"
+    if source_preference not in {"auto", "primary", "secondary"}:
+        source_preference = "auto"
 
     has_df = df is not None and not df.empty
-    has_scan = scan_data is not None and not scan_data.empty
-    if not has_df and not has_scan:
-        raise ValueError("At least one of df or scan_data must be provided and non-empty.")
+    has_twinx = twinx_data is not None and not twinx_data.empty
 
-    if has_df and line_config is None:
-        raise ValueError("line_config (or overlay_config.line) is required when df is provided.")
-    if has_scan and scan_overlay_config is None:
+    # Resolve overlay fields from standard axes/hue styling on the secondary config.
+    ann_overlay_y = getattr(ann_cfg, "y", None) if ann_cfg else None
+    ann_overlay_hue = None
+    if ann_cfg:
+        ann_overlay_hue = getattr(ann_cfg, "label_col", None) or getattr(ann_cfg, "group_col", None)
+    ann_overlay_palette = getattr(ann_cfg, "palette", None) if ann_cfg else None
+    ann_overlay_linestyle = getattr(ann_cfg, "linestyle", None) if ann_cfg else None
+    if ann_overlay_linestyle is None:
+        ann_overlay_linestyle = ":"
+
+    # Allow using the same DataFrame for twin-axis overlay by reusing df when no separate
+    # twinx_data is provided but twin fields exist on the secondary_config.
+    if not has_twinx and has_df and secondary_config is not None:
+        if (
+            secondary_config.x
+            and secondary_config.y
+            and (secondary_config.label_col or secondary_config.group_col)
+        ):
+            twinx_data = df
+            has_twinx = True
+    if not has_df and not has_twinx:
+        raise ValueError("At least one of df or twinx_data must be provided and non-empty.")
+
+    if has_df and primary_config is None:
+        raise ValueError("primary_config is required when df is provided.")
+    if has_twinx and ann_cfg is None:
         raise ValueError(
-            "scan_overlay_config (or overlay_config.annotations) is required when scan_data is provided."
+            "Provide a LinePlotConfig with overlay fields when twinx_data is provided."
         )
+    if has_twinx:
+        if not ann_cfg.x or not ann_overlay_y or not ann_overlay_hue:
+            raise ValueError(
+                "Secondary config must define x, y, and a hue (label_col or group_col)."
+            )
 
     fig, ax = plt.subplots(
         figsize=(
-            line_config.figsize
-            if line_config is not None
-            else (scan_overlay_config.figsize if scan_overlay_config is not None else (9, 6))
+            primary_config.figsize
+            if primary_config is not None
+            else (ann_cfg.figsize if ann_cfg is not None else (9, 6))
         )
     )
     ax2 = None
 
     face = None
     transparent = False
-    if line_config is not None:
-        face = getattr(line_config, "figure_facecolor", None)
-        transparent = getattr(line_config, "figure_transparent", False)
-    elif scan_overlay_config is not None:
-        face = getattr(scan_overlay_config, "figure_facecolor", None)
-        transparent = getattr(scan_overlay_config, "figure_transparent", False)
+    if primary_config is not None:
+        face = getattr(primary_config, "figure_facecolor", None)
+        transparent = getattr(primary_config, "figure_transparent", False)
+    elif ann_cfg is not None:
+        face = getattr(ann_cfg, "figure_facecolor", None)
+        transparent = getattr(ann_cfg, "figure_transparent", False)
     fig.patch.set_facecolor(face if face is not None else "white")
     fig.patch.set_alpha(0.0 if transparent else 1.0)
 
@@ -681,9 +768,27 @@ def generate_styled_lineplot_with_x_axis_annotation_overlay(
                 seen.add(val)
         return combined
 
-    all_timepoints: list = []
+    def _palette_dict(labels: list, palette_cfg) -> dict[str, str]:
+        if not labels:
+            return {}
+        if palette_cfg is None:
+            palette_cfg = sns.color_palette("Dark2", n_colors=len(labels))
+        if isinstance(palette_cfg, str):
+            return {label: palette_cfg for label in labels}
+        if isinstance(palette_cfg, dict):
+            fallback_palette = sns.color_palette("Dark2", n_colors=len(labels))
+            return {
+                label: palette_cfg.get(label, fallback_palette[i % len(fallback_palette)])
+                for i, label in enumerate(labels)
+            }
+        # palette_cfg is a list-like
+        if len(palette_cfg) < len(labels):
+            palette_cfg = sns.color_palette("Dark2", n_colors=len(labels))
+        return {label: color for label, color in zip(labels, palette_cfg)}
+
+    all_x_levels: list = []
     if has_df:
-        x_col = line_config.x
+        x_col = primary_config.x
         if not pd.api.types.is_categorical_dtype(df[x_col]):
             x_dtype = CategoricalDtype(categories=list(pd.unique(df[x_col])), ordered=True)
             df[x_col] = df[x_col].astype(x_dtype)
@@ -693,63 +798,85 @@ def generate_styled_lineplot_with_x_axis_annotation_overlay(
             except Exception:
                 pass
         df_cats = _categories_in_order(df[x_col])
-        all_timepoints = _combine_categories(all_timepoints, df_cats)
-    if has_scan:
-        scan_x_col = scan_overlay_config.x
-        if not pd.api.types.is_categorical_dtype(scan_data[scan_x_col]):
-            scan_dtype = CategoricalDtype(
-                categories=list(pd.unique(scan_data[scan_x_col])), ordered=True
+        all_x_levels = _combine_categories(all_x_levels, df_cats)
+    if has_twinx:
+        twinx_x_col = ann_cfg.x
+        if not pd.api.types.is_categorical_dtype(twinx_data[twinx_x_col]):
+            twinx_dtype = CategoricalDtype(
+                categories=list(pd.unique(twinx_data[twinx_x_col])), ordered=True
             )
-            scan_data[scan_x_col] = scan_data[scan_x_col].astype(scan_dtype)
+            twinx_data[twinx_x_col] = twinx_data[twinx_x_col].astype(twinx_dtype)
         else:
             try:
-                scan_data[scan_x_col] = scan_data[scan_x_col].cat.remove_unused_categories()
+                twinx_data[twinx_x_col] = twinx_data[twinx_x_col].cat.remove_unused_categories()
             except Exception:
                 pass
-        scan_cats = _categories_in_order(scan_data[scan_x_col])
-        all_timepoints = _combine_categories(all_timepoints, scan_cats)
+        twinx_cats = _categories_in_order(twinx_data[twinx_x_col])
+        all_x_levels = _combine_categories(all_x_levels, twinx_cats)
 
-    if not all_timepoints:
-        all_timepoints = []
-    cat_to_pos = {cat: i for i, cat in enumerate(all_timepoints)}
-    ax.set_xlim(0, len(all_timepoints) - 0.5)
+    if not all_x_levels:
+        all_x_levels = []
+    cat_to_pos = {cat: i for i, cat in enumerate(all_x_levels)}
+    xpad = getattr(primary_config or ann_cfg, "xlim_padding", 0.8)
+    x_end = max(len(all_x_levels) - 0.5, 0)
+    align_origin = getattr(primary_config or ann_cfg, "align_first_tick_to_origin", False)
+    x_start = 0 if align_origin else -1 * xpad
+    ax.set_xlim(x_start, x_end + xpad)
 
     if has_df:
         if not pd.api.types.is_categorical_dtype(df[x_col]) or list(
             df[x_col].cat.categories
-        ) != list(all_timepoints):
-            all_tp_dtype = CategoricalDtype(categories=all_timepoints, ordered=True)
+        ) != list(all_x_levels):
+            all_tp_dtype = CategoricalDtype(categories=all_x_levels, ordered=True)
             df[x_col] = df[x_col].astype(all_tp_dtype)
-        if not line_config.title:
-            ref_row = df[line_config.col_vals_to_include_in_title].iloc[0]
-            line_config.title = " | ".join(
+        if not primary_config.title:
+            ref_row = df[primary_config.col_vals_to_include_in_title].iloc[0]
+            primary_config.title = " | ".join(
                 ", ".join(map(str, val)) if isinstance(val, list) else str(val)
                 for val in ref_row.to_dict().values()
             )
 
-    if has_scan:
-        if not pd.api.types.is_categorical_dtype(scan_data[scan_x_col]) or list(
-            scan_data[scan_x_col].cat.categories
-        ) != list(all_timepoints):
-            all_tp_dtype = CategoricalDtype(categories=all_timepoints, ordered=True)
-            scan_data[scan_x_col] = scan_data[scan_x_col].astype(all_tp_dtype)
+    if has_twinx:
+        if not pd.api.types.is_categorical_dtype(twinx_data[twinx_x_col]) or list(
+            twinx_data[twinx_x_col].cat.categories
+        ) != list(all_x_levels):
+            all_tp_dtype = CategoricalDtype(categories=all_x_levels, ordered=True)
+            twinx_data[twinx_x_col] = twinx_data[twinx_x_col].astype(all_tp_dtype)
+
+    overlay_color_dict: dict[str, str] = {}
+    if has_twinx:
+        hue_col = ann_overlay_hue
+        overlay_labels = sorted(twinx_data[hue_col].dropna().unique())
+        overlay_color_dict = _palette_dict(overlay_labels, ann_overlay_palette)
 
     default_ylim = 105
     use_absolute_scale_main = (
-        has_df and hasattr(line_config, "use_absolute_scale") and line_config.use_absolute_scale
+        has_df
+        and hasattr(primary_config, "use_absolute_scale")
+        and primary_config.use_absolute_scale
     )
-    y1_max = abs(df[line_config.y].max()) if has_df else 0
-    y2_max = abs(scan_data[scan_overlay_config.y].max()) if has_scan else 0
-    y2_min = scan_data[scan_overlay_config.y].min() if has_scan else 0
-    if use_absolute_scale_main:
-        combined_max = y1_max
+    # Allow the secondary/twin config to override symmetric scaling when provided.
+    if ann_cfg is not None and hasattr(ann_cfg, "symmetric_ylim"):
+        symmetric_ylim = ann_cfg.symmetric_ylim
+    elif primary_config is not None and hasattr(primary_config, "symmetric_ylim"):
+        symmetric_ylim = primary_config.symmetric_ylim
     else:
-        scan_extreme = max(abs(y2_max), abs(y2_min)) if has_scan else 0
-        combined_max = max(y1_max, scan_extreme)
+        symmetric_ylim = True
+
+    y1_max = df[primary_config.y].max() if has_df else 0
+    y1_min = df[primary_config.y].min() if has_df else 0
+    y2_max = twinx_data[ann_overlay_y].max() if has_twinx else 0
+    y2_min = twinx_data[ann_overlay_y].min() if has_twinx else 0
 
     if use_absolute_scale_main:
-        base_ylim = line_config.absolute_ylim or (-5, 105)
-        base_yticks = line_config.absolute_yticks or [0, 25, 50, 75, 100]
+        combined_max = abs(y1_max)
+    else:
+        scan_extreme = max(abs(y2_max), abs(y2_min)) if has_twinx else 0
+        combined_max = max(abs(y1_max), abs(y1_min), scan_extreme)
+
+    if use_absolute_scale_main:
+        base_ylim = primary_config.absolute_ylim or (-5, 105)
+        base_yticks = primary_config.absolute_yticks or [0, 25, 50, 75, 100]
         ylim = base_ylim
         yticks = base_yticks
         new_ylim = ylim[1]
@@ -757,31 +884,50 @@ def generate_styled_lineplot_with_x_axis_annotation_overlay(
         ax.set_ylim(ylim[0], ylim[1])
         ymax = combined_max
     else:
-        ymax = combined_max
-        if ymax > default_ylim:
-            yticks = np.arange(-default_ylim + 5, ymax + 25, 25)
-            spacing = yticks[1] - yticks[0] if len(yticks) >= 2 else 5
-            new_ylim = math.ceil(ymax / spacing) * spacing
-            ax.set_ylim(-default_ylim, new_ylim)
-            yticks = ax.get_yticks()
-            spacing = yticks[1] - yticks[0] if len(yticks) > 1 else 1
-            _, new_ylim = ax.get_ylim()
+        if symmetric_ylim:
+            ymax = combined_max
+            if ymax > default_ylim:
+                yticks = np.arange(-default_ylim + 5, ymax + 25, 25)
+                spacing = yticks[1] - yticks[0] if len(yticks) >= 2 else 5
+                new_ylim = math.ceil(ymax / spacing) * spacing
+                ax.set_ylim(-default_ylim, new_ylim)
+                yticks = ax.get_yticks()
+                spacing = yticks[1] - yticks[0] if len(yticks) > 1 else 1
+                _, new_ylim = ax.get_ylim()
+            else:
+                new_ylim = default_ylim
+                spacing = 25
+                ax.set_ylim(-default_ylim, new_ylim)
+                yticks = np.arange(-100, 101, spacing)
+                ax.set_yticks(yticks)
         else:
-            new_ylim = default_ylim
-            spacing = 25
-            ax.set_ylim(-default_ylim, new_ylim)
-            yticks = np.arange(-100, 101, spacing)
-            ax.set_yticks(yticks)
+            if has_df:
+                ymin = y1_min
+                ymax = y1_max
+            elif has_twinx:
+                ymin = y2_min
+                ymax = y2_max
+            else:
+                ymin, ymax = 0, 1
+            if ymin == ymax:
+                ymin -= 1
+                ymax += 1
+            yrange = ymax - ymin
+            padding = 0.05 * yrange if yrange > 0 else 1
+            ax.set_ylim(ymin - padding, ymax + padding)
+            yticks = ax.get_yticks()
+            spacing = yticks[1] - yticks[0] if len(yticks) > 1 else yrange or 1
+            new_ylim = max(abs(ax.get_ylim()[0]), abs(ax.get_ylim()[1]))
 
     text_y = new_ylim - 0.4 * spacing
 
-    if has_df and not has_scan:
-        generate_styled_lineplot_overlay(df=df, config=line_config, ax=ax)
-        ax.set_ylabel(line_config.ylabel or r"$\Delta$ from First Timepoint", fontweight="bold")
+    if has_df and not has_twinx:
+        generate_styled_multigroup_lineplot(df=df, config=primary_config, ax=ax)
+        ax.set_ylabel(primary_config.ylabel or r"$\Delta$ from First Timepoint", fontweight="bold")
         adjust_legend(ax, (1.2, 0.7), redraw=True)
         ax.set_facecolor("white")
         fig.patch.set_alpha(0.0)
-        fig.subplots_adjust(right=line_config.rhs_pdf_padding)
+        fig.subplots_adjust(right=primary_config.rhs_pdf_padding)
         xticks = ax.get_xticks()
         if len(xticks) > 8:
             ax.tick_params(axis="x", labelsize=13, rotation=45)
@@ -789,18 +935,38 @@ def generate_styled_lineplot_with_x_axis_annotation_overlay(
             ax.tick_params(axis="x", labelsize=13)
         return fig
 
-    if has_scan and not has_df:
-        annotation_field = getattr(scan_overlay_config, "annotation_col", None)
+    if has_twinx and not has_df:
+        # Decide which config and DataFrame supplies annotations.
+        line_ann_col = getattr(primary_config, "overlay_col", None) if primary_config else None
+        overlay_ann_col = getattr(ann_cfg, "overlay_col", None)
+        if line_ann_col and overlay_ann_col and line_ann_col != overlay_ann_col:
+            print(
+                f"overlay_col differs between configs ({line_ann_col} vs {overlay_ann_col}); using primary_config value."
+            )
+            annotation_field = line_ann_col or overlay_ann_col
+        if annotation_field and annotation_field in twinx_data.columns:
+            ann_df = twinx_data
+        else:
+            ann_df = twinx_data  # fallback to twinx_data even if missing to avoid breakage
         annotations = (
-            scan_data[[scan_x_col, annotation_field]]
+            ann_df[[twinx_x_col, annotation_field]]
             .dropna()
             .drop_duplicates()
             .reset_index(drop=True)
-            if annotation_field and annotation_field in scan_data.columns
-            else pd.DataFrame(columns=[scan_x_col, "_annotation"])
+            if annotation_field and annotation_field in ann_df.columns
+            else pd.DataFrame(columns=[twinx_x_col, "_annotation"])
         )
+        annotation_labels = (
+            sorted(annotations[annotation_field].unique()) if not annotations.empty else []
+        )
+        overlay_palette_cfg = getattr(ann_cfg, "overlay_palette", None) or getattr(
+            ann_cfg, "palette", None
+        )
+        overlay_palette = _palette_dict(annotation_labels, overlay_palette_cfg)
+        overlay_fontweight = getattr(ann_cfg, "overlay_fontweight", "bold")
+        overlay_fontsize = getattr(ann_cfg, "overlay_fontsize", None) or 14
         for _, row in annotations.iterrows():
-            x = cat_to_pos[row[scan_x_col]]
+            x = cat_to_pos[row[twinx_x_col]]
             text = row[annotation_field] if annotation_field in row else None
             if text is None:
                 continue
@@ -808,44 +974,47 @@ def generate_styled_lineplot_with_x_axis_annotation_overlay(
                 x + 0.03,
                 text_y,
                 text,
-                fontsize=14,
-                fontweight="bold",
+                fontsize=overlay_fontsize,
+                fontweight=overlay_fontweight,
                 color=(
-                    annotation_color_dict.get(text, "black") if annotation_color_dict else "black"
+                    annotation_color_dict.get(text, "black")
+                    if annotation_color_dict
+                    else overlay_palette.get(text, "black")
                 ),
                 zorder=1,
             )
             ax.axvline(x=x, color="gainsboro", linestyle="--", linewidth=1, zorder=1)
         sns.lineplot(
-            data=scan_data,
-            x=scan_x_col,
-            y=scan_overlay_config.y,
-            hue=scan_overlay_config.hue_col,
-            palette=scan_overlay_config.palette,
+            data=twinx_data,
+            x=twinx_x_col,
+            y=ann_overlay_y,
+            hue=ann_overlay_hue,
+            palette=overlay_color_dict or ann_overlay_palette,
             ax=ax,
-            linewidth=scan_overlay_config.lw / 2,
-            linestyle=scan_overlay_config.linestyle,
-            alpha=scan_overlay_config.alpha,
+            linewidth=ann_cfg.lw / 2,
+            linestyle=ann_overlay_linestyle,
+            alpha=ann_cfg.twin_alpha,
             zorder=2,
         )
         sns.scatterplot(
-            data=scan_data,
-            x=scan_x_col,
-            y=scan_overlay_config.y,
-            hue=scan_overlay_config.hue_col,
-            palette=scan_overlay_config.palette,
+            data=twinx_data,
+            x=twinx_x_col,
+            y=ann_overlay_y,
+            hue=ann_overlay_hue,
+            palette=overlay_color_dict or ann_overlay_palette,
             ax=ax,
-            s=(scan_overlay_config.markersize / 1.5) ** 2,
+            s=(ann_cfg.markersize / 1.5) ** 2,
             edgecolor="white",
             linewidth=1,
             legend=False,
             zorder=2,
         )
         texts, x_pos_, y_pos_ = [], [], []
-        for label, group in scan_data.groupby(scan_overlay_config.hue_col):
-            last = group.dropna(subset=[scan_x_col, scan_overlay_config.y]).iloc[-1]
-            x = cat_to_pos[last[scan_x_col]] + np.random.normal(0, 0.01)
-            y = last[scan_overlay_config.y] + 2 + np.random.normal(0, 0.01)
+        palette_lookup = overlay_color_dict
+        for label, group in twinx_data.groupby(ann_overlay_hue):
+            last = group.dropna(subset=[twinx_x_col, ann_overlay_y]).iloc[-1]
+            x = cat_to_pos[last[twinx_x_col]] + np.random.normal(0, 0.01)
+            y = last[ann_overlay_y] + 2 + np.random.normal(0, 0.01)
             x_pos_.append(x)
             y_pos_.append(y)
             texts.append(
@@ -853,8 +1022,12 @@ def generate_styled_lineplot_with_x_axis_annotation_overlay(
                     x + 0.05,
                     y + 0.3,
                     label,
-                    fontdict={"family": DefaultStyle().font_family, "size": 10, "weight": "bold"},
-                    color=scan_overlay_config.palette.get(label, "black"),
+                    fontdict={
+                        "family": DefaultStyle().font_family,
+                        "size": 10,
+                        "weight": overlay_fontweight,
+                    },
+                    color=palette_lookup.get(label, "black"),
                     ha="left",
                     va="center",
                     zorder=10,
@@ -870,7 +1043,7 @@ def generate_styled_lineplot_with_x_axis_annotation_overlay(
             expand_text=(1.2, 1.2),
             verbose=0,
         )
-        ax.set_title(scan_overlay_config.title, loc="left", fontweight="bold")
+        ax.set_title(ann_cfg.title, loc="left", fontweight="bold")
         ax.set_ylabel(
             r"Diameter %$\Delta$ from First Timepoint",
             fontdict={
@@ -893,29 +1066,90 @@ def generate_styled_lineplot_with_x_axis_annotation_overlay(
             ),
         )
         adjust_legend(ax, (1.2, 0.7))
-        fig.subplots_adjust(right=line_config.rhs_pdf_padding if line_config else 0.85)
+        fig.subplots_adjust(right=primary_config.rhs_pdf_padding if primary_config else 0.85)
         ax.set_facecolor("white")
         fig.patch.set_alpha(0.0)
-        ax.set_xlabel(scan_overlay_config.x, fontweight="bold")
+        ax.set_xlabel(ann_cfg.x, fontweight="bold")
+        xtick_size = getattr(primary_config or ann_cfg, "xtick_fontsize", None)
         xticks = ax.get_xticks()
-        if len(xticks) > 8:
-            ax.tick_params(axis="x", labelsize=13, rotation=45)
+        if xtick_size is not None:
+            ax.tick_params(axis="x", labelsize=xtick_size)
         else:
-            ax.tick_params(axis="x", labelsize=13)
+            if len(xticks) > 8:
+                ax.tick_params(axis="x", labelsize=13, rotation=45)
+            else:
+                ax.tick_params(axis="x", labelsize=13)
         return fig
 
-    generate_styled_lineplot_overlay(df=df, config=line_config, ax=ax)
+    generate_styled_multigroup_lineplot(df=df, config=primary_config, ax=ax)
     ax2 = ax.twinx()
     if ax2:
-        ax2.set_xlim(0, len(all_timepoints) - 0.5)
-    annotation_field = getattr(scan_overlay_config, "annotation_col", None)
+        ax2.set_xlim(x_start, x_end + xpad)
+    line_ann_col = getattr(primary_config, "overlay_col", None) if primary_config else None
+    overlay_ann_col = getattr(ann_cfg, "overlay_col", None)
+    if line_ann_col and overlay_ann_col and line_ann_col != overlay_ann_col:
+        print(
+            f"overlay_col differs between configs ({line_ann_col} vs {overlay_ann_col}); using primary_config value."
+        )
+    annotation_field = line_ann_col or overlay_ann_col
+
+    def _annotation_sources() -> list[tuple[str, pd.DataFrame | None]]:
+        # Default: prefer primary (main axis) annotations, then fall back to secondary (twin axis).
+        if source_preference == "primary":
+            return [("primary", df), ("secondary", twinx_data)]
+        if source_preference == "secondary":
+            return [("secondary", twinx_data), ("primary", df)]
+        return [("primary", df), ("secondary", twinx_data)]
+
+    ann_df = twinx_data
+    ann_source_used = "secondary"
+    for source_name, candidate in _annotation_sources():
+        if candidate is None or candidate.empty or annotation_field not in candidate.columns:
+            continue
+        ann_df = candidate
+        ann_source_used = source_name
+        break
+
+    if ann_source_used == "primary" and primary_config:
+        twinx_x_col = primary_config.x
+        cat_to_pos = {cat: i for i, cat in enumerate(all_x_levels)}
     annotations = (
-        scan_data[[scan_x_col, annotation_field]].dropna().drop_duplicates().reset_index(drop=True)
-        if annotation_field and annotation_field in scan_data.columns
-        else pd.DataFrame(columns=[scan_x_col, "_annotation"])
+        ann_df[[twinx_x_col, annotation_field]].dropna().drop_duplicates().reset_index(drop=True)
+        if annotation_field and annotation_field in ann_df.columns
+        else pd.DataFrame(columns=[twinx_x_col, "_annotation"])
     )
+
+    # Build annotation color mapping based on the chosen source, allowing palettes on either config.
+    annotation_labels = (
+        sorted(annotations[annotation_field].unique()) if not annotations.empty else []
+    )
+    primary_palette_cfg = None
+    if primary_config is not None:
+        primary_palette_cfg = getattr(primary_config, "overlay_palette", None) or getattr(
+            primary_config, "palette", None
+        )
+    secondary_palette_cfg = getattr(ann_cfg, "overlay_palette", None) or getattr(
+        ann_cfg, "palette", None
+    )
+    overlay_palette = _palette_dict(
+        annotation_labels,
+        primary_palette_cfg if ann_source_used == "primary" else secondary_palette_cfg,
+    )
+    # Default to black when caller does not pass a dict/palette
+    if not annotation_color_dict and not secondary_palette_cfg and not primary_palette_cfg:
+        overlay_palette = {label: "black" for label in annotation_labels}
+    overlay_fontweight = (
+        getattr(primary_config, "overlay_fontweight", None)
+        if ann_source_used == "primary"
+        else getattr(ann_cfg, "overlay_fontweight", None)
+    ) or "bold"
+    overlay_fontsize = (
+        getattr(primary_config, "overlay_overlay_fontsize", None)
+        if ann_source_used == "primary"
+        else getattr(ann_cfg, "overlay_overlay_fontsize", None)
+    ) or 14
     for _, row in annotations.iterrows():
-        x = cat_to_pos[row[scan_x_col]]
+        x = cat_to_pos[row[twinx_x_col]]
         text = row[annotation_field] if annotation_field in row else None
         if text is None:
             continue
@@ -923,42 +1157,47 @@ def generate_styled_lineplot_with_x_axis_annotation_overlay(
             x + 0.03,
             text_y,
             text,
-            fontsize=14,
-            fontweight="bold",
-            color=(annotation_color_dict.get(text, "black") if annotation_color_dict else "black"),
+            fontsize=overlay_fontsize,
+            fontweight=overlay_fontweight,
+            color=(
+                annotation_color_dict.get(text, "black")
+                if annotation_color_dict
+                else overlay_palette.get(text, "black")
+            ),
             zorder=1,
         )
         ax.axvline(x=x, color="gainsboro", linestyle="--", linewidth=1, zorder=1)
     sns.lineplot(
-        data=scan_data,
-        x=scan_x_col,
-        y=scan_overlay_config.y,
-        hue=scan_overlay_config.hue_col,
-        palette=scan_overlay_config.palette,
+        data=twinx_data,
+        x=twinx_x_col,
+        y=ann_overlay_y,
+        hue=ann_overlay_hue,
+        palette=overlay_color_dict or ann_overlay_palette,
         ax=ax2,
-        linewidth=scan_overlay_config.lw / 2,
-        linestyle=scan_overlay_config.linestyle,
-        alpha=scan_overlay_config.alpha,
+        linewidth=ann_cfg.lw / 2,
+        linestyle=ann_overlay_linestyle,
+        alpha=ann_cfg.twin_alpha,
         zorder=2,
     )
     sns.scatterplot(
-        data=scan_data,
-        x=scan_x_col,
-        y=scan_overlay_config.y,
-        hue=scan_overlay_config.hue_col,
-        palette=scan_overlay_config.palette,
+        data=twinx_data,
+        x=twinx_x_col,
+        y=ann_overlay_y,
+        hue=ann_overlay_hue,
+        palette=overlay_color_dict or ann_overlay_palette,
         ax=ax2,
-        s=(scan_overlay_config.markersize / 1.5) ** 2,
+        s=(ann_cfg.markersize / 1.5) ** 2,
         edgecolor="white",
         linewidth=1,
         legend=False,
         zorder=2,
     )
     texts, x_pos_, y_pos_ = [], [], []
-    for label, group in scan_data.groupby(scan_overlay_config.hue_col):
-        last = group.dropna(subset=[scan_x_col, scan_overlay_config.y]).iloc[-1]
-        x = cat_to_pos[last[scan_x_col]] + np.random.normal(0, 0.01)
-        y = last[scan_overlay_config.y] + 2 + np.random.normal(0, 0.01)
+    palette_lookup = overlay_color_dict
+    for label, group in twinx_data.groupby(ann_overlay_hue):
+        last = group.dropna(subset=[twinx_x_col, ann_overlay_y]).iloc[-1]
+        x = cat_to_pos[last[twinx_x_col]] + np.random.normal(0, 0.01)
+        y = last[ann_overlay_y] + 2 + np.random.normal(0, 0.01)
         x_pos_.append(x)
         y_pos_.append(y)
         texts.append(
@@ -966,17 +1205,31 @@ def generate_styled_lineplot_with_x_axis_annotation_overlay(
                 x + 0.05,
                 y + 0.3,
                 label,
-                fontdict={"family": DefaultStyle().font_family, "size": 10, "weight": "bold"},
-                color=scan_overlay_config.palette.get(label, "black"),
+                fontdict={
+                    "family": DefaultStyle().font_family,
+                    "size": 10,
+                    "weight": overlay_fontweight,
+                },
+                color=palette_lookup.get(label, "black"),
                 ha="left",
                 va="center",
                 zorder=10,
             )
         )
     plt.draw()
+    # Respect user-provided ylims when supplied.
+    main_ylim_override = getattr(primary_config, "ylim", None) if primary_config else None
+    if main_ylim_override is not None:
+        y0, y1 = main_ylim_override
+        lower = y0 if y0 is not None else ax.get_ylim()[0]
+        upper = y1 if y1 is not None else ax.get_ylim()[1]
+        ax.set_ylim(lower, upper)
+
+    main_ylim = ax.get_ylim()
+
     if use_absolute_scale_main:
-        if has_scan and ax2:
-            scan_extreme = max(abs(y2_max), abs(y2_min)) if has_scan else 0
+        if has_twinx and ax2:
+            scan_extreme = max(abs(y2_max), abs(y2_min)) if has_twinx else 0
             base_scan_limit = 100
             if scan_extreme > base_scan_limit:
                 tick_spacing = 25
@@ -989,17 +1242,29 @@ def generate_styled_lineplot_with_x_axis_annotation_overlay(
             scan_ticks = list(range(-int(scan_ylim), int(scan_ylim) + 1, tick_spacing))
             ax2.set_yticks(scan_ticks)
         elif ax2:
-            ax2.set_ylim(-new_ylim, new_ylim)
+            ax2.set_ylim(main_ylim)
     else:
-        ax.set_ylim(-new_ylim, new_ylim)
-        if has_scan and ax2:
-            ax2.set_ylim(-new_ylim, new_ylim)
-            main_ticks = ax.get_yticks()
-            ax2.set_yticks(main_ticks)
-        elif ax2:
-            ax2.set_ylim(-new_ylim, new_ylim)
-            main_ticks = ax.get_yticks()
-            ax2.set_yticks(main_ticks)
+        if ax2:
+            twin_ylim_override = getattr(ann_cfg, "ylim", None) if ann_cfg else None
+            if twin_ylim_override is not None:
+                y0, y1 = twin_ylim_override
+                lower = y0 if y0 is not None else main_ylim[0]
+                upper = y1 if y1 is not None else main_ylim[1]
+                ax2.set_ylim(lower, upper)
+            elif not symmetric_ylim and has_twinx:
+                # Auto-scale twin axis from its own data when asymmetric scaling is requested.
+                tymin = twinx_data[ann_overlay_y].min()
+                tymax = twinx_data[ann_overlay_y].max()
+                if tymin == tymax:
+                    tymin -= 1
+                    tymax += 1
+                tyrange = tymax - tymin
+                padding = 0.05 * tyrange if tyrange > 0 else 1
+                ax2.set_ylim(tymin - padding, tymax + padding)
+            else:
+                ax2.set_ylim(main_ylim)
+            if symmetric_ylim:
+                ax2.set_yticks(ax.get_yticks())
     adjust_text(
         texts,
         ax=ax2,
@@ -1017,6 +1282,20 @@ def generate_styled_lineplot_with_x_axis_annotation_overlay(
             "weight": "bold",
         },
     )
+    # Propagate configured font sizes to the twin y-axis when provided.
+    ylabel_size = getattr(ann_cfg, "ylabel_fontsize", None) or getattr(
+        primary_config, "ylabel_fontsize", None
+    )
+    if ylabel_size is not None:
+        ax2.yaxis.label.set_size(ylabel_size)
+    tick_kwargs = {}
+    ytick_size = getattr(ann_cfg, "ytick_fontsize", None) or getattr(
+        primary_config, "ytick_fontsize", None
+    )
+    if ytick_size is not None:
+        tick_kwargs["labelsize"] = ytick_size
+    if tick_kwargs:
+        ax2.tick_params(axis="y", **tick_kwargs)
     handles, labels = ax2.get_legend_handles_labels()
     section_label = Line2D([0], [0], color="none", label="Location")
     for h in handles:
@@ -1030,12 +1309,18 @@ def generate_styled_lineplot_with_x_axis_annotation_overlay(
     )
     adjust_legend(ax2, (1.2, 0.3))
     adjust_legend(ax, (1.2, 0.8), redraw=True)
-    fig.subplots_adjust(right=line_config.rhs_pdf_padding)
+    fig.subplots_adjust(right=primary_config.rhs_pdf_padding)
     ax.set_facecolor("white")
     fig.patch.set_alpha(0.0)
+    xtick_size = getattr(primary_config or ann_cfg, "xtick_fontsize", None)
     xticks = ax.get_xticks()
-    if len(xticks) > 8:
-        ax.tick_params(axis="x", labelsize=13, rotation=45)
+    if xtick_size is not None:
+        ax.tick_params(axis="x", labelsize=xtick_size)
+        if ax2:
+            ax2.tick_params(axis="x", labelsize=xtick_size)
     else:
-        ax.tick_params(axis="x", labelsize=13)
+        if len(xticks) > 8:
+            ax.tick_params(axis="x", labelsize=13, rotation=45)
+        else:
+            ax.tick_params(axis="x", labelsize=13)
     return fig
