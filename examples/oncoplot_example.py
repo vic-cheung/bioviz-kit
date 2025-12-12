@@ -202,22 +202,6 @@ heat_ann = HeatmapAnnotationConfig(
     legend_value_order=["Popular", "Unpopular", "Neutral"],
 )
 
-onc_cfg = OncoplotConfig(
-    heatmap_annotation=heat_ann,
-    x_col="Participant",
-    y_col="Food",
-    value_col="Popularity",
-    row_group_col="Bucket",
-    top_annotations={"Age": age_ann, "Sex": sex_ann},
-    top_annotation_order=["Age", "Sex"],
-    col_split_by=["Age"],
-    col_split_order={"Age": ["Child", "Adult"]},
-    row_group_order=["Nightshade", "Tuber"],
-    aspect=1,
-    legend_category_order=["Age", "Sex", "Popularity"],
-    row_group_post_bar_shift=-6,
-    row_group_post_label_shift=-5.5,
-)
 aspects = [1.0, 1.3, 0.6]
 with PdfPages("oncoplot_aspects.pdf") as pdf:
     for aspect in aspects:
