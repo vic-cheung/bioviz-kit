@@ -44,7 +44,7 @@ df = pd.DataFrame(
             "PARTICIPANT-6",
             "PARTICIPANT-6",
         ],
-        "Crop": [
+        "Food": [
             "YAM",
             "EGGPLANT",
             "EGGPLANT",
@@ -57,14 +57,14 @@ df = pd.DataFrame(
             "DAIKON",
             "ALMOND",
             "PECAN",
-            "PEANUT",
-            "BRAZIL NUT",
-            "CASHEW",
-            "MACADAMIA",
-            "WALNUT",
-            "PISTACHIO",
-            "HAZELNUT",
-            "CHESTNUT",
+            "APPLE",
+            "BANANA",
+            "LETTUCE",
+            "NOODLES",
+            "BURGER",
+            "BUN",
+            "DUMPLINGS",
+            "SOUP",
         ],
         "Popularity": [
             "Popular",
@@ -136,7 +136,7 @@ df = pd.DataFrame(
     }
 )
 
-# Create row_groups DataFrame: index matches the gene field (Crop)
+# Create row_groups DataFrame: index matches the gene field (Food)
 # This drives pathway bar drawing
 row_groups = pd.DataFrame(
     {
@@ -151,7 +151,7 @@ row_groups = pd.DataFrame(
             "PECAN": "Nut",
         }
     }
-).rename_axis("Crop")
+).rename_axis("Food")
 
 # Pathway bar colors
 row_groups_color_dict = {
@@ -205,7 +205,7 @@ heat_ann = HeatmapAnnotationConfig(
 onc_cfg = OncoplotConfig(
     heatmap_annotation=heat_ann,
     x_col="Participant",
-    y_col="Crop",
+    y_col="Food",
     value_col="Popularity",
     row_group_col="Bucket",
     top_annotations={"Age": age_ann, "Sex": sex_ann},
@@ -224,7 +224,7 @@ with PdfPages("oncoplot_aspects.pdf") as pdf:
         onc_cfg = OncoplotConfig(
             heatmap_annotation=heat_ann,
             x_col="Participant",
-            y_col="Crop",
+            y_col="Food",
             value_col="Popularity",
             row_group_col="Bucket",
             top_annotations={"Age": age_ann, "Sex": sex_ann},
@@ -234,8 +234,6 @@ with PdfPages("oncoplot_aspects.pdf") as pdf:
             row_group_order=["Nightshade", "Tuber"],
             aspect=aspect,
             legend_category_order=["Age", "Sex", "Popularity"],
-            row_group_post_bar_shift=-6,
-            row_group_post_label_shift=-5.5,
         )
         plotter = OncoplotPlotter(
             df, onc_cfg, row_groups=row_groups, row_groups_color_dict=row_groups_color_dict
