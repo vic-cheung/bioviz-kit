@@ -38,12 +38,12 @@ class LinePlotConfig(BasePlotConfig):
     use_absolute_scale: Annotated[bool, Field(default=False)]
     absolute_ylim: Annotated[tuple[float, float] | None, Field(default=None)]
     absolute_yticks: Annotated[list[float] | None, Field(default=None)]
-    baseline: Annotated[float | None, Field(default=None)]
-    baseline_color: Annotated[str, Field(default="#C0C0C0")]
-    baseline_style: Annotated[str, Field(default="--")]
-    baseline_width: Annotated[float, Field(default=1.0)]
-    baseline_dashes: Annotated[tuple[float, float] | None, Field(default=(5, 5))]
-    baseline_alpha: Annotated[float, Field(default=1.0)]
+    reference: Annotated[float | None, Field(default=None)]
+    reference_color: Annotated[str, Field(default="#C0C0C0")]
+    reference_style: Annotated[str, Field(default="--")]
+    reference_width: Annotated[float, Field(default=1.0)]
+    reference_dashes: Annotated[tuple[float, float] | None, Field(default=(5, 5))]
+    reference_alpha: Annotated[float, Field(default=1.0)]
 
     # Limits / ticks
     xlim_padding: Annotated[float, Field(default=0.8)]
