@@ -3,8 +3,8 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 [project]
 name = "bioviz-kit"
-version = "0.1.0"
-description = "Framework-agnostic plotting utilities extracted from tm-toolbox"
+version = "0.2.0"
+description = "Framework-agnostic plotting utilities for visualizing data"
 readme = "README.md"
 license = { file = "LICENSE" }
 authors = [ { name = "Victoria Cheung", email = "victoriakcheung@gmail.com" } ]
