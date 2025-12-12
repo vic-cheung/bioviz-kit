@@ -109,7 +109,7 @@ def my_shape_func(
 
 def draw_top_annotation(
     ax,
-    patients,
+    x_values,
     col_positions,
     annotation_y,
     ann_config,
@@ -117,6 +117,7 @@ def draw_top_annotation(
     col_split_map=None,
     cell_aspect: float = 1.0,
     label_x: float | None = None,
+    label_transform=None,
 ) -> Any:
     if not col_positions:
         return
@@ -136,11 +137,11 @@ def draw_top_annotation(
     border_categories = getattr(ann_config, "border_categories", None)
     draw_border = getattr(ann_config, "draw_border", False)
 
-    for j, patient in enumerate(patients):
-        if patient is None:
+    for j, x_value in enumerate(x_values):
+        if x_value is None:
             continue
         x = col_positions[j]
-        value = values.get(patient)
+        value = values.get(x_value)
         if pd.isna(value) or (isinstance(value, str) and value.strip().lower() == "nan"):
             color = ann_config.na_color
             value_str = "NA"
@@ -174,7 +175,7 @@ def draw_top_annotation(
                 last_value = None
 
     if block_start is not None:
-        blocks_needing_borders.append((block_start, len(patients) - 1))
+        blocks_needing_borders.append((block_start, len(x_values) - 1))
 
     border_color = getattr(ann_config, "border_color", "black")
     border_width = getattr(ann_config, "border_width", 0.5)
@@ -206,29 +207,30 @@ def draw_top_annotation(
             fontweight="normal",
             clip_on=False,
             zorder=13,
+            transform=label_transform or ax.transData,
         )
 
     if merge_labels:
-        patient_values = []
-        for i, patient in enumerate(patients):
-            if patient is not None:
-                value = values.get(patient)
+        x_value_entries = []
+        for i, x_value in enumerate(x_values):
+            if x_value is not None:
+                value = values.get(x_value)
                 if pd.notna(value):
-                    patient_values.append((i, patient, value))
+                    x_value_entries.append((i, x_value, value))
 
-        if patient_values:
+        if x_value_entries:
             blocks = []
-            current_block = [patient_values[0]]
+            current_block = [x_value_entries[0]]
 
-            for i in range(1, len(patient_values)):
-                prev_idx, prev_patient, prev_value = patient_values[i - 1]
-                curr_idx, curr_patient, curr_value = patient_values[i]
+            for i in range(1, len(x_value_entries)):
+                prev_idx, prev_x_val, prev_value = x_value_entries[i - 1]
+                curr_idx, curr_x_val, curr_value = x_value_entries[i]
 
                 if curr_value == prev_value and curr_idx == prev_idx + 1:
-                    current_block.append(patient_values[i])
+                    current_block.append(x_value_entries[i])
                 else:
                     blocks.append(current_block)
-                    current_block = [patient_values[i]]
+                    current_block = [x_value_entries[i]]
 
             blocks.append(current_block)
 
@@ -263,10 +265,10 @@ def draw_top_annotation(
 
     elif show_category_labels:
         value_to_positions = {}
-        for i, patient in enumerate(patients):
-            if patient is None:
+        for i, x_value in enumerate(x_values):
+            if x_value is None:
                 continue
-            value = values.get(patient)
+            value = values.get(x_value)
             if pd.notna(value):
                 if value not in value_to_positions:
                     value_to_positions[value] = []
@@ -291,12 +293,12 @@ def draw_top_annotation(
 
 
 def merge_labels_without_splits(
-    ax, patients, col_positions, annotation_y, height, values, ann_config, fontsize, cell_aspect=1.0
+    ax, x_values, col_positions, annotation_y, height, values, ann_config, fontsize, cell_aspect=1.0
 ) -> None:
     last_value = None
     block_start_idx = None
-    for i, patient in enumerate(list(patients) + [None]):
-        value = values.get(patient) if patient is not None else None
+    for i, x_value in enumerate(list(x_values) + [None]):
+        value = values.get(x_value) if x_value is not None else None
         if value != last_value and block_start_idx is not None:
             block_end_idx = i - 1
             if (
@@ -317,7 +319,7 @@ def merge_labels_without_splits(
                     cell_aspect,
                 )
             block_start_idx = None
-        if value != last_value and patient is not None:
+        if value != last_value and x_value is not None:
             block_start_idx = i
         last_value = value
 
@@ -386,7 +388,7 @@ class OncoplotPlotter:
         current_ylim = ax.get_ylim()
         autoscale_state = ax.get_autoscale_on()
         ax.set_autoscale_on(False)
-        # Compute data-unit shifts from point targets so visual spacing stays fixed across aspect.
+        # Compute data-unit shifts from point targets using the x-scale so physical spacing stays constant.
         d0 = ax.transData.transform((0.0, 0.0))
         d1 = ax.transData.transform((1.0, 0.0))
         data_dx_px = max(abs(d1[0] - d0[0]), 1e-6)
@@ -722,7 +724,7 @@ class OncoplotPlotter:
         fig_title = getattr(config, "fig_title", None)
         fig_title_fontsize = getattr(config, "fig_title_fontsize", 22)
 
-        # Normalize split columns to a single value per patient so splits do not duplicate patients
+        # Normalize split columns to a single value per x-axis value so splits do not duplicate entries
         if col_split_by:
             split_cols = [c for c in col_split_by if c in df.columns]
             if split_cols:
@@ -735,13 +737,13 @@ class OncoplotPlotter:
                 for col in split_cols:
                     df[col] = df[x_col].map(split_map[col])
 
-        patients = self._get_split_patients(df, col_split_by, col_split_order, x_col, col_sort_by)
+        x_values = self._get_split_x_values(df, col_split_by, col_split_order, x_col, col_sort_by)
 
         col_positions = []
         pos = 0.0
         last_split_vals = None
-        for pid in patients:
-            split_vals = tuple(df.loc[df[x_col] == pid, col].iloc[0] for col in col_split_by)
+        for x_val in x_values:
+            split_vals = tuple(df.loc[df[x_col] == x_val, col].iloc[0] for col in col_split_by)
             if last_split_vals is not None:
                 for i, (prev, curr) in enumerate(zip(last_split_vals, split_vals)):
                     if prev != curr:
@@ -813,7 +815,7 @@ class OncoplotPlotter:
                 pos += 1.0
         nrows = int(np.ceil(pos))
         gene_to_idx = {g: i for g, i in zip(genes_ordered, row_positions)}
-        patient_to_idx = {p: i for p, i in zip(patients, col_positions)}
+        x_value_to_idx = {x_val: i for x_val, i in zip(x_values, col_positions)}
 
         auto_adjust = getattr(config, "auto_adjust_cell_size", False)
 
@@ -967,19 +969,19 @@ class OncoplotPlotter:
                 ax.add_patch(bg_rect)
 
         for _, row in df.iterrows():
-            gene, patient = row.get(y_col), row.get(x_col)
-            if gene in gene_to_idx and patient in patient_to_idx:
+            gene, x_value = row.get(y_col), row.get(x_col)
+            if gene in gene_to_idx and x_value in x_value_to_idx:
                 if isinstance(heatmap_annotation.values, str):
                     value = row.get(heatmap_annotation.values)
                 else:
                     try:
-                        value = heatmap_annotation.values.get(patient)
+                        value = heatmap_annotation.values.get(x_value)
                     except Exception:
                         value = None
                 color = heatmap_annotation.colors.get(value, "white")
                 my_shape_func(
                     ax,
-                    patient_to_idx[patient],
+                    x_value_to_idx[x_value],
                     gene_to_idx[gene],
                     cell_aspect,
                     1,
@@ -991,16 +993,16 @@ class OncoplotPlotter:
 
         mutation_groups = {}
         for _, row in df.iterrows():
-            gene, patient = row.get(y_col), row.get(x_col)
+            gene, x_value = row.get(y_col), row.get(x_col)
             value = row.get(value_col)
-            if gene in gene_to_idx and patient in patient_to_idx:
-                key = (gene, patient)
+            if gene in gene_to_idx and x_value in x_value_to_idx:
+                key = (gene, x_value)
                 if key not in mutation_groups:
                     mutation_groups[key] = []
                 mutation_groups[key].append(value)
 
-        for (gene, patient), values in mutation_groups.items():
-            x, y = patient_to_idx[patient], gene_to_idx[gene]
+        for (gene, x_value), values in mutation_groups.items():
+            x, y = x_value_to_idx[x_value], gene_to_idx[gene]
             for bl_value in bottom_left_values:
                 if bl_value in values:
                     diagonal_fill(
@@ -1054,16 +1056,17 @@ class OncoplotPlotter:
         if top_annotations:
             # Compute a stable left offset for top-annotation labels using point-based spacing.
             heatmap_left = min(col_positions) if col_positions else 0.0
-            d0_top = ax.transData.transform((0.0, 0.0))
-            d1_top = ax.transData.transform((1.0, 0.0))
-            data_dx_px_top = max(abs(d1_top[0] - d0_top[0]), 1e-6)
-            pts_per_data_unit_x_top = data_dx_px_top / (fig.dpi / 72.0)
-            top_label_offset_data = self.top_annotation_label_offset
             if self.top_annotation_label_use_points:
-                top_label_offset_data = (
-                    self.top_annotation_label_offset_points / pts_per_data_unit_x_top
+                offset_pts = float(self.top_annotation_label_offset_points)
+                translate = mtransforms.ScaledTranslation(
+                    -offset_pts / 72.0, 0.0, fig.dpi_scale_trans
                 )
-            top_label_x = heatmap_left - top_label_offset_data
+                top_label_transform = ax.transData + translate
+                top_label_x = heatmap_left
+            else:
+                top_label_offset_data = float(self.top_annotation_label_offset)
+                top_label_transform = ax.transData
+                top_label_x = heatmap_left - top_label_offset_data
 
             annotation_y = top_annotation_inter_spacer * -1
             if config.top_annotation_order:
@@ -1087,7 +1090,7 @@ class OncoplotPlotter:
                 col_split_map = split_maps[split_level - 1]
                 draw_top_annotation(
                     ax,
-                    patients,
+                    x_values,
                     col_positions,
                     annotation_y,
                     ann_config,
@@ -1095,6 +1098,7 @@ class OncoplotPlotter:
                     col_split_map=col_split_map,
                     cell_aspect=cell_aspect,
                     label_x=top_label_x,
+                    label_transform=top_label_transform,
                 )
                 annotation_y -= ann_config.height + top_annotation_intra_spacer
 
@@ -1313,7 +1317,7 @@ class OncoplotPlotter:
             base_transform = ax.get_xaxis_transform()
             translate = mtransforms.ScaledTranslation(0, -offset_pts / 72.0, fig.dpi_scale_trans)
             xtick_transform = base_transform + translate
-            for x, p in zip(col_positions, patients):
+            for x, p in zip(col_positions, x_values):
                 ax.text(
                     x + cell_aspect / 2,
                     0.0,
@@ -1328,7 +1332,7 @@ class OncoplotPlotter:
         else:
             # Data-unit offset: use raw offset.
             y_xtick = nrows + offset_val
-            for x, p in zip(col_positions, patients):
+            for x, p in zip(col_positions, x_values):
                 ax.text(
                     x + cell_aspect / 2,
                     y_xtick,
@@ -1367,7 +1371,7 @@ class OncoplotPlotter:
         heatmap_left = min(col_positions) if col_positions else 0.0
 
         # Convert bar offsets/gaps to data units using point-based spacing by default.
-        # Use the rendered transform so aspect changes do not affect spacing.
+        # Use the x-scale in display units so physical spacing stays constant as aspect changes.
         d0 = ax.transData.transform((0.0, 0.0))
         d1 = ax.transData.transform((1.0, 0.0))
         data_dx_px = max(abs(d1[0] - d0[0]), 1e-6)
@@ -1518,22 +1522,22 @@ class OncoplotPlotter:
             fig.canvas.draw_idle()
         return fig
 
-    def _get_split_patients(
+    def _get_split_x_values(
         self, df, col_split_by, col_split_order, x_col, col_sort_by
     ) -> Any | list:
         if not col_split_by:
             return df.sort_values(by=col_sort_by)[x_col].unique().tolist()
         col = col_split_by[0]
         order = col_split_order[col]
-        patients = []
+        x_values = []
         present_vals = df[col].dropna().unique().tolist()
         for val in order:
             if val not in present_vals:
                 continue
             sub_df = df[df[col] == val]
-            patients.extend(
-                self._get_split_patients(
+            x_values.extend(
+                self._get_split_x_values(
                     sub_df, col_split_by[1:], col_split_order, x_col, col_sort_by
                 )
             )
-        return patients
+        return x_values
