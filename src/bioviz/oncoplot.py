@@ -116,6 +116,7 @@ def draw_top_annotation(
     ann_name,
     col_split_map=None,
     cell_aspect: float = 1.0,
+    label_x: float | None = None,
 ) -> Any:
     if not col_positions:
         return
@@ -194,8 +195,9 @@ def draw_top_annotation(
         ax.add_patch(rect)
 
     if col_positions:
+        label_x_pos = label_x if label_x is not None else (min(col_positions) - 0.3)
         ax.text(
-            min(col_positions) - 0.3,
+            label_x_pos,
             annotation_y + height / 2,
             display_name,
             ha="right",
@@ -368,24 +370,44 @@ def create_custom_legend_patch(
 
 class OncoplotPlotter:
     def shift_row_group_bars_and_labels(
-        self, ax, row_groups, bar_shift=-6, label_shift=-5.5
+        self,
+        ax,
+        row_groups,
+        bar_shift=-6,
+        label_shift=-5.5,
+        bar_shift_points=-240.0,
+        label_shift_points=-220.0,
+        use_points=True,
     ) -> None:
+        fig = ax.figure
         # Preserve current limits to avoid autoscale expanding the layout when users
         # call this post-plot (common in older usage). This keeps spacing stable.
         current_xlim = ax.get_xlim()
         current_ylim = ax.get_ylim()
         autoscale_state = ax.get_autoscale_on()
         ax.set_autoscale_on(False)
+        # Compute data-unit shifts from point targets so visual spacing stays fixed across aspect.
+        d0 = ax.transData.transform((0.0, 0.0))
+        d1 = ax.transData.transform((1.0, 0.0))
+        data_dx_px = max(abs(d1[0] - d0[0]), 1e-6)
+        pts_per_data_unit_x = data_dx_px / (fig.dpi / 72.0)
+        if use_points:
+            bar_shift_data = bar_shift_points / pts_per_data_unit_x
+            label_shift_data = label_shift_points / pts_per_data_unit_x
+        else:
+            bar_shift_data = bar_shift
+            label_shift_data = label_shift
+
         referenced_bars = getattr(self, "_row_group_bar_patches", [])
         referenced_labels = getattr(self, "_row_group_label_texts", [])
         for patch in referenced_bars:
-            patch.set_x(patch.get_x() + bar_shift)
+            patch.set_x(patch.get_x() + bar_shift_data)
         if not referenced_bars:
             for patch in ax.patches:
                 if hasattr(patch, "_is_row_group_bar") and patch._is_row_group_bar:
-                    patch.set_x(patch.get_x() + bar_shift)
+                    patch.set_x(patch.get_x() + bar_shift_data)
         for txt in referenced_labels:
-            txt.set_x(txt.get_position()[0] + label_shift)
+            txt.set_x(txt.get_position()[0] + label_shift_data)
         if not referenced_labels and row_groups is not None:
             pathway_names = set(row_groups[self.row_group_col].unique())
             for txt in ax.texts:
@@ -394,7 +416,7 @@ class OncoplotPlotter:
                 if (
                     hasattr(txt, "_is_row_group_label") and txt._is_row_group_label
                 ) or txt.get_text() in pathway_names:
-                    txt.set_x(txt.get_position()[0] + label_shift)
+                    txt.set_x(txt.get_position()[0] + label_shift_data)
         leftmost_x = float("inf")
         for txt in referenced_labels:
             try:
@@ -575,11 +597,24 @@ class OncoplotPlotter:
         self.top_annotations = config.top_annotations
         self.top_annotation_inter_spacer = config.top_annotation_inter_spacer
         self.top_annotation_intra_spacer = config.top_annotation_intra_spacer
+        self.top_annotation_label_offset = getattr(config, "top_annotation_label_offset", 0.3)
+        self.top_annotation_label_offset_points = getattr(
+            config, "top_annotation_label_offset_points", 12.0
+        )
+        self.top_annotation_label_use_points = getattr(
+            config, "top_annotation_label_use_points", True
+        )
         self.col_split_gap = config.col_split_gap
         self.row_split_gap = config.row_split_gap
         self.bar_width = config.bar_width
+        self.bar_width_points = getattr(config, "bar_width_points", 8.0)
+        self.bar_width_use_points = getattr(config, "bar_width_use_points", True)
         self.bar_offset = config.bar_offset
         self.bar_buffer = config.bar_buffer
+        self.bar_offset_use_points = getattr(config, "bar_offset_use_points", True)
+        self.row_group_label_gap_use_points = getattr(
+            config, "row_group_label_gap_use_points", True
+        )
         self.row_group_label_fontsize = config.row_group_label_fontsize
         self.row_group_label_gap = getattr(config, "row_group_label_gap", 1.0)
         self.row_label_fontsize = config.row_label_fontsize
@@ -594,6 +629,19 @@ class OncoplotPlotter:
         self.rowlabel_use_points = getattr(config, "rowlabel_use_points", True)
         self.legend_bbox_to_anchor = config.legend_bbox_to_anchor
         self.legend_offset = config.legend_offset
+        self.legend_offset_points = getattr(config, "legend_offset_points", 18.0)
+        self.legend_offset_use_points = getattr(config, "legend_offset_use_points", True)
+        self.row_group_post_bar_shift = getattr(config, "row_group_post_bar_shift", -5.5)
+        self.row_group_post_label_shift = getattr(config, "row_group_post_label_shift", -5.0)
+        self.row_group_post_bar_shift_points = getattr(
+            config, "row_group_post_bar_shift_points", -240.0
+        )
+        self.row_group_post_label_shift_points = getattr(
+            config, "row_group_post_label_shift_points", -220.0
+        )
+        self.row_group_post_shift_use_points = getattr(
+            config, "row_group_post_shift_use_points", True
+        )
         self.fig_top_margin = config.fig_top_margin
         self.fig_bottom_margin = config.fig_bottom_margin
         self.fig_y_margin = config.fig_y_margin
@@ -1004,6 +1052,19 @@ class OncoplotPlotter:
         ax.grid(False)
 
         if top_annotations:
+            # Compute a stable left offset for top-annotation labels using point-based spacing.
+            heatmap_left = min(col_positions) if col_positions else 0.0
+            d0_top = ax.transData.transform((0.0, 0.0))
+            d1_top = ax.transData.transform((1.0, 0.0))
+            data_dx_px_top = max(abs(d1_top[0] - d0_top[0]), 1e-6)
+            pts_per_data_unit_x_top = data_dx_px_top / (fig.dpi / 72.0)
+            top_label_offset_data = self.top_annotation_label_offset
+            if self.top_annotation_label_use_points:
+                top_label_offset_data = (
+                    self.top_annotation_label_offset_points / pts_per_data_unit_x_top
+                )
+            top_label_x = heatmap_left - top_label_offset_data
+
             annotation_y = top_annotation_inter_spacer * -1
             if config.top_annotation_order:
                 annotation_order = [
@@ -1033,6 +1094,7 @@ class OncoplotPlotter:
                     ann_name,
                     col_split_map=col_split_map,
                     cell_aspect=cell_aspect,
+                    label_x=top_label_x,
                 )
                 annotation_y -= ann_config.height + top_annotation_intra_spacer
 
@@ -1203,8 +1265,18 @@ class OncoplotPlotter:
         if self.legend_bbox_to_anchor is not None:
             bbox_to_anchor = self.legend_bbox_to_anchor
         else:
-            bbox_to_anchor = (1 + self.legend_offset, 0.5)
-            legend_kwargs["bbox_transform"] = ax.transAxes
+            if self.legend_offset_use_points:
+                heatmap_right = (max(col_positions) + cell_aspect) if col_positions else 0.0
+                right_px = ax.transData.transform((heatmap_right, 0))[0]
+                center_y_px = ax.transAxes.transform((0.0, 0.5))[1]
+                offset_px = float(self.legend_offset_points) * (fig.dpi / 72.0)
+                anchor_px = (right_px + offset_px, center_y_px)
+                anchor_axes = ax.transAxes.inverted().transform(anchor_px)
+                bbox_to_anchor = (anchor_axes[0], anchor_axes[1])
+                legend_kwargs["bbox_transform"] = ax.transAxes
+            else:
+                bbox_to_anchor = (1 + self.legend_offset, 0.5)
+                legend_kwargs["bbox_transform"] = ax.transAxes
 
         gene_labels = []
         use_point_rowlabel = bool(self.rowlabel_use_points)
@@ -1292,15 +1364,32 @@ class OncoplotPlotter:
             if text.get_text() in bold_labels:
                 text.set_fontweight("bold")
 
-        leftmost_x = float("inf")
-        for label in gene_labels:
-            bbox = label.get_window_extent().transformed(ax.transData.inverted())
-            if bbox.x0 < leftmost_x:
-                leftmost_x = bbox.x0
-        total_offset = bar_offset + bar_buffer
-        calculated_bar_x = leftmost_x + total_offset
-        label_gap = self.row_group_label_gap * max(0.6, min(cell_height_ratio, 1.4))
-        label_gap = max(label_gap, 0.45)
+        heatmap_left = min(col_positions) if col_positions else 0.0
+
+        # Convert bar offsets/gaps to data units using point-based spacing by default.
+        # Use the rendered transform so aspect changes do not affect spacing.
+        d0 = ax.transData.transform((0.0, 0.0))
+        d1 = ax.transData.transform((1.0, 0.0))
+        data_dx_px = max(abs(d1[0] - d0[0]), 1e-6)
+        pts_per_data_unit_x = data_dx_px / (fig.dpi / 72.0)
+        if self.bar_offset_use_points:
+            total_offset_data = (bar_offset + bar_buffer) / pts_per_data_unit_x
+        else:
+            total_offset_data = bar_offset + bar_buffer
+        if self.bar_width_use_points:
+            bar_width_draw = self.bar_width_points / pts_per_data_unit_x
+        else:
+            bar_width_draw = self.bar_width
+        if self.row_group_label_gap_use_points:
+            label_gap = self.row_group_label_gap / pts_per_data_unit_x
+        else:
+            label_gap = self.row_group_label_gap
+
+        label_gap = label_gap * max(0.6, min(cell_height_ratio, 1.4))
+        label_gap = max(label_gap, 1.2)
+
+        # Anchor bar to the heatmap edge so aspect changes do not move it relative to the grid.
+        bar_x_shift = heatmap_left - total_offset_data - bar_width_draw
         self._row_group_bar_patches.clear()
         self._row_group_label_texts.clear()
         if (
@@ -1321,7 +1410,6 @@ class OncoplotPlotter:
                     continue
                 y_start, y_end = min(y_positions), max(y_positions)
                 bar_height = y_end - y_start + 1
-                bar_x_shift = calculated_bar_x
                 if not rotate_left_annotation_label:
                     label_x_shift = bar_x_shift - label_gap
                     label_ha = "right"
@@ -1330,7 +1418,7 @@ class OncoplotPlotter:
                     label_ha = "right"
                 bar_patch = mpatches.Rectangle(
                     (bar_x_shift, y_start),
-                    bar_width,
+                    bar_width_draw,
                     bar_height,
                     color=color,
                     clip_on=False,
@@ -1421,8 +1509,11 @@ class OncoplotPlotter:
             self.shift_row_group_bars_and_labels(
                 ax,
                 row_groups,
-                getattr(self.config, "row_group_post_bar_shift", 0.0),
-                getattr(self.config, "row_group_post_label_shift", 0.0),
+                self.row_group_post_bar_shift,
+                self.row_group_post_label_shift,
+                self.row_group_post_bar_shift_points,
+                self.row_group_post_label_shift_points,
+                self.row_group_post_shift_use_points,
             )
             fig.canvas.draw_idle()
         return fig
