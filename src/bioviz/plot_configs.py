@@ -7,8 +7,9 @@ continue to work while the codebase migrates to the new per-plot modules.
 
 from .configs import (
     StyledLinePlotConfig,
-    StyledSpiderPlotConfig,
-    ScanOverlayPlotConfig,
+    StyledLinePlotOverlayConfig,
+    XAxisAnnotationOverlayConfig,
+    LineplotOverlayConfig,
     StyledTableConfig,
     OncoplotConfig,
 )
@@ -24,8 +25,9 @@ from .configs.oncoplot_annotations_cfg import make_annotation_config
 __all__ = [
     "BasePlotConfig",
     "StyledLinePlotConfig",
-    "StyledSpiderPlotConfig",
-    "ScanOverlayPlotConfig",
+    "StyledLinePlotOverlayConfig",
+    "XAxisAnnotationOverlayConfig",
+    "LineplotOverlayConfig",
     "StyledTableConfig",
     "OncoplotConfig",
     "TopAnnotationConfig",

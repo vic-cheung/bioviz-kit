@@ -4,7 +4,7 @@ Submodules are imported lazily to avoid importing heavy plotting
 dependencies at package import time.
 """
 
-__all__ = ["lineplot", "spiderplot", "oncoplot", "table", "style", "plot_utils", "plot_configs"]
+__all__ = ["lineplot", "oncoplot", "table", "style", "plot_utils", "plot_configs"]
 
 __version__ = "0.1.0"
 
