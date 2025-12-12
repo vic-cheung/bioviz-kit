@@ -247,7 +247,7 @@ def generate_styled_lineplot(
             y=config.threshold,
             color=getattr(config, "threshold_color", "#C0C0C0"),
             linestyle=getattr(config, "threshold_style", "--"),
-            dashes=(5, 5),
+            dashes=getattr(config, "threshold_dashes", (5, 5)),
             linewidth=getattr(config, "threshold_width", 1.0),
             zorder=0,
         )
@@ -569,14 +569,17 @@ def generate_styled_multigroup_lineplot(
         ax.tick_params(axis="y", **tick_kwargs)
 
     if getattr(config, "baseline", None) is not None:
-        ax.axhline(
+        baseline_kwargs = dict(
             y=config.baseline,
             color=getattr(config, "baseline_color", "#C0C0C0"),
             linestyle=getattr(config, "baseline_style", "--"),
             linewidth=getattr(config, "baseline_width", 1.0),
-            dashes=getattr(config, "baseline_dashes", (5, 5)),
             zorder=1,
         )
+        bdashes = getattr(config, "baseline_dashes", (5, 5))
+        if bdashes is not None:
+            baseline_kwargs["dashes"] = bdashes
+        ax.axhline(**baseline_kwargs)
 
     handles = []
     if config.color_dict_subgroup:
@@ -930,6 +933,8 @@ def generate_lineplot_twinx(
             new_ylim = max(abs(ax.get_ylim()[0]), abs(ax.get_ylim()[1]))
 
     text_y = new_ylim - 0.4 * spacing
+    overlay_use_axes = getattr(ann_cfg, "overlay_in_axes_coords", False)
+    overlay_ypos_axes = getattr(ann_cfg, "overlay_ypos_axes", 0.98)
 
     if has_df and not has_twinx:
         generate_styled_multigroup_lineplot(df=df, config=primary_config, ax=ax)
@@ -946,6 +951,19 @@ def generate_lineplot_twinx(
         return fig
 
     if has_twinx and not has_df:
+        baseline_val = getattr(ann_cfg, "baseline", None) if ann_cfg else None
+        if baseline_val is not None:
+            baseline_kwargs = dict(
+                y=baseline_val,
+                color=getattr(ann_cfg, "baseline_color", "#C0C0C0"),
+                linestyle=getattr(ann_cfg, "baseline_style", "--"),
+                linewidth=getattr(ann_cfg, "baseline_width", 1.0),
+                zorder=1,
+            )
+            bdashes = getattr(ann_cfg, "baseline_dashes", (5, 5))
+            if bdashes is not None:
+                baseline_kwargs["dashes"] = bdashes
+            ax.axhline(**baseline_kwargs)
         # Decide which config and DataFrame supplies annotations.
         # annotation_field already resolved above
         if annotation_field and annotation_field in twinx_data.columns:
@@ -969,25 +987,53 @@ def generate_lineplot_twinx(
         overlay_palette = _palette_dict(annotation_labels, overlay_palette_cfg)
         overlay_fontweight = getattr(ann_cfg, "overlay_fontweight", "bold")
         overlay_fontsize = getattr(ann_cfg, "overlay_fontsize", None) or 14
+        overlay_vline_color = getattr(ann_cfg, "overlay_vline_color", "gainsboro")
+        overlay_vline_style = getattr(ann_cfg, "overlay_vline_style", "--")
+        overlay_vline_width = getattr(ann_cfg, "overlay_vline_width", 1.0)
+        overlay_vline_dashes = getattr(ann_cfg, "overlay_vline_dashes", (5, 5))
         for _, row in annotations.iterrows():
             x = cat_to_pos[row[twinx_x_col]]
             text = row[annotation_field] if annotation_field in row else None
             if text is None:
                 continue
-            ax.text(
-                x + 0.03,
-                text_y,
-                text,
-                fontsize=overlay_fontsize,
-                fontweight=overlay_fontweight,
-                color=(
-                    annotation_color_dict.get(text, "black")
-                    if annotation_color_dict
-                    else overlay_palette.get(text, "black")
-                ),
+            if overlay_use_axes:
+                ax.annotate(
+                    text,
+                    xy=(x + 0.03, overlay_ypos_axes),
+                    xycoords=("data", "axes fraction"),
+                    fontsize=overlay_fontsize,
+                    fontweight=overlay_fontweight,
+                    color=(
+                        annotation_color_dict.get(text, "black")
+                        if annotation_color_dict
+                        else overlay_palette.get(text, "black")
+                    ),
+                    ha="left",
+                    va="center",
+                    zorder=1,
+                )
+            else:
+                ax.text(
+                    x + 0.03,
+                    text_y,
+                    text,
+                    fontsize=overlay_fontsize,
+                    fontweight=overlay_fontweight,
+                    color=(
+                        annotation_color_dict.get(text, "black")
+                        if annotation_color_dict
+                        else overlay_palette.get(text, "black")
+                    ),
+                    zorder=1,
+                )
+            ax.axvline(
+                x=x,
+                color=overlay_vline_color,
+                linestyle=overlay_vline_style,
+                linewidth=overlay_vline_width,
+                dashes=overlay_vline_dashes,
                 zorder=1,
             )
-            ax.axvline(x=x, color="gainsboro", linestyle="--", linewidth=1, zorder=1)
         sns.lineplot(
             data=twinx_data,
             x=twinx_x_col,
@@ -1091,6 +1137,21 @@ def generate_lineplot_twinx(
         ax2.set_xlim(x_start, x_end + xpad)
     # annotation_field already resolved above
 
+    baseline_val = getattr(ann_cfg, "baseline", None) if ann_cfg else None
+    if baseline_val is not None:
+        target_ax = ax2 if ax2 is not None else ax
+        baseline_kwargs = dict(
+            y=baseline_val,
+            color=getattr(ann_cfg, "baseline_color", "#C0C0C0"),
+            linestyle=getattr(ann_cfg, "baseline_style", "--"),
+            linewidth=getattr(ann_cfg, "baseline_width", 1.0),
+            zorder=1,
+        )
+        bdashes = getattr(ann_cfg, "baseline_dashes", (5, 5))
+        if bdashes is not None:
+            baseline_kwargs["dashes"] = bdashes
+        target_ax.axhline(**baseline_kwargs)
+
     def _annotation_sources() -> list[tuple[str, pd.DataFrame | None]]:
         # Default: prefer primary (main axis) annotations, then fall back to secondary (twin axis).
         if source_preference == "primary":
@@ -1146,25 +1207,53 @@ def generate_lineplot_twinx(
         if ann_source_used == "primary"
         else getattr(ann_cfg, "overlay_fontsize", None)
     ) or 14
+    overlay_vline_color = getattr(ann_cfg, "overlay_vline_color", "gainsboro")
+    overlay_vline_style = getattr(ann_cfg, "overlay_vline_style", "--")
+    overlay_vline_width = getattr(ann_cfg, "overlay_vline_width", 1.0)
+    overlay_vline_dashes = getattr(ann_cfg, "overlay_vline_dashes", (5, 5))
     for _, row in annotations.iterrows():
         x = cat_to_pos[row[twinx_x_col]]
         text = row[annotation_field] if annotation_field in row else None
         if text is None:
             continue
-        ax.text(
-            x + 0.03,
-            text_y,
-            text,
-            fontsize=overlay_fontsize,
-            fontweight=overlay_fontweight,
-            color=(
-                annotation_color_dict.get(text, "black")
-                if annotation_color_dict
-                else overlay_palette.get(text, "black")
-            ),
+        if overlay_use_axes:
+            ax.annotate(
+                text,
+                xy=(x + 0.03, overlay_ypos_axes),
+                xycoords=("data", "axes fraction"),
+                fontsize=overlay_fontsize,
+                fontweight=overlay_fontweight,
+                color=(
+                    annotation_color_dict.get(text, "black")
+                    if annotation_color_dict
+                    else overlay_palette.get(text, "black")
+                ),
+                ha="left",
+                va="center",
+                zorder=1,
+            )
+        else:
+            ax.text(
+                x + 0.03,
+                text_y,
+                text,
+                fontsize=overlay_fontsize,
+                fontweight=overlay_fontweight,
+                color=(
+                    annotation_color_dict.get(text, "black")
+                    if annotation_color_dict
+                    else overlay_palette.get(text, "black")
+                ),
+                zorder=1,
+            )
+        ax.axvline(
+            x=x,
+            color=overlay_vline_color,
+            linestyle=overlay_vline_style,
+            linewidth=overlay_vline_width,
+            dashes=overlay_vline_dashes,
             zorder=1,
         )
-        ax.axvline(x=x, color="gainsboro", linestyle="--", linewidth=1, zorder=1)
     sns.lineplot(
         data=twinx_data,
         x=twinx_x_col,
