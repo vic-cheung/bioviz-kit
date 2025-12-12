@@ -242,7 +242,7 @@ def generate_styled_lineplot(
             right = xl1 if xl1 is not None else xlim_default[1]
             xlim = (left, right)
 
-    if config.threshold:
+    if config.threshold is not None:
         thresh_kwargs = dict(
             y=config.threshold,
             color=getattr(config, "threshold_color", "#C0C0C0"),
@@ -1033,11 +1033,13 @@ def generate_lineplot_twinx(
                     ),
                     zorder=1,
                 )
+            overlay_vline_alpha = getattr(ann_cfg, "overlay_vline_alpha", 1.0)
             vline_kwargs = dict(
                 x=x,
                 color=overlay_vline_color,
                 linestyle=overlay_vline_style,
                 linewidth=overlay_vline_width,
+                alpha=overlay_vline_alpha,
                 zorder=1,
             )
             if overlay_vline_dashes is not None:
