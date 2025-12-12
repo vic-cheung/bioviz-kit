@@ -30,6 +30,8 @@ class OncoplotConfig(BaseModel):
     row_group_label_fontsize: Annotated[float | int, Field(default=16)]
     row_label_fontsize: Annotated[float | int, Field(default=16)]
     column_label_fontsize: Annotated[float | int, Field(default=16)]
+    rowlabel_xoffset: Annotated[float, Field(default=-0.05)]
+    rowlabel_use_points: Annotated[bool, Field(default=True)]
     legend_fontsize: Annotated[float | int, Field(default=16)]
     legend_title_fontsize: Annotated[float | int, Field(default=16)]
     rotate_left_annotation_label: Annotated[bool, Field(default=False)]

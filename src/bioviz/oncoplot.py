@@ -590,6 +590,8 @@ class OncoplotPlotter:
         self.legend_category_order = config.legend_category_order
         self.xticklabel_xoffset = config.xticklabel_xoffset
         self.xticklabel_yoffset = config.xticklabel_yoffset
+        self.rowlabel_xoffset = getattr(config, "rowlabel_xoffset", -0.3)
+        self.rowlabel_use_points = getattr(config, "rowlabel_use_points", True)
         self.legend_bbox_to_anchor = config.legend_bbox_to_anchor
         self.legend_offset = config.legend_offset
         self.fig_top_margin = config.fig_top_margin
@@ -810,8 +812,10 @@ class OncoplotPlotter:
 
             fig_w = max(1.0, ncols * cell_w + left_padding_in + right_padding_in)
             fig_h = max(1.0, nrows * cell_h + top_padding_in + bottom_padding_in)
-
-            figsize = (fig_w, fig_h)
+            # After sizing, apply aspect by shrinking/expanding width, then rescale to keep height.
+            width_aspected = fig_w / aspect_factor if aspect_factor else fig_w
+            height_target = fig_h
+            figsize = (width_aspected, height_target)
 
             # Derive proportional offsets from the effective cell size to keep spacing consistent
             # across aspect changes. Clamp to avoid extreme values on huge/small plots.
@@ -1203,15 +1207,27 @@ class OncoplotPlotter:
             legend_kwargs["bbox_transform"] = ax.transAxes
 
         gene_labels = []
+        use_point_rowlabel = bool(self.rowlabel_use_points)
+        if use_point_rowlabel:
+            xlim_span = max(ax.get_xlim()[1] - ax.get_xlim()[0], 1e-6)
+            pts_per_data_unit_x = (fig.get_figwidth() * 72.0) / xlim_span
+            offset_pts = float(self.rowlabel_xoffset) * pts_per_data_unit_x
+            translate = mtransforms.ScaledTranslation(offset_pts / 72.0, 0.0, fig.dpi_scale_trans)
+            text_transform = ax.transData + translate
+            base_x = 0.0
+        else:
+            text_transform = ax.transData
+            base_x = float(self.rowlabel_xoffset)
         for y, g in zip(row_positions, genes_ordered):
             text = ax.text(
-                -0.3,
+                base_x,
                 y + 0.55,
                 g,
                 ha="right",
                 va="center",
                 fontsize=row_label_fontsize,
                 clip_on=False,
+                transform=text_transform,
             )
             text._is_row_label = True
             gene_labels.append(text)
