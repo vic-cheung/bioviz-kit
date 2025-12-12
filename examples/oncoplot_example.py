@@ -218,7 +218,7 @@ onc_cfg = OncoplotConfig(
     row_group_post_bar_shift=-6,
     row_group_post_label_shift=-5.5,
 )
-aspects = [1.0, 1.3, 0.5]
+aspects = [1.0, 1.3, 0.6]
 with PdfPages("oncoplot_aspects.pdf") as pdf:
     for aspect in aspects:
         onc_cfg = OncoplotConfig(

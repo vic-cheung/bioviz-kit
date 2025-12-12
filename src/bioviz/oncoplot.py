@@ -863,7 +863,7 @@ class OncoplotPlotter:
             fig_w = max(1.0, ncols * cell_w + left_padding_in + right_padding_in)
             fig_h = max(1.0, nrows * cell_h + top_padding_in + bottom_padding_in)
             # After sizing, apply aspect by shrinking/expanding width, then rescale to keep height.
-            width_aspected = fig_w / aspect_factor if aspect_factor else fig_w
+            width_aspected = fig_w
             height_target = fig_h
             figsize = (width_aspected, height_target)
 
@@ -952,6 +952,21 @@ class OncoplotPlotter:
 
         bottom_left_values = getattr(heatmap_annotation, "bottom_left_triangle_values", ["SNV"])
         upper_right_values = getattr(heatmap_annotation, "upper_right_triangle_values", ["CNV"])
+
+        # Precompute row-label transform so top-annotation labels can align with row labels.
+        rowlabel_use_points = bool(self.rowlabel_use_points)
+        xlim_span = max(ax.get_xlim()[1] - ax.get_xlim()[0], 1e-6)
+        pts_per_data_unit_x = (fig.get_figwidth() * 72.0) / xlim_span
+        if rowlabel_use_points:
+            rowlabel_offset_pts = float(self.rowlabel_xoffset) * pts_per_data_unit_x
+            rowlabel_translate = mtransforms.ScaledTranslation(
+                rowlabel_offset_pts / 72.0, 0.0, fig.dpi_scale_trans
+            )
+            rowlabel_text_transform = ax.transData + rowlabel_translate
+            rowlabel_base_x = 0.0
+        else:
+            rowlabel_text_transform = ax.transData
+            rowlabel_base_x = float(self.rowlabel_xoffset)
 
         # Draw an opaque white background for every cell so empty cells
         # are filled (important for transparent PNG exports).
@@ -1054,15 +1069,11 @@ class OncoplotPlotter:
         ax.grid(False)
 
         if top_annotations:
-            # Compute a stable left offset for top-annotation labels using point-based spacing.
+            # Align top-annotation labels with the row-label offset for consistent visual spacing.
             heatmap_left = min(col_positions) if col_positions else 0.0
             if self.top_annotation_label_use_points:
-                offset_pts = float(self.top_annotation_label_offset_points)
-                translate = mtransforms.ScaledTranslation(
-                    -offset_pts / 72.0, 0.0, fig.dpi_scale_trans
-                )
-                top_label_transform = ax.transData + translate
-                top_label_x = heatmap_left
+                top_label_transform = rowlabel_text_transform
+                top_label_x = rowlabel_base_x
             else:
                 top_label_offset_data = float(self.top_annotation_label_offset)
                 top_label_transform = ax.transData
@@ -1270,30 +1281,19 @@ class OncoplotPlotter:
             bbox_to_anchor = self.legend_bbox_to_anchor
         else:
             if self.legend_offset_use_points:
-                heatmap_right = (max(col_positions) + cell_aspect) if col_positions else 0.0
-                right_px = ax.transData.transform((heatmap_right, 0))[0]
-                center_y_px = ax.transAxes.transform((0.0, 0.5))[1]
-                offset_px = float(self.legend_offset_points) * (fig.dpi / 72.0)
-                anchor_px = (right_px + offset_px, center_y_px)
-                anchor_axes = ax.transAxes.inverted().transform(anchor_px)
-                bbox_to_anchor = (anchor_axes[0], anchor_axes[1])
-                legend_kwargs["bbox_transform"] = ax.transAxes
+                offset_pts = float(self.legend_offset_points)
+                translate = mtransforms.ScaledTranslation(
+                    offset_pts / 72.0, 0.0, fig.dpi_scale_trans
+                )
+                legend_kwargs["bbox_transform"] = ax.transAxes + translate
+                bbox_to_anchor = (1.0, 0.5)
             else:
                 bbox_to_anchor = (1 + self.legend_offset, 0.5)
                 legend_kwargs["bbox_transform"] = ax.transAxes
 
         gene_labels = []
-        use_point_rowlabel = bool(self.rowlabel_use_points)
-        if use_point_rowlabel:
-            xlim_span = max(ax.get_xlim()[1] - ax.get_xlim()[0], 1e-6)
-            pts_per_data_unit_x = (fig.get_figwidth() * 72.0) / xlim_span
-            offset_pts = float(self.rowlabel_xoffset) * pts_per_data_unit_x
-            translate = mtransforms.ScaledTranslation(offset_pts / 72.0, 0.0, fig.dpi_scale_trans)
-            text_transform = ax.transData + translate
-            base_x = 0.0
-        else:
-            text_transform = ax.transData
-            base_x = float(self.rowlabel_xoffset)
+        text_transform = rowlabel_text_transform
+        base_x = rowlabel_base_x
         for y, g in zip(row_positions, genes_ordered):
             text = ax.text(
                 base_x,
@@ -1385,12 +1385,10 @@ class OncoplotPlotter:
         else:
             bar_width_draw = self.bar_width
         if self.row_group_label_gap_use_points:
-            label_gap = self.row_group_label_gap / pts_per_data_unit_x
+            label_gap_pts = float(self.row_group_label_gap)
+            label_gap = label_gap_pts / pts_per_data_unit_x
         else:
-            label_gap = self.row_group_label_gap
-
-        label_gap = label_gap * max(0.6, min(cell_height_ratio, 1.4))
-        label_gap = max(label_gap, 1.2)
+            label_gap = max(self.row_group_label_gap, 0.0)
 
         # Anchor bar to the heatmap edge so aspect changes do not move it relative to the grid.
         bar_x_shift = heatmap_left - total_offset_data - bar_width_draw

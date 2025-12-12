@@ -40,12 +40,12 @@ class OncoplotConfig(BaseModel):
     legend_fontsize: Annotated[float | int, Field(default=16)]
     legend_title_fontsize: Annotated[float | int, Field(default=16)]
     rotate_left_annotation_label: Annotated[bool, Field(default=False)]
-    x_col: Annotated[str, Field(default="Patient_ID")]
-    y_col: Annotated[str, Field(default="Gene")]
-    row_group_col: Annotated[str, Field(default="Pathway")]
+    x_col: Annotated[str, Field(default_factory=str)]
+    y_col: Annotated[str, Field(default_factory=str)]
+    row_group_col: Annotated[str, Field(default_factory=str)]
     row_group_order: Annotated[list[str] | None, Field(default=None)]
     heatmap_annotation: Annotated[HeatmapAnnotationConfig | None, Field(default=None)]
-    value_col: Annotated[str, Field(default="Variant_type")]
+    value_col: Annotated[str, Field(default_factory=str)]
     top_annotation_order: Annotated[list[str] | None, Field(default=None)]
     # Additional layout and annotation defaults to make OncoplotPlotter usable
     # tuned defaults for bioviz: tighter top-annotation spacing and margins
@@ -84,7 +84,7 @@ class OncoplotConfig(BaseModel):
     # Whether to interpret xtick offsets in points (axes transform) instead of data units
     xticklabel_use_points: Annotated[bool, Field(default=False)]
     # Gap between the row-group bar and its label
-    row_group_label_gap: Annotated[float, Field(default=14.0)]
+    row_group_label_gap: Annotated[float, Field(default=30.0)]
     value_legend_title: Annotated[str | None, Field(default=None)]
     remove_unused_keys_in_legend: Annotated[bool, Field(default=True)]
 
