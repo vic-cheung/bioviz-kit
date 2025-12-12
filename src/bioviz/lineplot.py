@@ -441,9 +441,9 @@ def generate_styled_multigroup_lineplot(
     draw_legend: bool = True,
 ) -> tuple[plt.Figure, list[Line2D], list[str]]:
     if not config.group_col:
-        raise ValueError("secondary plot requires group_col to be set in LinePlotConfig.")
+        raise ValueError("multigroup line plot requires group_col to be set in LinePlotConfig.")
     if not config.x or not config.y:
-        raise ValueError("secondary plot requires x and y to be set in LinePlotConfig.")
+        raise ValueError("multigroup line plot requires x and y to be set in LinePlotConfig.")
     if ax is None:
         fig, ax = plt.subplots(figsize=config.figsize)
     else:
@@ -462,7 +462,7 @@ def generate_styled_multigroup_lineplot(
     missing = [c for c in required_cols if c not in df.columns]
     if missing:
         raise ValueError(
-            f"Input DataFrame is missing required columns for secondary line plot: {missing}"
+            f"Input DataFrame is missing required columns for multigroup line plot: {missing}"
         )
 
     if config.linestyle_col and config.linestyle_col not in df.columns:
