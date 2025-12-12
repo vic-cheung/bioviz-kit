@@ -886,9 +886,11 @@ class OncoplotPlotter:
             spacing_scale = (cell_aspect**spacing_aspect_scale) if spacing_aspect_scale else 1.0
             xtick_scale = (cell_aspect**xtick_aspect_scale) if xtick_aspect_scale else 1.0
             if "xticklabel_yoffset" not in fields_set:
-                scaled = self.xticklabel_yoffset * cell_height_ratio * xtick_scale
-                # Allow large offsets for extreme aspect; only floor at a small positive value
-                self.xticklabel_yoffset = max(0.1, scaled)
+                # If xticks use points, leave the value as-is (already interpreted as points);
+                # otherwise scale the data-unit offset with cell height/aspect.
+                if not getattr(config, "xticklabel_use_points", False):
+                    scaled = self.xticklabel_yoffset * cell_height_ratio * xtick_scale
+                    self.xticklabel_yoffset = max(0.1, scaled)
             if "bar_buffer" not in fields_set:
                 self.bar_buffer = self.bar_buffer * spacing_scale
             if "bar_offset" not in fields_set:
@@ -1312,8 +1314,8 @@ class OncoplotPlotter:
         pts_per_data_unit = (fig.get_figheight() * 72.0) / max(nrows, 1)
         offset_val = float(self.xticklabel_yoffset)
         if use_point_offset:
-            # Point-based offset: keeps physical spacing constant across aspect/figsize.
-            offset_pts = offset_val * pts_per_data_unit
+            # Point-based offset: interpret xticklabel_yoffset directly as points.
+            offset_pts = offset_val
             base_transform = ax.get_xaxis_transform()
             translate = mtransforms.ScaledTranslation(0, -offset_pts / 72.0, fig.dpi_scale_trans)
             xtick_transform = base_transform + translate

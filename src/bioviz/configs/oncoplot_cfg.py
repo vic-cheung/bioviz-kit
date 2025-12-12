@@ -82,7 +82,7 @@ class OncoplotConfig(BaseModel):
     # How strongly aspect rescales x-tick vertical offset (0 = ignore aspect, 1 = full)
     xtick_aspect_scale: Annotated[float, Field(default=0.0)]
     # Whether to interpret xtick offsets in points (axes transform) instead of data units
-    xticklabel_use_points: Annotated[bool, Field(default=False)]
+    xticklabel_use_points: Annotated[bool, Field(default=True)]
     # Gap between the row-group bar and its label
     row_group_label_gap: Annotated[float, Field(default=30.0)]
     value_legend_title: Annotated[str | None, Field(default=None)]
