@@ -43,6 +43,7 @@ class LinePlotConfig(BasePlotConfig):
     baseline_style: Annotated[str, Field(default="--")]
     baseline_width: Annotated[float, Field(default=1.0)]
     baseline_dashes: Annotated[tuple[float, float] | None, Field(default=(5, 5))]
+    baseline_alpha: Annotated[float, Field(default=1.0)]
 
     # Limits / ticks
     xlim_padding: Annotated[float, Field(default=0.8)]
@@ -59,6 +60,7 @@ class LinePlotConfig(BasePlotConfig):
     threshold_style: Annotated[str, Field(default="--")]
     threshold_width: Annotated[float, Field(default=1.0)]
     threshold_dashes: Annotated[tuple[float, float] | None, Field(default=(5, 5))]
+    threshold_alpha: Annotated[float, Field(default=1.0)]
     threshold_legend_title: Annotated[str, Field(default="Threshold")]
     threshold_below_label: Annotated[str, Field(default="Below Threshold")]
     threshold_above_label: Annotated[str, Field(default="Above Threshold")]
@@ -74,9 +76,10 @@ class LinePlotConfig(BasePlotConfig):
         bool, Field(default=True)
     ]  # place overlay text in axes coords (fixed visual offset)
     overlay_ypos_axes: Annotated[
-        float, Field(default=0.98)
+        float, Field(default=0.97)
     ]  # y-position in axes fraction when overlay_in_axes_coords is True
     overlay_vline_color: Annotated[str, Field(default="gainsboro")]
     overlay_vline_style: Annotated[str, Field(default="--")]
     overlay_vline_width: Annotated[float, Field(default=1.0)]
     overlay_vline_dashes: Annotated[tuple[float, float] | None, Field(default=(5, 5))]
+    overlay_vline_alpha: Annotated[float, Field(default=1.0)]

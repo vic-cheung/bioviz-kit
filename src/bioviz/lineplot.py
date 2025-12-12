@@ -243,14 +243,18 @@ def generate_styled_lineplot(
             xlim = (left, right)
 
     if config.threshold:
-        ax.axhline(
+        thresh_kwargs = dict(
             y=config.threshold,
             color=getattr(config, "threshold_color", "#C0C0C0"),
             linestyle=getattr(config, "threshold_style", "--"),
-            dashes=getattr(config, "threshold_dashes", (5, 5)),
             linewidth=getattr(config, "threshold_width", 1.0),
+            alpha=getattr(config, "threshold_alpha", 1.0),
             zorder=0,
         )
+        tdashes = getattr(config, "threshold_dashes", (5, 5))
+        if tdashes is not None:
+            thresh_kwargs["dashes"] = tdashes
+        ax.axhline(**thresh_kwargs)
         yticks = ax.get_yticks()
         spacing = yticks[1] - yticks[0] if len(yticks) > 1 else 1
         label_text = getattr(config, "threshold_label", None)
@@ -574,6 +578,7 @@ def generate_styled_multigroup_lineplot(
             color=getattr(config, "baseline_color", "#C0C0C0"),
             linestyle=getattr(config, "baseline_style", "--"),
             linewidth=getattr(config, "baseline_width", 1.0),
+            alpha=getattr(config, "baseline_alpha", 1.0),
             zorder=1,
         )
         bdashes = getattr(config, "baseline_dashes", (5, 5))
@@ -958,6 +963,7 @@ def generate_lineplot_twinx(
                 color=getattr(ann_cfg, "baseline_color", "#C0C0C0"),
                 linestyle=getattr(ann_cfg, "baseline_style", "--"),
                 linewidth=getattr(ann_cfg, "baseline_width", 1.0),
+                alpha=getattr(ann_cfg, "baseline_alpha", 1.0),
                 zorder=1,
             )
             bdashes = getattr(ann_cfg, "baseline_dashes", (5, 5))
@@ -1026,14 +1032,16 @@ def generate_lineplot_twinx(
                     ),
                     zorder=1,
                 )
-            ax.axvline(
+            vline_kwargs = dict(
                 x=x,
                 color=overlay_vline_color,
                 linestyle=overlay_vline_style,
                 linewidth=overlay_vline_width,
-                dashes=overlay_vline_dashes,
                 zorder=1,
             )
+            if overlay_vline_dashes is not None:
+                vline_kwargs["dashes"] = overlay_vline_dashes
+            ax.axvline(**vline_kwargs)
         sns.lineplot(
             data=twinx_data,
             x=twinx_x_col,
@@ -1145,6 +1153,7 @@ def generate_lineplot_twinx(
             color=getattr(ann_cfg, "baseline_color", "#C0C0C0"),
             linestyle=getattr(ann_cfg, "baseline_style", "--"),
             linewidth=getattr(ann_cfg, "baseline_width", 1.0),
+            alpha=getattr(ann_cfg, "baseline_alpha", 1.0),
             zorder=1,
         )
         bdashes = getattr(ann_cfg, "baseline_dashes", (5, 5))
@@ -1211,6 +1220,7 @@ def generate_lineplot_twinx(
     overlay_vline_style = getattr(ann_cfg, "overlay_vline_style", "--")
     overlay_vline_width = getattr(ann_cfg, "overlay_vline_width", 1.0)
     overlay_vline_dashes = getattr(ann_cfg, "overlay_vline_dashes", (5, 5))
+    overlay_vline_alpha = getattr(ann_cfg, "overlay_vline_alpha", 1.0)
     for _, row in annotations.iterrows():
         x = cat_to_pos[row[twinx_x_col]]
         text = row[annotation_field] if annotation_field in row else None
@@ -1246,14 +1256,17 @@ def generate_lineplot_twinx(
                 ),
                 zorder=1,
             )
-        ax.axvline(
+        vline_kwargs = dict(
             x=x,
             color=overlay_vline_color,
             linestyle=overlay_vline_style,
             linewidth=overlay_vline_width,
-            dashes=overlay_vline_dashes,
+            alpha=overlay_vline_alpha,
             zorder=1,
         )
+        if overlay_vline_dashes is not None:
+            vline_kwargs["dashes"] = overlay_vline_dashes
+        ax.axvline(**vline_kwargs)
     sns.lineplot(
         data=twinx_data,
         x=twinx_x_col,
