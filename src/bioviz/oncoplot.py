@@ -11,6 +11,7 @@ from typing import Any
 import matplotlib.colors as mcolors  # type: ignore
 import matplotlib.patches as mpatches  # type: ignore
 import matplotlib.pyplot as plt  # type: ignore
+import matplotlib.transforms as mtransforms  # type: ignore
 import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
 from matplotlib.patches import Patch  # type: ignore
@@ -95,7 +96,7 @@ def my_shape_func(
     bottom_left_values: list[str],
     upper_right_values: list[str],
 ) -> None:
-    # Ensure we do not draw transparent/None colors for heatmap cells
+    # Avoid drawing transparent/None colors for heatmap cells
     color = _ensure_opaque_color(color, default="white")
     if value in bottom_left_values:
         diagonal_fill(ax, x, y, width, height, color, which_half="bottom_left")
@@ -114,6 +115,7 @@ def draw_top_annotation(
     ann_config,
     ann_name,
     col_split_map=None,
+    cell_aspect: float = 1.0,
 ) -> Any:
     if not col_positions:
         return
@@ -146,7 +148,9 @@ def draw_top_annotation(
             value_str = str(value)
 
         ax.add_patch(
-            mpatches.Rectangle((x, annotation_y), 1, height, color=color, clip_on=False, zorder=10)
+            mpatches.Rectangle(
+                (x, annotation_y), cell_aspect, height, color=color, clip_on=False, zorder=10
+            )
         )
 
         if border_categories is not None:
@@ -176,7 +180,7 @@ def draw_top_annotation(
 
     for start, end in blocks_needing_borders:
         x0 = col_positions[start]
-        x1 = col_positions[end] + 1
+        x1 = col_positions[end] + cell_aspect
         rect = mpatches.Rectangle(
             (x0, annotation_y),
             x1 - x0,
@@ -235,7 +239,9 @@ def draw_top_annotation(
                         block_cols = col_positions[start_idx : end_idx + 1]
                         if block_cols:
                             x_center = (
-                                (min(block_cols) + max(block_cols) + 1) / 2 if block_cols else 0
+                                (min(block_cols) + max(block_cols) + cell_aspect) / 2
+                                if block_cols
+                                else 0
                             )
                             text_color = (ann_config.label_text_colors or {}).get(
                                 str(value), "white"
@@ -266,7 +272,7 @@ def draw_top_annotation(
 
         for value, positions in value_to_positions.items():
             if positions:
-                x_center = (min(positions) + max(positions) + 1) / 2
+                x_center = (min(positions) + max(positions) + cell_aspect) / 2
                 text_color = (ann_config.label_text_colors or {}).get(str(value), "black")
                 ax.text(
                     x_center,
@@ -283,7 +289,7 @@ def draw_top_annotation(
 
 
 def merge_labels_without_splits(
-    ax, patients, col_positions, annotation_y, height, values, ann_config, fontsize
+    ax, patients, col_positions, annotation_y, height, values, ann_config, fontsize, cell_aspect=1.0
 ) -> None:
     last_value = None
     block_start_idx = None
@@ -306,6 +312,7 @@ def merge_labels_without_splits(
                     last_value,
                     ann_config,
                     fontsize,
+                    cell_aspect,
                 )
             block_start_idx = None
         if value != last_value and patient is not None:
@@ -314,10 +321,19 @@ def merge_labels_without_splits(
 
 
 def label_block(
-    ax, positions, start_idx, end_idx, annotation_y, height, value, ann_config, fontsize
+    ax,
+    positions,
+    start_idx,
+    end_idx,
+    annotation_y,
+    height,
+    value,
+    ann_config,
+    fontsize,
+    cell_aspect=1.0,
 ):
     block_cols = positions[start_idx : end_idx + 1]
-    x_center = (min(block_cols) + max(block_cols) + 1) / 2
+    x_center = (min(block_cols) + max(block_cols) + cell_aspect) / 2
     text_color = (ann_config.label_text_colors or {}).get(str(value), "white")
     ax.text(
         x_center,
@@ -565,6 +581,7 @@ class OncoplotPlotter:
         self.bar_offset = config.bar_offset
         self.bar_buffer = config.bar_buffer
         self.row_group_label_fontsize = config.row_group_label_fontsize
+        self.row_group_label_gap = getattr(config, "row_group_label_gap", 1.0)
         self.row_label_fontsize = config.row_label_fontsize
         self.column_label_fontsize = config.column_label_fontsize
         self.legend_fontsize = config.legend_fontsize
@@ -655,6 +672,19 @@ class OncoplotPlotter:
         fig_title = getattr(config, "fig_title", None)
         fig_title_fontsize = getattr(config, "fig_title_fontsize", 22)
 
+        # Normalize split columns to a single value per patient so splits do not duplicate patients
+        if col_split_by:
+            split_cols = [c for c in col_split_by if c in df.columns]
+            if split_cols:
+                split_map = (
+                    df[[x_col] + split_cols]
+                    .drop_duplicates()
+                    .groupby(x_col)
+                    .agg(lambda s: s.dropna().iloc[0] if not s.dropna().empty else pd.NA)
+                )
+                for col in split_cols:
+                    df[col] = df[x_col].map(split_map[col])
+
         patients = self._get_split_patients(df, col_split_by, col_split_order, x_col, col_sort_by)
 
         col_positions = []
@@ -665,6 +695,7 @@ class OncoplotPlotter:
             if last_split_vals is not None:
                 for i, (prev, curr) in enumerate(zip(last_split_vals, split_vals)):
                     if prev != curr:
+                        # Scale split gaps with cell width so the gap-to-cell ratio stays consistent across aspects.
                         pos += col_split_gap * cell_aspect
                         break
             col_positions.append(pos)
@@ -691,7 +722,19 @@ class OncoplotPlotter:
             and not row_groups.empty
             and row_group_col in row_groups.columns
         ):
-            for pathway in row_groups[row_group_col].unique():
+            group_values = row_groups[row_group_col].unique().tolist()
+            custom_order = getattr(config, "row_group_order", None)
+            if custom_order:
+                seen = set()
+                ordered = []
+                for g in custom_order:
+                    if g in group_values and g not in seen:
+                        ordered.append(g)
+                        seen.add(g)
+                remaining = sorted([g for g in group_values if g not in seen])
+                group_values = ordered + remaining
+
+            for pathway in group_values:
                 genes_in_group = row_groups[row_groups[row_group_col] == pathway].index.tolist()
                 if last_pathway is not None:
                     pos += row_split_gap
@@ -701,6 +744,17 @@ class OncoplotPlotter:
                     row_positions.append(pos)
                     pos += 1.0
                 last_pathway = pathway
+            # Append any genes present in the dataframe but missing from row_groups
+            missing_genes = [
+                g for g in df[y_col].drop_duplicates().tolist() if g not in genes_ordered
+            ]
+            if missing_genes and genes_ordered:
+                pos += row_split_gap
+            for gene in missing_genes:
+                genes_ordered.append(gene)
+                row_group_positions.append(None)
+                row_positions.append(pos)
+                pos += 1.0
         else:
             unique_genes = df[y_col].drop_duplicates().tolist()
             for gene in unique_genes:
@@ -713,6 +767,9 @@ class OncoplotPlotter:
 
         auto_adjust = getattr(config, "auto_adjust_cell_size", False)
 
+        # Default ratios in case auto_adjust is disabled
+        cell_height_ratio = 1.0
+
         # If requested, auto-compute the figure size so each data cell is close to
         # `target_cell_width` x `target_cell_height` inches without having to pass
         # an explicit `figsize`. Padding accounts for row labels, row-group bars,
@@ -720,6 +777,11 @@ class OncoplotPlotter:
         if auto_adjust:
             cell_w = float(getattr(config, "target_cell_width", 1.5))
             cell_h = float(getattr(config, "target_cell_height", 1.5))
+            aspect_factor = float(getattr(config, "aspect", 1.0) or 1.0)
+
+            # Keep logical cell geometry stable; aspect is applied on the axes.
+            base_cell_aspect = float(getattr(config, "cell_aspect", 1.0) or 1.0)
+            cell_aspect = base_cell_aspect
 
             # Approximate how much horizontal room row labels and row-group bars need.
             longest_row_label = max((len(str(g)) for g in genes_ordered), default=0)
@@ -748,7 +810,41 @@ class OncoplotPlotter:
 
             fig_w = max(1.0, ncols * cell_w + left_padding_in + right_padding_in)
             fig_h = max(1.0, nrows * cell_h + top_padding_in + bottom_padding_in)
+
             figsize = (fig_w, fig_h)
+
+            # Derive proportional offsets from the effective cell size to keep spacing consistent
+            # across aspect changes. Clamp to avoid extreme values on huge/small plots.
+            cell_height_ratio = cell_h / getattr(config, "target_cell_height", cell_h)
+            cell_height_ratio = max(0.5, min(cell_height_ratio, 2.5))
+
+            fields_set = getattr(
+                config, "model_fields_set", getattr(config, "__pydantic_fields_set__", set())
+            )
+            spacing_aspect_scale = float(getattr(config, "spacing_aspect_scale", 0.0))
+            xtick_aspect_scale = float(getattr(config, "xtick_aspect_scale", 0.0))
+            # If the user did not set these, keep spacing/xticks stable across aspect changes.
+            if "spacing_aspect_scale" not in fields_set:
+                spacing_aspect_scale = 0.0
+            if "xtick_aspect_scale" not in fields_set:
+                xtick_aspect_scale = 0.0
+            # Pure aspect scaling; users can turn it off via *_aspect_scale
+            spacing_scale = (cell_aspect**spacing_aspect_scale) if spacing_aspect_scale else 1.0
+            xtick_scale = (cell_aspect**xtick_aspect_scale) if xtick_aspect_scale else 1.0
+            if "xticklabel_yoffset" not in fields_set:
+                scaled = self.xticklabel_yoffset * cell_height_ratio * xtick_scale
+                # Allow large offsets for extreme aspect; only floor at a small positive value
+                self.xticklabel_yoffset = max(0.1, scaled)
+            if "bar_buffer" not in fields_set:
+                self.bar_buffer = self.bar_buffer * spacing_scale
+            if "bar_offset" not in fields_set:
+                self.bar_offset = self.bar_offset * spacing_scale
+            if "row_group_label_gap" not in fields_set:
+                self.row_group_label_gap = self.row_group_label_gap * spacing_scale
+
+        # Refresh spacing values after potential auto scaling to honor user inputs
+        bar_offset = self.bar_offset
+        bar_buffer = self.bar_buffer
 
         fig, ax = plt.subplots(figsize=figsize)
         fig_top_margin = self.fig_top_margin
@@ -777,9 +873,11 @@ class OncoplotPlotter:
         set_title_later = False
         if fig_title:
             set_title_later = True
-        ax.set_xlim(-1, ncols)
+        max_x = (max(col_positions) + cell_aspect) if col_positions else 0
+        ax.set_xlim(-1, max(ncols, max_x))
         ax.set_ylim(-1, nrows)
-        ax.set_aspect("auto")
+        # Use configured aspect on the axes; cell geometry stays constant.
+        ax.set_aspect(getattr(self.config, "aspect", 1.0) or 1.0)
         # Keep the axes facecolor opaque for correct cell rendering
         ax.set_facecolor("white")
 
@@ -806,7 +904,14 @@ class OncoplotPlotter:
         bg_color = _ensure_opaque_color(None, default="white")
         for y in row_positions:
             for x in col_positions:
-                bg_rect = mpatches.Rectangle((x, y), 1, 1, color=bg_color, linewidth=0, zorder=0)
+                bg_rect = mpatches.Rectangle(
+                    (x, y),
+                    cell_aspect,
+                    1,
+                    color=bg_color,
+                    linewidth=0,
+                    zorder=0,
+                )
                 ax.add_patch(bg_rect)
 
         for _, row in df.iterrows():
@@ -824,7 +929,7 @@ class OncoplotPlotter:
                     ax,
                     patient_to_idx[patient],
                     gene_to_idx[gene],
-                    1,
+                    cell_aspect,
                     1,
                     color,
                     value,
@@ -850,7 +955,7 @@ class OncoplotPlotter:
                         ax,
                         x,
                         y,
-                        1,
+                        cell_aspect,
                         1,
                         heatmap_annotation.colors.get(bl_value),
                         which_half="bottom_left",
@@ -862,7 +967,7 @@ class OncoplotPlotter:
                         ax,
                         x,
                         y,
-                        1,
+                        cell_aspect,
                         1,
                         heatmap_annotation.colors.get(ur_value),
                         which_half="upper_right",
@@ -872,7 +977,7 @@ class OncoplotPlotter:
                 for value in values:
                     color = heatmap_annotation.colors.get(value, "white")
                     face = _ensure_opaque_color(color, default="white")
-                    rect = mpatches.Rectangle((x, y), 1, 1, color=face, linewidth=0)
+                    rect = mpatches.Rectangle((x, y), cell_aspect, 1, color=face, linewidth=0)
                     ax.add_patch(rect)
 
         for y in row_positions:
@@ -923,6 +1028,7 @@ class OncoplotPlotter:
                     ann_config,
                     ann_name,
                     col_split_map=col_split_map,
+                    cell_aspect=cell_aspect,
                 )
                 annotation_y -= ann_config.height + top_annotation_intra_spacer
 
@@ -1087,7 +1193,6 @@ class OncoplotPlotter:
             if idx < len(legend_order) - 1:
                 legend_handles.append(Patch(color="none", label=""))
 
-        ax.set_aspect(cell_aspect)
         fig.canvas.draw()
 
         legend_kwargs = {}
@@ -1111,19 +1216,44 @@ class OncoplotPlotter:
             text._is_row_label = True
             gene_labels.append(text)
 
-        # Place x-tick labels below the heatmap, using xticklabel_yoffset
-        y_xtick = nrows + float(self.xticklabel_yoffset)
-        for i, (x, p) in enumerate(zip(col_positions, patients)):
-            ax.text(
-                x + cell_aspect / 2,
-                y_xtick,
-                p,
-                ha="center",
-                va="bottom",
-                fontsize=column_label_fontsize,
-                rotation=90,
-                clip_on=False,
-            )
+        use_point_offset = getattr(self.config, "xticklabel_use_points", False)
+        pts_per_data_unit = (fig.get_figheight() * 72.0) / max(nrows, 1)
+        offset_val = float(self.xticklabel_yoffset)
+        if use_point_offset:
+            # Point-based offset: keeps physical spacing constant across aspect/figsize.
+            offset_pts = offset_val * pts_per_data_unit
+            base_transform = ax.get_xaxis_transform()
+            translate = mtransforms.ScaledTranslation(0, -offset_pts / 72.0, fig.dpi_scale_trans)
+            xtick_transform = base_transform + translate
+            for x, p in zip(col_positions, patients):
+                ax.text(
+                    x + cell_aspect / 2,
+                    0.0,
+                    p,
+                    ha="center",
+                    va="top",
+                    fontsize=column_label_fontsize,
+                    rotation=90,
+                    clip_on=False,
+                    transform=xtick_transform,
+                )
+        else:
+            # Data-unit offset: use raw offset.
+            y_xtick = nrows + offset_val
+            for x, p in zip(col_positions, patients):
+                ax.text(
+                    x + cell_aspect / 2,
+                    y_xtick,
+                    p,
+                    ha="center",
+                    va="top",
+                    fontsize=column_label_fontsize,
+                    rotation=90,
+                    clip_on=False,
+                )
+
+        # Ensure newly added text objects have up-to-date extents before measuring spacing
+        fig.canvas.draw()
 
         lgd = ax.legend(
             handles=legend_handles,
@@ -1137,7 +1267,7 @@ class OncoplotPlotter:
             title_fontsize=legend_title_fontsize,
             **legend_kwargs,
         )
-        # Bold the header labels we injected (heatmap header + annotation headers)
+        # Bold the injected header labels (heatmap header + annotation headers)
         bold_labels = {heatmap_legend_label}
         bold_labels.update(
             (ann_config.legend_title or n) for n, ann_config in (top_annotations or {}).items()
@@ -1152,9 +1282,9 @@ class OncoplotPlotter:
             if bbox.x0 < leftmost_x:
                 leftmost_x = bbox.x0
         total_offset = bar_offset + bar_buffer
-        scaled_offset = total_offset * cell_aspect if cell_aspect < 1 else total_offset
-        calculated_bar_x = leftmost_x + scaled_offset
-        label_gap = 1.0
+        calculated_bar_x = leftmost_x + total_offset
+        label_gap = self.row_group_label_gap * max(0.6, min(cell_height_ratio, 1.4))
+        label_gap = max(label_gap, 0.45)
         self._row_group_bar_patches.clear()
         self._row_group_label_texts.clear()
         if (
@@ -1209,15 +1339,6 @@ class OncoplotPlotter:
                 self._row_group_label_texts.append(label_text)
         ax.invert_yaxis()
 
-        aspect = getattr(self.config, "aspect", 1.0)
-        if aspect != 1 and aspect != 1.0:
-            ax = plt.gca()
-            ax.set_aspect(aspect)
-            bar_x = OncoplotPlotter.get_dynamic_bar_x(ax, self.bar_offset, self.cell_aspect)
-            adjustment_factor = min(max(aspect, 0.5), 2.0)
-            bar_offset = bar_x * adjustment_factor
-            bar_width = self.bar_width * adjustment_factor
-            self.move_row_group_labels(ax, bar_offset, bar_width)
         ax.set_yticklabels(
             ax.get_yticklabels(),
             fontsize=self.config.row_label_fontsize,

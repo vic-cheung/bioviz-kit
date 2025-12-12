@@ -6,6 +6,14 @@ from .annotations_cfg import TopAnnotationConfig, HeatmapAnnotationConfig
 
 
 class OncoplotConfig(BaseModel):
+    """Config for oncoplot rendering.
+
+    The plotter treats `x_col`, `y_col`, `value_col`, and `row_group_col` as
+    required logical columns even though defaults exist. Callers should set
+    these explicitly to match their DataFrame so patient IDs, feature rows,
+    pathway/group labels, and heatmap values are drawn correctly.
+    """
+
     fig_title: Annotated[str | None, Field(default=None)]
     fig_title_fontsize: Annotated[float | int, Field(default=22)]
     fig_top_margin: Annotated[float, Field(default=0.9)]
@@ -28,6 +36,7 @@ class OncoplotConfig(BaseModel):
     x_col: Annotated[str, Field(default="Patient_ID")]
     y_col: Annotated[str, Field(default="Gene")]
     row_group_col: Annotated[str, Field(default="Pathway")]
+    row_group_order: Annotated[list[str] | None, Field(default=None)]
     heatmap_annotation: Annotated[HeatmapAnnotationConfig | None, Field(default=None)]
     value_col: Annotated[str, Field(default="Variant_type")]
     top_annotation_order: Annotated[list[str] | None, Field(default=None)]
@@ -49,11 +58,19 @@ class OncoplotConfig(BaseModel):
     bar_buffer: Annotated[float, Field(default=0)]
     legend_category_order: Annotated[list[str] | None, Field(default=None)]
     xticklabel_xoffset: Annotated[float, Field(default=0.0)]
-    xticklabel_yoffset: Annotated[float, Field(default=0.7)]
+    xticklabel_yoffset: Annotated[float, Field(default=0.0)]
     legend_bbox_to_anchor: Annotated[tuple[float, float] | None, Field(default=None)]
     legend_offset: Annotated[float, Field(default=0.1)]
     fig_y_margin: Annotated[float, Field(default=0.02)]
     aspect: Annotated[float, Field(default=1.0)]
+    # How strongly aspect rescales horizontal spacing (0 = ignore aspect, 1 = full)
+    spacing_aspect_scale: Annotated[float, Field(default=0.0)]
+    # How strongly aspect rescales x-tick vertical offset (0 = ignore aspect, 1 = full)
+    xtick_aspect_scale: Annotated[float, Field(default=0.0)]
+    # Whether to interpret xtick offsets in points (axes transform) instead of data units
+    xticklabel_use_points: Annotated[bool, Field(default=False)]
+    # Gap between the row-group bar and its label
+    row_group_label_gap: Annotated[float, Field(default=1.0)]
     value_legend_title: Annotated[str | None, Field(default=None)]
     remove_unused_keys_in_legend: Annotated[bool, Field(default=True)]
 

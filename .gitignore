@@ -7,6 +7,7 @@ wheels/
 *.egg-info/
 .pytest_cache/
 *.pyc
+*.egg-info
 
 # --- Virtual Environments ---
 .venv/
@@ -31,9 +32,6 @@ Rprof.out
 *.pdf
 *.pptx
 *.zip
-
-# --- Exceptions ---
-!tm_toolbox/plots/fonts/*.ttf
 
 # --- Logs and Temporary Files ---
 *.log

@@ -67,7 +67,6 @@ dependencies = [
     { name = "matplotlib" },
     { name = "pandas" },
     { name = "pydantic" },
-    { name = "pytest" },
     { name = "seaborn" },
 ]
 
@@ -93,7 +92,6 @@ requires-dist = [
     { name = "matplotlib", specifier = ">=3.6" },
     { name = "pandas", specifier = ">=2.0" },
     { name = "pydantic", specifier = ">=1.10,<3" },
-    { name = "pytest", specifier = ">=9.0.1" },
     { name = "pytest", marker = "extra == 'testing'" },
     { name = "seaborn", specifier = ">=0.12" },
 ]
