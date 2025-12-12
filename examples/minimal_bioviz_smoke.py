@@ -269,10 +269,16 @@ heat_ann = HeatmapAnnotationConfig(
 )
 
 onc_cfg = OncoplotConfig(
+    x_col="Patient_ID",
+    y_col="Gene",
+    value_col="Variant_type",
+    row_group_col="Pathway",
+    col_sort_by=["Patient_ID"],
     heatmap_annotation=heat_ann,
     top_annotations={"Cohort": top_ann, "Dose": dose_ann},
     legend_category_order=["Dose", "Cohort", "Mutation Type"],
 )
+
 plotter = OncoplotPlotter(
     mut_df,
     onc_cfg,

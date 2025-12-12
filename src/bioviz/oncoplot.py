@@ -588,9 +588,25 @@ class OncoplotPlotter:
         self._row_group_bar_patches = []
         self._row_group_label_texts = []
 
+        # Validate required logical columns up front to avoid inscrutable KeyErrors later.
+        required_fields = {
+            "x_col": config.x_col,
+            "y_col": config.y_col,
+            "value_col": config.value_col,
+            "row_group_col": config.row_group_col,
+        }
+        missing_fields = [name for name, val in required_fields.items() if not val]
+        if missing_fields:
+            raise ValueError(
+                "OncoplotConfig must set x_col (patient/sample ID), y_col (feature/gene), "
+                "value_col (mutation/value type), and row_group_col (pathway/group). Missing: "
+                + ", ".join(missing_fields)
+            )
+
         self.col_split_by = config.col_split_by
         self.col_split_order = config.col_split_order
-        self.col_sort_by = config.col_sort_by
+        # If caller leaves col_sort_by empty, default to x_col so sort_values has a key.
+        self.col_sort_by = config.col_sort_by or [config.x_col]
         self.x_col = config.x_col
         self.y_col = config.y_col
         self.row_group_col = config.row_group_col
