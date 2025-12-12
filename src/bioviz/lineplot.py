@@ -441,9 +441,9 @@ def generate_styled_multigroup_lineplot(
     draw_legend: bool = True,
 ) -> tuple[plt.Figure, list[Line2D], list[str]]:
     if not config.group_col:
-        raise ValueError("overlay plot requires group_col to be set in LinePlotConfig.")
+        raise ValueError("secondary plot requires group_col to be set in LinePlotConfig.")
     if not config.x or not config.y:
-        raise ValueError("overlay plot requires x and y to be set in LinePlotConfig.")
+        raise ValueError("secondary plot requires x and y to be set in LinePlotConfig.")
     if ax is None:
         fig, ax = plt.subplots(figsize=config.figsize)
     else:
@@ -462,7 +462,7 @@ def generate_styled_multigroup_lineplot(
     missing = [c for c in required_cols if c not in df.columns]
     if missing:
         raise ValueError(
-            f"Input DataFrame is missing required columns for overlay line plot: {missing}"
+            f"Input DataFrame is missing required columns for secondary line plot: {missing}"
         )
 
     if config.linestyle_col and config.linestyle_col not in df.columns:
@@ -688,7 +688,7 @@ def generate_lineplot_twinx(
     ann_cfg = secondary_config or primary_config
 
     source_preference = (annotation_source or "auto").lower()
-    # Backward-compat aliases: line/left -> primary axis (main), overlay/right -> secondary axis (twin).
+    # Backward-compat aliases: primary/left -> primary axis (main), secondary/right -> secondary axis (twin).
     if source_preference in {"primary", "left"}:
         source_preference = "primary"
     elif source_preference in {"secondary", "right"}:
@@ -699,17 +699,27 @@ def generate_lineplot_twinx(
     has_df = df is not None and not df.empty
     has_twinx = twinx_data is not None and not twinx_data.empty
 
-    # Resolve overlay fields from standard axes/hue styling on the secondary config.
-    ann_overlay_y = getattr(ann_cfg, "y", None) if ann_cfg else None
-    ann_overlay_hue = None
+    # Resolve secondary fields from standard axes/hue styling on the secondary config.
+    secondary_y = getattr(ann_cfg, "y", None) if ann_cfg else None
+    secondary_hue = None
     if ann_cfg:
-        ann_overlay_hue = getattr(ann_cfg, "label_col", None) or getattr(ann_cfg, "group_col", None)
-    ann_overlay_palette = getattr(ann_cfg, "palette", None) if ann_cfg else None
-    ann_overlay_linestyle = getattr(ann_cfg, "linestyle", None) if ann_cfg else None
-    if ann_overlay_linestyle is None:
-        ann_overlay_linestyle = ":"
+        secondary_hue = getattr(ann_cfg, "label_col", None) or getattr(ann_cfg, "group_col", None)
+    overlay_palette = getattr(ann_cfg, "palette", None) if ann_cfg else None
+    secondary_linestyle = getattr(ann_cfg, "linestyle", None) if ann_cfg else None
+    if secondary_linestyle is None:
+        secondary_linestyle = ":"
 
-    # Allow using the same DataFrame for twin-axis overlay by reusing df when no separate
+    # Resolve secondary annotation field once so both branches (primary-only or twinx-only)
+    # can reuse it without hitting UnboundLocalError when df is missing.
+    primary_ann_col = getattr(primary_config, "overlay_col", None) if primary_config else None
+    secondary_ann_col = getattr(ann_cfg, "overlay_col", None)
+    if primary_ann_col and secondary_ann_col and primary_ann_col != secondary_ann_col:
+        print(
+            f"overlay_col differs between configs ({primary_ann_col} vs {secondary_ann_col}); using primary_config value."
+        )
+    annotation_field = primary_ann_col or secondary_ann_col
+
+    # Allow using the same DataFrame for twin-axis secondary by reusing df when no separate
     # twinx_data is provided but twin fields exist on the secondary_config.
     if not has_twinx and has_df and secondary_config is not None:
         if (
@@ -729,7 +739,7 @@ def generate_lineplot_twinx(
             "Provide a LinePlotConfig with overlay fields when twinx_data is provided."
         )
     if has_twinx:
-        if not ann_cfg.x or not ann_overlay_y or not ann_overlay_hue:
+        if not ann_cfg.x or not secondary_y or not secondary_hue:
             raise ValueError(
                 "Secondary config must define x, y, and a hue (label_col or group_col)."
             )
@@ -845,9 +855,9 @@ def generate_lineplot_twinx(
 
     overlay_color_dict: dict[str, str] = {}
     if has_twinx:
-        hue_col = ann_overlay_hue
-        overlay_labels = sorted(twinx_data[hue_col].dropna().unique())
-        overlay_color_dict = _palette_dict(overlay_labels, ann_overlay_palette)
+        hue_col = secondary_hue
+        secondary_labels = sorted(twinx_data[hue_col].dropna().unique())
+        overlay_color_dict = _palette_dict(secondary_labels, overlay_palette)
 
     default_ylim = 105
     use_absolute_scale_main = (
@@ -865,8 +875,8 @@ def generate_lineplot_twinx(
 
     y1_max = df[primary_config.y].max() if has_df else 0
     y1_min = df[primary_config.y].min() if has_df else 0
-    y2_max = twinx_data[ann_overlay_y].max() if has_twinx else 0
-    y2_min = twinx_data[ann_overlay_y].min() if has_twinx else 0
+    y2_max = twinx_data[secondary_y].max() if has_twinx else 0
+    y2_min = twinx_data[secondary_y].min() if has_twinx else 0
 
     if use_absolute_scale_main:
         combined_max = abs(y1_max)
@@ -937,13 +947,7 @@ def generate_lineplot_twinx(
 
     if has_twinx and not has_df:
         # Decide which config and DataFrame supplies annotations.
-        line_ann_col = getattr(primary_config, "overlay_col", None) if primary_config else None
-        overlay_ann_col = getattr(ann_cfg, "overlay_col", None)
-        if line_ann_col and overlay_ann_col and line_ann_col != overlay_ann_col:
-            print(
-                f"overlay_col differs between configs ({line_ann_col} vs {overlay_ann_col}); using primary_config value."
-            )
-            annotation_field = line_ann_col or overlay_ann_col
+        # annotation_field already resolved above
         if annotation_field and annotation_field in twinx_data.columns:
             ann_df = twinx_data
         else:
@@ -987,21 +991,21 @@ def generate_lineplot_twinx(
         sns.lineplot(
             data=twinx_data,
             x=twinx_x_col,
-            y=ann_overlay_y,
-            hue=ann_overlay_hue,
-            palette=overlay_color_dict or ann_overlay_palette,
+            y=secondary_y,
+            hue=secondary_hue,
+            palette=overlay_color_dict or overlay_palette,
             ax=ax,
             linewidth=ann_cfg.lw / 2,
-            linestyle=ann_overlay_linestyle,
+            linestyle=secondary_linestyle,
             alpha=ann_cfg.twin_alpha,
             zorder=2,
         )
         sns.scatterplot(
             data=twinx_data,
             x=twinx_x_col,
-            y=ann_overlay_y,
-            hue=ann_overlay_hue,
-            palette=overlay_color_dict or ann_overlay_palette,
+            y=secondary_y,
+            hue=secondary_hue,
+            palette=overlay_color_dict or overlay_palette,
             ax=ax,
             s=(ann_cfg.markersize / 1.5) ** 2,
             edgecolor="white",
@@ -1011,10 +1015,10 @@ def generate_lineplot_twinx(
         )
         texts, x_pos_, y_pos_ = [], [], []
         palette_lookup = overlay_color_dict
-        for label, group in twinx_data.groupby(ann_overlay_hue):
-            last = group.dropna(subset=[twinx_x_col, ann_overlay_y]).iloc[-1]
+        for label, group in twinx_data.groupby(secondary_hue):
+            last = group.dropna(subset=[twinx_x_col, secondary_y]).iloc[-1]
             x = cat_to_pos[last[twinx_x_col]] + np.random.normal(0, 0.01)
-            y = last[ann_overlay_y] + 2 + np.random.normal(0, 0.01)
+            y = last[secondary_y] + 2 + np.random.normal(0, 0.01)
             x_pos_.append(x)
             y_pos_.append(y)
             texts.append(
@@ -1085,13 +1089,7 @@ def generate_lineplot_twinx(
     ax2 = ax.twinx()
     if ax2:
         ax2.set_xlim(x_start, x_end + xpad)
-    line_ann_col = getattr(primary_config, "overlay_col", None) if primary_config else None
-    overlay_ann_col = getattr(ann_cfg, "overlay_col", None)
-    if line_ann_col and overlay_ann_col and line_ann_col != overlay_ann_col:
-        print(
-            f"overlay_col differs between configs ({line_ann_col} vs {overlay_ann_col}); using primary_config value."
-        )
-    annotation_field = line_ann_col or overlay_ann_col
+    # annotation_field already resolved above
 
     def _annotation_sources() -> list[tuple[str, pd.DataFrame | None]]:
         # Default: prefer primary (main axis) annotations, then fall back to secondary (twin axis).
@@ -1128,15 +1126,15 @@ def generate_lineplot_twinx(
         primary_palette_cfg = getattr(primary_config, "overlay_palette", None) or getattr(
             primary_config, "palette", None
         )
-    secondary_palette_cfg = getattr(ann_cfg, "overlay_palette", None) or getattr(
+    overlay_palette_cfg = getattr(ann_cfg, "overlay_palette", None) or getattr(
         ann_cfg, "palette", None
     )
     overlay_palette = _palette_dict(
         annotation_labels,
-        primary_palette_cfg if ann_source_used == "primary" else secondary_palette_cfg,
+        primary_palette_cfg if ann_source_used == "primary" else overlay_palette_cfg,
     )
     # Default to black when caller does not pass a dict/palette
-    if not annotation_color_dict and not secondary_palette_cfg and not primary_palette_cfg:
+    if not annotation_color_dict and not overlay_palette_cfg and not primary_palette_cfg:
         overlay_palette = {label: "black" for label in annotation_labels}
     overlay_fontweight = (
         getattr(primary_config, "overlay_fontweight", None)
@@ -1144,9 +1142,9 @@ def generate_lineplot_twinx(
         else getattr(ann_cfg, "overlay_fontweight", None)
     ) or "bold"
     overlay_fontsize = (
-        getattr(primary_config, "overlay_overlay_fontsize", None)
+        getattr(primary_config, "overlay_fontsize", None)
         if ann_source_used == "primary"
-        else getattr(ann_cfg, "overlay_overlay_fontsize", None)
+        else getattr(ann_cfg, "overlay_fontsize", None)
     ) or 14
     for _, row in annotations.iterrows():
         x = cat_to_pos[row[twinx_x_col]]
@@ -1170,21 +1168,21 @@ def generate_lineplot_twinx(
     sns.lineplot(
         data=twinx_data,
         x=twinx_x_col,
-        y=ann_overlay_y,
-        hue=ann_overlay_hue,
-        palette=overlay_color_dict or ann_overlay_palette,
+        y=secondary_y,
+        hue=secondary_hue,
+        palette=overlay_color_dict or overlay_palette,
         ax=ax2,
         linewidth=ann_cfg.lw / 2,
-        linestyle=ann_overlay_linestyle,
+        linestyle=secondary_linestyle,
         alpha=ann_cfg.twin_alpha,
         zorder=2,
     )
     sns.scatterplot(
         data=twinx_data,
         x=twinx_x_col,
-        y=ann_overlay_y,
-        hue=ann_overlay_hue,
-        palette=overlay_color_dict or ann_overlay_palette,
+        y=secondary_y,
+        hue=secondary_hue,
+        palette=overlay_color_dict or overlay_palette,
         ax=ax2,
         s=(ann_cfg.markersize / 1.5) ** 2,
         edgecolor="white",
@@ -1194,10 +1192,10 @@ def generate_lineplot_twinx(
     )
     texts, x_pos_, y_pos_ = [], [], []
     palette_lookup = overlay_color_dict
-    for label, group in twinx_data.groupby(ann_overlay_hue):
-        last = group.dropna(subset=[twinx_x_col, ann_overlay_y]).iloc[-1]
+    for label, group in twinx_data.groupby(secondary_hue):
+        last = group.dropna(subset=[twinx_x_col, secondary_y]).iloc[-1]
         x = cat_to_pos[last[twinx_x_col]] + np.random.normal(0, 0.01)
-        y = last[ann_overlay_y] + 2 + np.random.normal(0, 0.01)
+        y = last[secondary_y] + 2 + np.random.normal(0, 0.01)
         x_pos_.append(x)
         y_pos_.append(y)
         texts.append(
@@ -1253,8 +1251,8 @@ def generate_lineplot_twinx(
                 ax2.set_ylim(lower, upper)
             elif not symmetric_ylim and has_twinx:
                 # Auto-scale twin axis from its own data when asymmetric scaling is requested.
-                tymin = twinx_data[ann_overlay_y].min()
-                tymax = twinx_data[ann_overlay_y].max()
+                tymin = twinx_data[secondary_y].min()
+                tymax = twinx_data[secondary_y].max()
                 if tymin == tymax:
                     tymin -= 1
                     tymax += 1
