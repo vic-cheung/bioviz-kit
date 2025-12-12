@@ -11,6 +11,7 @@ routines.
 # %%
 import numpy as np
 import pandas as pd
+from pandas.api.types import CategoricalDtype
 from loguru import logger
 from matplotlib.axes import Axes
 
@@ -96,9 +97,11 @@ def forward_fill_groups(
         df = df.drop_duplicates(subset=dedupe_cols, keep="first")
 
     if sort_order is not None:
-        df[x] = pd.Categorical(df[x], categories=sort_order, ordered=True)
+        x_dtype = CategoricalDtype(categories=sort_order, ordered=True)
+        df[x] = df[x].astype(x_dtype)
     elif not pd.api.types.is_categorical_dtype(df[x]):
-        df[x] = pd.Categorical(df[x], categories=sorted(df[x].unique()), ordered=True)
+        x_dtype = CategoricalDtype(categories=sorted(df[x].unique()), ordered=True)
+        df[x] = df[x].astype(x_dtype)
 
     df = df.set_index(group_cols + [x])
 
@@ -197,8 +200,10 @@ def apply_recist_merge(
     sort_order: list[str],
 ) -> pd.DataFrame:
     df = df.merge(recist_df_melt, how="left", on=["Patient_ID", "Timepoint"])
-    df["RECIST"] = pd.Categorical(df["RECIST"], categories=recist_order, ordered=True)
-    df["Timepoint"] = pd.Categorical(df["Timepoint"], categories=sort_order, ordered=True)
+    recist_dtype = CategoricalDtype(categories=recist_order, ordered=True)
+    tp_dtype = CategoricalDtype(categories=sort_order, ordered=True)
+    df["RECIST"] = df["RECIST"].astype(recist_dtype)
+    df["Timepoint"] = df["Timepoint"].astype(tp_dtype)
     return df
 
 

@@ -10,6 +10,7 @@ import matplotlib.font_manager as fm
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from pandas.api.types import CategoricalDtype
 import seaborn as sns
 from adjustText import adjust_text
 from matplotlib import font_manager
@@ -18,6 +19,7 @@ from matplotlib.lines import Line2D
 from bioviz.configs import (
     ScanOverlayPlotConfig,
     StyledSpiderPlotConfig,
+    XAxisAnnotationOverlayConfig,
 )
 from bioviz.plot_utils import adjust_legend
 from bioviz.style import DefaultStyle
@@ -26,6 +28,7 @@ DefaultStyle().apply_theme()
 
 __all__ = [
     "generate_styled_spiderplot",
+    "generate_styled_spiderplot_with_x_axis_annotation_overlay",
     "generate_styled_spiderplot_with_scan_overlay",
 ]
 
@@ -43,9 +46,8 @@ def generate_styled_spiderplot(
 
     # Ensure x is categorical; coerce if caller passed a plain series.
     if config.x in df and not pd.api.types.is_categorical_dtype(df[config.x]):
-        df[config.x] = pd.Categorical(
-            df[config.x], categories=list(pd.unique(df[config.x])), ordered=True
-        )
+        x_dtype = CategoricalDtype(categories=list(pd.unique(df[config.x])), ordered=True)
+        df[config.x] = df[config.x].astype(x_dtype)
     elif config.x in df and hasattr(df[config.x].dtype, "categories"):
         try:
             df[config.x] = df[config.x].cat.remove_unused_categories()
@@ -264,12 +266,12 @@ def generate_styled_spiderplot(
     return fig, handles, labels
 
 
-def generate_styled_spiderplot_with_scan_overlay(
+def generate_styled_spiderplot_with_x_axis_annotation_overlay(
     df: pd.DataFrame | None,
     scan_data: pd.DataFrame | None,
     spider_config: StyledSpiderPlotConfig | None,
-    scan_overlay_config: ScanOverlayPlotConfig | None,
-    recist_color_dict: dict[str, str] | None = None,
+    scan_overlay_config: XAxisAnnotationOverlayConfig | None,
+    annotation_color_dict: dict[str, str] | None = None,
 ) -> plt.Figure:
     has_df = df is not None and not df.empty
     has_scan = scan_data is not None and not scan_data.empty
@@ -297,41 +299,59 @@ def generate_styled_spiderplot_with_scan_overlay(
     fig.patch.set_facecolor(face if face is not None else "white")
     fig.patch.set_alpha(0.0 if transparent else 1.0)
 
-    all_timepoints = set()
+    def _categories_in_order(series: pd.Series) -> list:
+        if pd.api.types.is_categorical_dtype(series):
+            return list(series.cat.categories)
+        return list(pd.unique(series))
+
+    def _combine_categories(base: list, new_vals: list) -> list:
+        seen = set(base)
+        combined = list(base)
+        for val in new_vals:
+            if val not in seen:
+                combined.append(val)
+                seen.add(val)
+        return combined
+
+    all_timepoints: list = []
     if has_df:
         x_col = spider_config.x
         if not pd.api.types.is_categorical_dtype(df[x_col]):
-            df[x_col] = pd.Categorical(
-                df[x_col], categories=list(pd.unique(df[x_col])), ordered=True
-            )
+            x_dtype = CategoricalDtype(categories=list(pd.unique(df[x_col])), ordered=True)
+            df[x_col] = df[x_col].astype(x_dtype)
         else:
             try:
                 df[x_col] = df[x_col].cat.remove_unused_categories()
             except Exception:
                 pass
-        df_cats = df[x_col].cat.categories
-        all_timepoints |= set(df_cats)
+        df_cats = _categories_in_order(df[x_col])
+        all_timepoints = _combine_categories(all_timepoints, df_cats)
     if has_scan:
         scan_x_col = scan_overlay_config.x
         if not pd.api.types.is_categorical_dtype(scan_data[scan_x_col]):
-            scan_data[scan_x_col] = pd.Categorical(
-                scan_data[scan_x_col],
-                categories=list(pd.unique(scan_data[scan_x_col])),
-                ordered=True,
+            scan_dtype = CategoricalDtype(
+                categories=list(pd.unique(scan_data[scan_x_col])), ordered=True
             )
+            scan_data[scan_x_col] = scan_data[scan_x_col].astype(scan_dtype)
         else:
             try:
                 scan_data[scan_x_col] = scan_data[scan_x_col].cat.remove_unused_categories()
             except Exception:
                 pass
-        scan_cats = scan_data[scan_x_col].cat.categories
-        all_timepoints |= set(scan_cats)
-    all_timepoints = sorted(all_timepoints)
+        scan_cats = _categories_in_order(scan_data[scan_x_col])
+        all_timepoints = _combine_categories(all_timepoints, scan_cats)
+
+    if not all_timepoints:
+        all_timepoints = []
     cat_to_pos = {cat: i for i, cat in enumerate(all_timepoints)}
     ax.set_xlim(0, len(all_timepoints) - 0.5)
 
     if has_df:
-        df[x_col] = pd.Categorical(df[x_col], categories=all_timepoints, ordered=True)
+        if not pd.api.types.is_categorical_dtype(df[x_col]) or list(
+            df[x_col].cat.categories
+        ) != list(all_timepoints):
+            all_tp_dtype = CategoricalDtype(categories=all_timepoints, ordered=True)
+            df[x_col] = df[x_col].astype(all_tp_dtype)
         if not spider_config.title:
             ref_row = df[spider_config.col_vals_to_include_in_title].iloc[0]
             spider_config.title = " | ".join(
@@ -340,9 +360,11 @@ def generate_styled_spiderplot_with_scan_overlay(
             )
 
     if has_scan:
-        scan_data[scan_x_col] = pd.Categorical(
-            scan_data[scan_x_col], categories=all_timepoints, ordered=True
-        )
+        if not pd.api.types.is_categorical_dtype(scan_data[scan_x_col]) or list(
+            scan_data[scan_x_col].cat.categories
+        ) != list(all_timepoints):
+            all_tp_dtype = CategoricalDtype(categories=all_timepoints, ordered=True)
+            scan_data[scan_x_col] = scan_data[scan_x_col].astype(all_tp_dtype)
 
     default_ylim = 105
     use_absolute_scale_main = (
@@ -400,22 +422,29 @@ def generate_styled_spiderplot_with_scan_overlay(
         return fig
 
     if has_scan and not has_df:
-        recists = (
-            scan_data[[scan_x_col, scan_overlay_config.recist_col]]
+        annotation_field = getattr(scan_overlay_config, "annotation_col", None)
+        annotations = (
+            scan_data[[scan_x_col, annotation_field]]
             .dropna()
             .drop_duplicates()
             .reset_index(drop=True)
+            if annotation_field and annotation_field in scan_data.columns
+            else pd.DataFrame(columns=[scan_x_col, "_annotation"])
         )
-        for _, row in recists.iterrows():
+        for _, row in annotations.iterrows():
             x = cat_to_pos[row[scan_x_col]]
-            text = row[scan_overlay_config.recist_col]
+            text = row[annotation_field] if annotation_field in row else None
+            if text is None:
+                continue
             ax.text(
                 x + 0.03,
                 text_y,
                 text,
                 fontsize=14,
                 fontweight="bold",
-                color=(recist_color_dict.get(text, "black") if recist_color_dict else "black"),
+                color=(
+                    annotation_color_dict.get(text, "black") if annotation_color_dict else "black"
+                ),
                 zorder=1,
             )
             ax.axvline(x=x, color="gainsboro", linestyle="--", linewidth=1, zorder=1)
@@ -509,22 +538,24 @@ def generate_styled_spiderplot_with_scan_overlay(
     ax2 = ax.twinx()
     if ax2:
         ax2.set_xlim(0, len(all_timepoints) - 0.5)
-    recists = (
-        scan_data[[scan_x_col, scan_overlay_config.recist_col]]
-        .dropna()
-        .drop_duplicates()
-        .reset_index(drop=True)
+    annotation_field = getattr(scan_overlay_config, "annotation_col", None)
+    annotations = (
+        scan_data[[scan_x_col, annotation_field]].dropna().drop_duplicates().reset_index(drop=True)
+        if annotation_field and annotation_field in scan_data.columns
+        else pd.DataFrame(columns=[scan_x_col, "_annotation"])
     )
-    for _, row in recists.iterrows():
+    for _, row in annotations.iterrows():
         x = cat_to_pos[row[scan_x_col]]
-        text = row[scan_overlay_config.recist_col]
+        text = row[annotation_field] if annotation_field in row else None
+        if text is None:
+            continue
         ax.text(
             x + 0.03,
             text_y,
             text,
             fontsize=14,
             fontweight="bold",
-            color=(recist_color_dict.get(text, "black") if recist_color_dict else "black"),
+            color=(annotation_color_dict.get(text, "black") if annotation_color_dict else "black"),
             zorder=1,
         )
         ax.axvline(x=x, color="gainsboro", linestyle="--", linewidth=1, zorder=1)
@@ -638,3 +669,23 @@ def generate_styled_spiderplot_with_scan_overlay(
     else:
         ax.tick_params(axis="x", labelsize=13)
     return fig
+
+
+def generate_styled_spiderplot_with_scan_overlay(
+    df: pd.DataFrame | None,
+    scan_data: pd.DataFrame | None,
+    spider_config: StyledSpiderPlotConfig | None,
+    scan_overlay_config: ScanOverlayPlotConfig | None,
+    annotation_color_dict: dict[str, str] | None = None,
+    recist_color_dict: dict[str, str] | None = None,
+) -> plt.Figure:
+    """Backward-compatible alias for x-axis annotation overlay helper."""
+
+    return generate_styled_spiderplot_with_x_axis_annotation_overlay(
+        df=df,
+        scan_data=scan_data,
+        spider_config=spider_config,
+        scan_overlay_config=scan_overlay_config,
+        annotation_color_dict=annotation_color_dict,
+        recist_color_dict=recist_color_dict,
+    )

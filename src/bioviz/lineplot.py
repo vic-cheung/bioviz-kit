@@ -8,6 +8,7 @@ Ported and adapted from tm_toolbox. Uses neutral `DefaultStyle`.
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from pandas.api.types import CategoricalDtype
 import seaborn as sns
 from adjustText import adjust_text
 from matplotlib import font_manager
@@ -28,30 +29,26 @@ def generate_styled_lineplot(
     ax: plt.Axes | None = None,
 ) -> plt.Figure | None:
     if df.empty:
-        print(f"No data for patient {config.patient_id}: DataFrame is empty.")
+        print(f"No data for id '{config.patient_id}': DataFrame is empty.")
         return None
 
     if config.label_col not in df:
-        print(
-            f"No data for patient {config.patient_id}: Column '{config.label_col}' does not exist."
-        )
+        print(f"No data for id '{config.patient_id}': column '{config.label_col}' does not exist.")
         return None
 
     if df[config.label_col].dropna().empty:
         print(
-            f"No data for patient {config.patient_id}: Column '{config.label_col}' contains only missing values."
+            f"No data for id '{config.patient_id}': column '{config.label_col}' contains only missing values."
         )
         return None
 
     if config.y not in df:
-        print(f"No data for patient {config.patient_id}: Column '{config.y}' does not exist.")
+        print(f"No data for id '{config.patient_id}': column '{config.y}' does not exist.")
         return None
 
     if df[config.y].dropna().empty:
         print(
-            (
-                f"No data for patient {config.patient_id}: Column '{config.y}' contains only missing values."
-            )
+            f"No data for id '{config.patient_id}': column '{config.y}' contains only missing values."
         )
         return None
 
@@ -69,9 +66,8 @@ def generate_styled_lineplot(
 
     # Ensure x is categorical; if not, coerce using appearance order to keep caller intent.
     if config.x in df and not pd.api.types.is_categorical_dtype(df[config.x]):
-        df[config.x] = pd.Categorical(
-            df[config.x], categories=list(pd.unique(df[config.x])), ordered=True
-        )
+        x_dtype = CategoricalDtype(categories=list(pd.unique(df[config.x])), ordered=True)
+        df[config.x] = df[config.x].astype(x_dtype)
     elif config.x in df and hasattr(df[config.x].dtype, "categories"):
         try:
             df[config.x] = df[config.x].cat.remove_unused_categories()
@@ -296,7 +292,15 @@ def generate_styled_lineplot(
             verbose=0,
         )
 
-    handles = [Line2D([0], [0], linewidth=0, label="Variant", color="black")] + [
+    handles = [
+        Line2D(
+            [0],
+            [0],
+            linewidth=0,
+            label=(config.label_col or "Value"),
+            color="black",
+        )
+    ] + [
         Line2D(
             [0],
             [0],

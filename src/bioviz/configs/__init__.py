@@ -1,16 +1,17 @@
 from .line_cfg import StyledLinePlotConfig
 from .spider_cfg import StyledSpiderPlotConfig
-from .scan_overlay_cfg import ScanOverlayPlotConfig
+from .x_axis_annotation_overlay_cfg import ScanOverlayPlotConfig, XAxisAnnotationOverlayConfig
 from .table_cfg import StyledTableConfig
 from .oncoplot_cfg import OncoplotConfig
 from .base_cfg import BasePlotConfig
 from .oncoplot_cfg import TopAnnotationConfig, HeatmapAnnotationConfig
-from .annotations_cfg import make_annotation_config
+from .oncoplot_annotations_cfg import make_annotation_config
 
 __all__ = [
     "StyledLinePlotConfig",
     "StyledSpiderPlotConfig",
     "ScanOverlayPlotConfig",
+    "XAxisAnnotationOverlayConfig",
     "StyledTableConfig",
     "OncoplotConfig",
     "TopAnnotationConfig",

@@ -18,7 +18,7 @@ from .configs.base_cfg import BasePlotConfig
 # Re-export the annotation types from the oncoplot config module for
 # backwards-compatibility with `from bioviz.plot_configs import TopAnnotationConfig`.
 from .configs.oncoplot_cfg import TopAnnotationConfig, HeatmapAnnotationConfig
-from .configs.annotations_cfg import make_annotation_config
+from .configs.oncoplot_annotations_cfg import make_annotation_config
 
 
 __all__ = [

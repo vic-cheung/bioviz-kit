@@ -6,16 +6,15 @@ from .base_cfg import BasePlotConfig
 
 class StyledLinePlotConfig(BasePlotConfig):
     patient_id: Annotated[str | int, Field()]
-    label_col: Annotated[str, Field(default="label")]
-    subset_cols: Annotated[
-        list[str], Field(default_factory=lambda: ["Patient_ID", "label", "Timepoint"])
-    ]
+    # Let callers define column semantics; keep None defaults here.
+    label_col: Annotated[str | None, Field(default=None)]
+    subset_cols: Annotated[list[str] | None, Field(default=None)]
     filter_dict: Annotated[dict[str, list[str]] | None, Field(default=None)]
-    x: Annotated[str, Field(default="Timepoint")]
+    x: Annotated[str | None, Field(default=None)]
     xlabel: Annotated[str | None, Field(default=None)]
-    y: Annotated[str, Field(default="Value")]
+    y: Annotated[str | None, Field(default=None)]
     ylabel: Annotated[str | None, Field(default=None)]
-    secondary_group_col: Annotated[str, Field(default="Variant_type")]
+    secondary_group_col: Annotated[str | None, Field(default=None)]
     match_legend_text_color: Annotated[bool, Field(default=True)]
     # Default to no point labels to keep visuals generic; callers can enable as needed.
     label_points: Annotated[bool, Field(default=False)]

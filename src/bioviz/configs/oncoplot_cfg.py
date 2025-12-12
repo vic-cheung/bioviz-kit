@@ -2,7 +2,7 @@ from typing import Annotated, Any
 
 from pydantic import BaseModel, Field
 
-from .annotations_cfg import TopAnnotationConfig, HeatmapAnnotationConfig
+from .oncoplot_annotations_cfg import TopAnnotationConfig, HeatmapAnnotationConfig
 
 
 class OncoplotConfig(BaseModel):
