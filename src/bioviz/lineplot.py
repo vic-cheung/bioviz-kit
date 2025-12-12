@@ -572,19 +572,20 @@ def generate_styled_multigroup_lineplot(
     if tick_kwargs:
         ax.tick_params(axis="y", **tick_kwargs)
 
-    if getattr(config, "baseline", None) is not None:
-        baseline_kwargs = dict(
-            y=config.baseline,
-            color=getattr(config, "baseline_color", "#C0C0C0"),
-            linestyle=getattr(config, "baseline_style", "--"),
-            linewidth=getattr(config, "baseline_width", 1.0),
-            alpha=getattr(config, "baseline_alpha", 1.0),
+    ref_val = getattr(config, "reference", None)
+    if ref_val is not None:
+        reference_kwargs = dict(
+            y=ref_val,
+            color=getattr(config, "reference_color", "#C0C0C0"),
+            linestyle=getattr(config, "reference_style", "--"),
+            linewidth=getattr(config, "reference_width", 1.0),
+            alpha=getattr(config, "reference_alpha", 1.0),
             zorder=1,
         )
-        bdashes = getattr(config, "baseline_dashes", (5, 5))
-        if bdashes is not None:
-            baseline_kwargs["dashes"] = bdashes
-        ax.axhline(**baseline_kwargs)
+        rdashes = getattr(config, "reference_dashes", (5, 5))
+        if rdashes is not None:
+            reference_kwargs["dashes"] = rdashes
+        ax.axhline(**reference_kwargs)
 
     handles = []
     if config.color_dict_subgroup:
@@ -956,20 +957,20 @@ def generate_lineplot_twinx(
         return fig
 
     if has_twinx and not has_df:
-        baseline_val = getattr(ann_cfg, "baseline", None) if ann_cfg else None
-        if baseline_val is not None:
-            baseline_kwargs = dict(
-                y=baseline_val,
-                color=getattr(ann_cfg, "baseline_color", "#C0C0C0"),
-                linestyle=getattr(ann_cfg, "baseline_style", "--"),
-                linewidth=getattr(ann_cfg, "baseline_width", 1.0),
-                alpha=getattr(ann_cfg, "baseline_alpha", 1.0),
+        reference_val = getattr(ann_cfg, "reference", None) if ann_cfg else None
+        if reference_val is not None:
+            reference_kwargs = dict(
+                y=reference_val,
+                color=getattr(ann_cfg, "reference_color", "#C0C0C0"),
+                linestyle=getattr(ann_cfg, "reference_style", "--"),
+                linewidth=getattr(ann_cfg, "reference_width", 1.0),
+                alpha=getattr(ann_cfg, "reference_alpha", 1.0),
                 zorder=1,
             )
-            bdashes = getattr(ann_cfg, "baseline_dashes", (5, 5))
-            if bdashes is not None:
-                baseline_kwargs["dashes"] = bdashes
-            ax.axhline(**baseline_kwargs)
+            rdashes = getattr(ann_cfg, "reference_dashes", (5, 5))
+            if rdashes is not None:
+                reference_kwargs["dashes"] = rdashes
+            ax.axhline(**reference_kwargs)
         # Decide which config and DataFrame supplies annotations.
         # annotation_field already resolved above
         if annotation_field and annotation_field in twinx_data.columns:
@@ -1145,21 +1146,21 @@ def generate_lineplot_twinx(
         ax2.set_xlim(x_start, x_end + xpad)
     # annotation_field already resolved above
 
-    baseline_val = getattr(ann_cfg, "baseline", None) if ann_cfg else None
-    if baseline_val is not None:
+    reference_val = getattr(ann_cfg, "reference", None) if ann_cfg else None
+    if reference_val is not None:
         target_ax = ax2 if ax2 is not None else ax
-        baseline_kwargs = dict(
-            y=baseline_val,
-            color=getattr(ann_cfg, "baseline_color", "#C0C0C0"),
-            linestyle=getattr(ann_cfg, "baseline_style", "--"),
-            linewidth=getattr(ann_cfg, "baseline_width", 1.0),
-            alpha=getattr(ann_cfg, "baseline_alpha", 1.0),
+        reference_kwargs = dict(
+            y=reference_val,
+            color=getattr(ann_cfg, "reference_color", "#C0C0C0"),
+            linestyle=getattr(ann_cfg, "reference_style", "--"),
+            linewidth=getattr(ann_cfg, "reference_width", 1.0),
+            alpha=getattr(ann_cfg, "reference_alpha", 1.0),
             zorder=1,
         )
-        bdashes = getattr(ann_cfg, "baseline_dashes", (5, 5))
-        if bdashes is not None:
-            baseline_kwargs["dashes"] = bdashes
-        target_ax.axhline(**baseline_kwargs)
+        rdashes = getattr(ann_cfg, "reference_dashes", (5, 5))
+        if rdashes is not None:
+            reference_kwargs["dashes"] = rdashes
+        target_ax.axhline(**reference_kwargs)
 
     def _annotation_sources() -> list[tuple[str, pd.DataFrame | None]]:
         # Default: prefer primary (main axis) annotations, then fall back to secondary (twin axis).
