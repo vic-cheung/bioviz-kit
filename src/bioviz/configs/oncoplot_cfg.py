@@ -2,11 +2,15 @@ from typing import Annotated, Any
 
 from pydantic import BaseModel, Field
 
-from .oncoplot_annotations_cfg import TopAnnotationConfig, HeatmapAnnotationConfig
+from .oncoplot_annotations_cfg import (
+    TopAnnotationConfig,  # noqa: F401
+    HeatmapAnnotationConfig,
+)
 
 
 class OncoplotConfig(BaseModel):
-    """Config for oncoplot rendering.
+    """
+    Config for oncoplot rendering.
 
     The plotter treats `x_col`, `y_col`, `value_col`, and `row_group_col` as
     required logical columns even though defaults exist. Callers should set
@@ -99,5 +103,9 @@ class OncoplotConfig(BaseModel):
     # Defaults for rendering triangles in heatmap cells. These are passed
     # through to the constructed `HeatmapAnnotationConfig` when the
     # caller doesn't provide one explicitly.
-    heatmap_bottom_left_triangle_values: Annotated[list[str], Field(default_factory=list)]
-    heatmap_upper_right_triangle_values: Annotated[list[str], Field(default_factory=list)]
+    heatmap_bottom_left_triangle_values: Annotated[
+        list[str], Field(default_factory=list)
+    ]
+    heatmap_upper_right_triangle_values: Annotated[
+        list[str], Field(default_factory=list)
+    ]

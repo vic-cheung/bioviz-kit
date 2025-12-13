@@ -15,6 +15,20 @@ try:
 except Exception:  # pragma: no cover - optional dependency
 
     def get_filtered_entity_data(*args, **kwargs):
+        """
+        Placeholder for `get_filtered_entity_data` from `tm_toolbox` when that
+        optional dependency is unavailable.
+
+        This placeholder raises an informative ImportError instructing the user
+        to install `tm-toolbox` or provide an equivalent implementation.
+
+        Args:
+           *args: Positional arguments passed through to the real implementation.
+           **kwargs: Keyword arguments passed through to the real implementation.
+
+        Raises:
+           ImportError: Always; indicates the optional dependency is missing.
+        """
         raise ImportError(
             "get_filtered_entity_data requires tm_toolbox.data_preprocessing; "
             "install tm-toolbox or provide this function"
@@ -48,6 +62,15 @@ def resolve_font_family() -> str | None:
 def adjust_legend(
     ax: Axes, bbox: tuple[float, float], loc: str = "center left", redraw: bool = False
 ) -> None:
+    """
+    Adjust an axes legend position and optionally redraw the figure.
+
+    Args:
+       ax: Matplotlib `Axes` instance containing the legend.
+       bbox: Tuple of (x, y) coordinates to anchor the legend bbox.
+       loc: Legend location string (default: "center left").
+       redraw: If True, trigger a canvas redraw after moving the legend.
+    """
     leg = ax.get_legend()
     if leg:
         leg.set_bbox_to_anchor(bbox)
@@ -65,6 +88,25 @@ def get_oncoplot_fig_top_margin(
     mid_margin: float | int = 0.82,
     max_margin: float | int = 0.85,
 ) -> float | int:
+    """
+    Compute a top margin fraction for an oncoplot figure based on figure height.
+
+    This uses a fitted quadratic to interpolate sensible top margins across a
+    range of figure heights and clamps values to provided min/max margins.
+
+    Args:
+        fig_height: Figure height (in inches) used to determine top margin.
+        min_height: Minimum height for interpolation.
+        mid_height: Midpoint height for interpolation.
+        max_height: Maximum height for interpolation.
+        min_margin: Minimum allowed margin fraction.
+        mid_margin: Midpoint margin fraction.
+        max_margin: Maximum allowed margin fraction.
+
+    Returns:
+        A float margin fraction to use for layout spacing.
+    """
+
     x = np.array([min_height, mid_height, max_height])
     y = np.array([min_margin, mid_margin, max_margin])
     coeffs = np.polyfit(x, y, 2)
@@ -93,6 +135,24 @@ def get_scaled_oncoplot_dimensions(
     max_width: None | float = None,
     max_height: None | float = None,
 ) -> tuple[float, float]:
+    """
+    Calculate a scaled figure width and height for an oncoplot given layout parameters.
+
+    Args:
+        ncols: Number of columns (patients) in the oncoplot.
+        nrows: Number of rows (genes) in the oncoplot.
+        num_top_annotations: Number of top annotation rows to reserve.
+        top_annotation_height: Height (in inches) for each top annotation row.
+        col_scale: Base column width scale factor.
+        row_scale: Base row height scale factor.
+        aspect: Desired aspect ratio multiplier.
+        max_width: Optional cap for figure width.
+        max_height: Optional cap for figure height.
+
+    Returns:
+        Tuple of (fig_width, fig_height) in inches.
+    """
+
     base_width = ncols * col_scale
     base_height = nrows * row_scale + num_top_annotations * top_annotation_height
     min_figure_height = 6.0
@@ -141,6 +201,27 @@ def get_oncoplot_dimensions_fixed_cell(
     aspect: float = 1.0,
     auto_adjust_cell_size: bool = True,
 ) -> tuple[float, float]:
+    """
+    Compute figure width/height when cells should target fixed sizes, with optional auto-adjustment.
+
+    Args:
+        ncols: Number of columns (patients).
+        nrows: Number of rows (genes).
+        target_cell_width: Desired width per cell (inches).
+        target_cell_height: Desired height per cell (inches).
+        min_width: Minimum figure width.
+        max_width: Maximum figure width.
+        max_height: Maximum figure height.
+        num_top_annotations: Number of top annotation rows to include.
+        top_annotation_height: Height per top annotation row.
+        aspect: Width/height aspect ratio to enforce.
+        auto_adjust_cell_size: If True, scales cell size down to fit large grids.
+
+    Returns:
+        Tuple of (width, height, font_scale_factor) where width/height are inches and
+        font_scale_factor is a multiplier to apply to font sizes to maintain readability.
+    """
+
     adjusted_cell_width = target_cell_width
     adjusted_cell_height = target_cell_height
     if auto_adjust_cell_size:
@@ -154,7 +235,9 @@ def get_oncoplot_dimensions_fixed_cell(
             adjusted_cell_width = max(min_cell_width, target_cell_width * scale_factor)
         if nrows > gene_threshold:
             scale_factor = min(1.0, 0.95 * (gene_threshold / nrows) ** 0.3)
-            adjusted_cell_height = max(min_cell_height, target_cell_height * scale_factor)
+            adjusted_cell_height = max(
+                min_cell_height, target_cell_height * scale_factor
+            )
     width = ncols * adjusted_cell_width
     height = nrows * adjusted_cell_height
     if num_top_annotations > 0:

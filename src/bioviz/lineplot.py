@@ -54,7 +54,9 @@ def generate_lineplot(
     if has_label:
         return generate_styled_lineplot(df=df, config=config, ax=ax)
 
-    raise ValueError("LinePlotConfig must set either group_col or label_col for line plotting.")
+    raise ValueError(
+        "LinePlotConfig must set either group_col or label_col for line plotting."
+    )
 
 
 def generate_styled_lineplot(
@@ -63,16 +65,22 @@ def generate_styled_lineplot(
     ax: plt.Axes | None = None,
 ) -> plt.Figure | None:
     if not config.label_col:
-        raise ValueError("line plot requires label_col (hue) to be set in LinePlotConfig.")
+        raise ValueError(
+            "line plot requires label_col (hue) to be set in LinePlotConfig."
+        )
     if not config.x or not config.y:
         raise ValueError("line plot requires x and y to be set in LinePlotConfig.")
-    entity_id = getattr(config, "entity_id", None) or getattr(config, "patient_id", None)
+    entity_id = getattr(config, "entity_id", None) or getattr(
+        config, "patient_id", None
+    )
     if df.empty:
         print(f"No data for id '{entity_id}': DataFrame is empty.")
         return None
 
     if config.label_col not in df:
-        print(f"No data for id '{entity_id}': column '{config.label_col}' does not exist.")
+        print(
+            f"No data for id '{entity_id}': column '{config.label_col}' does not exist."
+        )
         return None
 
     if df[config.label_col].dropna().empty:
@@ -86,14 +94,18 @@ def generate_styled_lineplot(
         return None
 
     if df[config.y].dropna().empty:
-        print(f"No data for id '{entity_id}': column '{config.y}' contains only missing values.")
+        print(
+            f"No data for id '{entity_id}': column '{config.y}' contains only missing values."
+        )
         return None
 
     # Ensure long-format required columns exist; bioviz expects callers to
     # supply long-format data. Forward-fill (if desired) should be done by
     # adapters (e.g. tm_toolbox) before calling bioviz.
     required_cols = [
-        c for c in (config.x, config.y, config.label_col, config.secondary_group_col) if c
+        c
+        for c in (config.x, config.y, config.label_col, config.secondary_group_col)
+        if c
     ]
     missing = [c for c in required_cols if c not in df.columns]
     if missing:
@@ -105,7 +117,9 @@ def generate_styled_lineplot(
 
     # Ensure x is categorical; if not, coerce using appearance order to keep caller intent.
     if config.x in df and not pd.api.types.is_categorical_dtype(df[config.x]):
-        x_dtype = CategoricalDtype(categories=list(pd.unique(df[config.x])), ordered=True)
+        x_dtype = CategoricalDtype(
+            categories=list(pd.unique(df[config.x])), ordered=True
+        )
         df[config.x] = df[config.x].astype(x_dtype)
     elif config.x in df and hasattr(df[config.x].dtype, "categories"):
         try:
@@ -121,14 +135,17 @@ def generate_styled_lineplot(
     )
 
     if not config.title:
-        existing_cols = [col for col in config.col_vals_to_include_in_title if col in df.columns]
+        existing_cols = [
+            col for col in config.col_vals_to_include_in_title if col in df.columns
+        ]
         if existing_cols:
             records = df.loc[:, existing_cols].to_dict(orient="records")
             ref = records[0] if records else {}
         else:
             ref = {}
         title = " | ".join(
-            ", ".join(map(str, v)) if isinstance(v, list) else str(v) for v in ref.values()
+            ", ".join(map(str, v)) if isinstance(v, list) else str(v)
+            for v in ref.values()
         )
     else:
         title = config.title
@@ -144,7 +161,9 @@ def generate_styled_lineplot(
         color_dict = palette
     else:
         if len(palette) < num_labels:
-            raise ValueError("Palette has fewer colors than the number of unique labels.")
+            raise ValueError(
+                "Palette has fewer colors than the number of unique labels."
+            )
         color_dict = dict(zip(labels, palette))
 
     # Create figure
@@ -299,7 +318,10 @@ def generate_styled_lineplot(
     if tick_kwargs:
         ax.tick_params(axis="y", **tick_kwargs)
     ax.set_title(
-        title, loc="left", fontweight="bold", fontsize=getattr(config, "title_fontsize", 20)
+        title,
+        loc="left",
+        fontweight="bold",
+        fontsize=getattr(config, "title_fontsize", 20),
     )
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
@@ -400,7 +422,7 @@ def generate_styled_lineplot(
                     marker="o",
                     color="white",
                     markerfacecolor="black",
-                    markeredgecolor="white",
+                    markeredgecolor="black",
                     markersize=config.markersize,
                     linewidth=0,
                     label=config.threshold_above_label or "Above Threshold",
@@ -425,10 +447,13 @@ def generate_styled_lineplot(
             if label in color_dict:
                 text.set_color(color_dict[label])
                 text.set_fontweight("bold")
-            elif label in {"Variant", config.threshold_legend_title or "Threshold"}:
+            elif label in {
+                config.label_col,
+                config.threshold_legend_title or "Threshold",
+            }:
                 text.set_color("black")
                 text.set_fontweight("bold")
-                text.set_fontsize(16)
+                text.set_fontsize(getattr(config, "legend_fontsize", 16))
 
     plt.subplots_adjust(right=config.rhs_pdf_padding)
     ax.set_facecolor("white")
@@ -450,17 +475,37 @@ def generate_styled_multigroup_lineplot(
     ax: plt.Axes | None = None,
     draw_legend: bool = True,
 ) -> tuple[plt.Figure, list[Line2D], list[str]]:
+    """
+    Render multiple group trajectories (one line per group) with consistent styling.
+
+    Args:
+       df: Long-format DataFrame containing group, x, and y columns.
+       config: `LinePlotConfig` controlling styling, titles, markers, and legend behavior.
+       ax: Optional matplotlib Axes to draw into; if omitted a new figure/axes are created.
+       draw_legend: Whether to draw the plot legend.
+
+    Returns:
+       Tuple of `(figure, handles, labels)` where `handles` are legend handles and
+       `labels` are their corresponding labels.
+    """
+
     if not config.group_col:
-        raise ValueError("multigroup line plot requires group_col to be set in LinePlotConfig.")
+        raise ValueError(
+            "multigroup line plot requires group_col to be set in LinePlotConfig."
+        )
     if not config.x or not config.y:
-        raise ValueError("multigroup line plot requires x and y to be set in LinePlotConfig.")
+        raise ValueError(
+            "multigroup line plot requires x and y to be set in LinePlotConfig."
+        )
     if ax is None:
         fig, ax = plt.subplots(figsize=config.figsize)
     else:
         fig = ax.figure
 
     if config.x in df and not pd.api.types.is_categorical_dtype(df[config.x]):
-        x_dtype = CategoricalDtype(categories=list(pd.unique(df[config.x])), ordered=True)
+        x_dtype = CategoricalDtype(
+            categories=list(pd.unique(df[config.x])), ordered=True
+        )
         df[config.x] = df[config.x].astype(x_dtype)
     elif config.x in df and hasattr(df[config.x].dtype, "categories"):
         try:
@@ -476,9 +521,13 @@ def generate_styled_multigroup_lineplot(
         )
 
     if config.linestyle_col and config.linestyle_col not in df.columns:
-        raise ValueError(f"Style column '{config.linestyle_col}' not found in DataFrame.")
+        raise ValueError(
+            f"Style column '{config.linestyle_col}' not found in DataFrame."
+        )
     if config.markerstyle_col and config.markerstyle_col not in df.columns:
-        raise ValueError(f"Style column '{config.markerstyle_col}' not found in DataFrame.")
+        raise ValueError(
+            f"Style column '{config.markerstyle_col}' not found in DataFrame."
+        )
 
     labels = sorted(df[config.group_col].unique())
     num_labels = len(labels)
@@ -660,7 +709,13 @@ def generate_styled_multigroup_lineplot(
         handles.extend(
             [
                 Line2D(
-                    [0], [0], color="black", marker=markerstyle, linewidth=0, label=label, alpha=1
+                    [0],
+                    [0],
+                    color="black",
+                    marker=markerstyle,
+                    linewidth=0,
+                    label=label,
+                    alpha=1,
                 )
                 for label, markerstyle in config.markerstyle_dict.items()
             ]
@@ -674,7 +729,9 @@ def generate_styled_multigroup_lineplot(
             bbox_to_anchor=(1.25, 0.5),
             loc="center",
             frameon=False,
-            prop=font_manager.FontProperties(family=resolve_font_family(), size=14, weight="bold"),
+            prop=font_manager.FontProperties(
+                family=resolve_font_family(), size=14, weight="bold"
+            ),
         )
     else:
         leg = ax.get_legend()
@@ -698,6 +755,26 @@ def generate_lineplot_twinx(
     annotation_color_dict: dict[str, str] | None = None,
     annotation_source: str = "auto",
 ) -> plt.Figure:
+    """
+    Generate a plot with an optional secondary (twinx) series overlaid.
+
+    This function supports three modes:
+    - Primary-only: `df` provided, `twinx_data` omitted — renders a standard multi-group plot.
+    - Twinx-only: `twinx_data` provided, `df` omitted — renders the secondary series with annotations.
+    - Combined: both `df` and `twinx_data` provided — renders both series on shared x-axis.
+
+    Args:
+        df: Primary (main) DataFrame for left axis plotting; may be None when only secondary is desired.
+        twinx_data: DataFrame for secondary axis plotting (overlay); may be None.
+        primary_config: `LinePlotConfig` for the primary axis (required when `df` is provided).
+        secondary_config: `LinePlotConfig` or overlay config for the secondary axis.
+        annotation_color_dict: Optional mapping of annotation value -> color for overlay text.
+        annotation_source: 'auto'|'primary'|'secondary' to select which config supplies overlay fields.
+
+    Returns:
+        A matplotlib `Figure` containing the rendered plot.
+    """
+
     ann_cfg = secondary_config or primary_config
 
     source_preference = (annotation_source or "auto").lower()
@@ -716,7 +793,9 @@ def generate_lineplot_twinx(
     secondary_y = getattr(ann_cfg, "y", None) if ann_cfg else None
     secondary_hue = None
     if ann_cfg:
-        secondary_hue = getattr(ann_cfg, "label_col", None) or getattr(ann_cfg, "group_col", None)
+        secondary_hue = getattr(ann_cfg, "label_col", None) or getattr(
+            ann_cfg, "group_col", None
+        )
     overlay_palette = getattr(ann_cfg, "palette", None) if ann_cfg else None
     secondary_linestyle = getattr(ann_cfg, "linestyle", None) if ann_cfg else None
     if secondary_linestyle is None:
@@ -724,7 +803,9 @@ def generate_lineplot_twinx(
 
     # Resolve secondary annotation field once so both branches (primary-only or twinx-only)
     # can reuse it without hitting UnboundLocalError when df is missing.
-    primary_ann_col = getattr(primary_config, "overlay_col", None) if primary_config else None
+    primary_ann_col = (
+        getattr(primary_config, "overlay_col", None) if primary_config else None
+    )
     secondary_ann_col = getattr(ann_cfg, "overlay_col", None)
     if primary_ann_col and secondary_ann_col and primary_ann_col != secondary_ann_col:
         print(
@@ -743,7 +824,9 @@ def generate_lineplot_twinx(
             twinx_data = df
             has_twinx = True
     if not has_df and not has_twinx:
-        raise ValueError("At least one of df or twinx_data must be provided and non-empty.")
+        raise ValueError(
+            "At least one of df or twinx_data must be provided and non-empty."
+        )
 
     if has_df and primary_config is None:
         raise ValueError("primary_config is required when df is provided.")
@@ -778,11 +861,17 @@ def generate_lineplot_twinx(
     fig.patch.set_alpha(0.0 if transparent else 1.0)
 
     def _categories_in_order(series: pd.Series) -> list:
+        """
+        Return category ordering for a series, preserving categorical dtype order when present.
+        """
         if pd.api.types.is_categorical_dtype(series):
             return list(series.cat.categories)
         return list(pd.unique(series))
 
     def _combine_categories(base: list, new_vals: list) -> list:
+        """
+        Append new_vals to base preserving order and avoiding duplicates.
+        """
         seen = set(base)
         combined = list(base)
         for val in new_vals:
@@ -792,6 +881,9 @@ def generate_lineplot_twinx(
         return combined
 
     def _palette_dict(labels: list, palette_cfg) -> dict[str, str]:
+        """
+        Construct a mapping of label -> color from various palette configurations.
+        """
         if not labels:
             return {}
         if palette_cfg is None:
@@ -801,7 +893,9 @@ def generate_lineplot_twinx(
         if isinstance(palette_cfg, dict):
             fallback_palette = sns.color_palette("Dark2", n_colors=len(labels))
             return {
-                label: palette_cfg.get(label, fallback_palette[i % len(fallback_palette)])
+                label: palette_cfg.get(
+                    label, fallback_palette[i % len(fallback_palette)]
+                )
                 for i, label in enumerate(labels)
             }
         # palette_cfg is a list-like
@@ -813,7 +907,9 @@ def generate_lineplot_twinx(
     if has_df:
         x_col = primary_config.x
         if not pd.api.types.is_categorical_dtype(df[x_col]):
-            x_dtype = CategoricalDtype(categories=list(pd.unique(df[x_col])), ordered=True)
+            x_dtype = CategoricalDtype(
+                categories=list(pd.unique(df[x_col])), ordered=True
+            )
             df[x_col] = df[x_col].astype(x_dtype)
         else:
             try:
@@ -831,7 +927,9 @@ def generate_lineplot_twinx(
             twinx_data[twinx_x_col] = twinx_data[twinx_x_col].astype(twinx_dtype)
         else:
             try:
-                twinx_data[twinx_x_col] = twinx_data[twinx_x_col].cat.remove_unused_categories()
+                twinx_data[twinx_x_col] = twinx_data[
+                    twinx_x_col
+                ].cat.remove_unused_categories()
             except Exception:
                 pass
         twinx_cats = _categories_in_order(twinx_data[twinx_x_col])
@@ -842,7 +940,9 @@ def generate_lineplot_twinx(
     cat_to_pos = {cat: i for i, cat in enumerate(all_x_levels)}
     xpad = getattr(primary_config or ann_cfg, "xlim_padding", 0.8)
     x_end = max(len(all_x_levels) - 0.5, 0)
-    align_origin = getattr(primary_config or ann_cfg, "align_first_tick_to_origin", False)
+    align_origin = getattr(
+        primary_config or ann_cfg, "align_first_tick_to_origin", False
+    )
     x_start = 0 if align_origin else -1 * xpad
     ax.set_xlim(x_start, x_end + xpad)
 
@@ -945,8 +1045,17 @@ def generate_lineplot_twinx(
 
     if has_df and not has_twinx:
         generate_styled_multigroup_lineplot(df=df, config=primary_config, ax=ax)
-        ax.set_ylabel(primary_config.ylabel or r"$\Delta$ from First Timepoint", fontweight="bold")
-        adjust_legend(ax, (1.2, 0.7), redraw=True)
+        ax.set_ylabel(
+            primary_config.ylabel or r"$\Delta$ from First Timepoint", fontweight="bold"
+        )
+        # Allow callers to override legend anchor via config fields.
+        if ann_cfg is not None:
+            _adj_x = getattr(ann_cfg, "adjust_legend_x", 1.2)
+            _adj_y = getattr(ann_cfg, "adjust_legend_y", 0.7)
+        else:
+            _adj_x = getattr(primary_config, "adjust_legend_x", 1.2)
+            _adj_y = getattr(primary_config, "adjust_legend_y", 0.7)
+        adjust_legend(ax, (_adj_x, _adj_y), redraw=True)
         ax.set_facecolor("white")
         fig.patch.set_alpha(0.0)
         fig.subplots_adjust(right=primary_config.rhs_pdf_padding)
@@ -977,7 +1086,9 @@ def generate_lineplot_twinx(
         if annotation_field and annotation_field in twinx_data.columns:
             ann_df = twinx_data
         else:
-            ann_df = twinx_data  # fallback to twinx_data even if missing to avoid breakage
+            ann_df = (
+                twinx_data  # fallback to twinx_data even if missing to avoid breakage
+            )
         annotations = (
             ann_df[[twinx_x_col, annotation_field]]
             .dropna()
@@ -987,7 +1098,9 @@ def generate_lineplot_twinx(
             else pd.DataFrame(columns=[twinx_x_col, "_annotation"])
         )
         annotation_labels = (
-            sorted(annotations[annotation_field].unique()) if not annotations.empty else []
+            sorted(annotations[annotation_field].unique())
+            if not annotations.empty
+            else []
         )
         overlay_palette_cfg = getattr(ann_cfg, "overlay_palette", None) or getattr(
             ann_cfg, "palette", None
@@ -1066,7 +1179,7 @@ def generate_lineplot_twinx(
             palette=overlay_color_dict or overlay_palette,
             ax=ax,
             s=(ann_cfg.markersize / 1.5) ** 2,
-            edgecolor="white",
+            edgecolor=getattr(ann_cfg, "edgecolor", "white"),
             linewidth=1,
             legend=False,
             zorder=2,
@@ -1123,10 +1236,16 @@ def generate_lineplot_twinx(
             handles=[section_label] + handles,
             labels=["Location"] + labels,
             frameon=False,
-            prop=font_manager.FontProperties(family=resolve_font_family(), size=14, weight="bold"),
+            prop=font_manager.FontProperties(
+                family=resolve_font_family(), size=14, weight="bold"
+            ),
         )
-        adjust_legend(ax, (1.2, 0.7))
-        fig.subplots_adjust(right=primary_config.rhs_pdf_padding if primary_config else 0.85)
+        _adj_x = getattr(ann_cfg, "adjust_legend_x", 1.2) if ann_cfg else 1.2
+        _adj_y = getattr(ann_cfg, "adjust_legend_y", 0.7) if ann_cfg else 0.7
+        adjust_legend(ax, (_adj_x, _adj_y))
+        fig.subplots_adjust(
+            right=primary_config.rhs_pdf_padding if primary_config else 0.85
+        )
         ax.set_facecolor("white")
         fig.patch.set_alpha(0.0)
         ax.set_xlabel(ann_cfg.x, fontweight="bold")
@@ -1174,7 +1293,11 @@ def generate_lineplot_twinx(
     ann_df = twinx_data
     ann_source_used = "secondary"
     for source_name, candidate in _annotation_sources():
-        if candidate is None or candidate.empty or annotation_field not in candidate.columns:
+        if (
+            candidate is None
+            or candidate.empty
+            or annotation_field not in candidate.columns
+        ):
             continue
         ann_df = candidate
         ann_source_used = source_name
@@ -1184,7 +1307,10 @@ def generate_lineplot_twinx(
         twinx_x_col = primary_config.x
         cat_to_pos = {cat: i for i, cat in enumerate(all_x_levels)}
     annotations = (
-        ann_df[[twinx_x_col, annotation_field]].dropna().drop_duplicates().reset_index(drop=True)
+        ann_df[[twinx_x_col, annotation_field]]
+        .dropna()
+        .drop_duplicates()
+        .reset_index(drop=True)
         if annotation_field and annotation_field in ann_df.columns
         else pd.DataFrame(columns=[twinx_x_col, "_annotation"])
     )
@@ -1195,9 +1321,9 @@ def generate_lineplot_twinx(
     )
     primary_palette_cfg = None
     if primary_config is not None:
-        primary_palette_cfg = getattr(primary_config, "overlay_palette", None) or getattr(
-            primary_config, "palette", None
-        )
+        primary_palette_cfg = getattr(
+            primary_config, "overlay_palette", None
+        ) or getattr(primary_config, "palette", None)
     overlay_palette_cfg = getattr(ann_cfg, "overlay_palette", None) or getattr(
         ann_cfg, "palette", None
     )
@@ -1206,7 +1332,11 @@ def generate_lineplot_twinx(
         primary_palette_cfg if ann_source_used == "primary" else overlay_palette_cfg,
     )
     # Default to black when caller does not pass a dict/palette
-    if not annotation_color_dict and not overlay_palette_cfg and not primary_palette_cfg:
+    if (
+        not annotation_color_dict
+        and not overlay_palette_cfg
+        and not primary_palette_cfg
+    ):
         overlay_palette = {label: "black" for label in annotation_labels}
     overlay_fontweight = (
         getattr(primary_config, "overlay_fontweight", None)
@@ -1320,7 +1450,9 @@ def generate_lineplot_twinx(
         )
     plt.draw()
     # Respect user-provided ylims when supplied.
-    main_ylim_override = getattr(primary_config, "ylim", None) if primary_config else None
+    main_ylim_override = (
+        getattr(primary_config, "ylim", None) if primary_config else None
+    )
     if main_ylim_override is not None:
         y0, y1 = main_ylim_override
         lower = y0 if y0 is not None else ax.get_ylim()[0]
@@ -1407,10 +1539,20 @@ def generate_lineplot_twinx(
         handles=[section_label] + handles,
         labels=["Location"] + labels,
         frameon=False,
-        prop=font_manager.FontProperties(family=resolve_font_family(), size=14, weight="bold"),
+        prop=font_manager.FontProperties(
+            family=resolve_font_family(), size=14, weight="bold"
+        ),
     )
-    adjust_legend(ax2, (1.2, 0.3))
-    adjust_legend(ax, (1.2, 0.8), redraw=True)
+    _adj_x_ax2 = getattr(ann_cfg, "adjust_legend_x", 1.2) if ann_cfg else 1.2
+    _adj_y_ax2 = getattr(ann_cfg, "adjust_legend_y", 0.3) if ann_cfg else 0.3
+    adjust_legend(ax2, (_adj_x_ax2, _adj_y_ax2))
+    _adj_x_ax = (
+        getattr(primary_config, "adjust_legend_x", 1.2) if primary_config else 1.2
+    )
+    _adj_y_ax = (
+        getattr(primary_config, "adjust_legend_y", 0.8) if primary_config else 0.8
+    )
+    adjust_legend(ax, (_adj_x_ax, _adj_y_ax), redraw=True)
     fig.subplots_adjust(right=primary_config.rhs_pdf_padding)
     ax.set_facecolor("white")
     fig.patch.set_alpha(0.0)

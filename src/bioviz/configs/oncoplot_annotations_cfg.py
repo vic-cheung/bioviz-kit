@@ -11,12 +11,16 @@ except Exception:  # pragma: no cover - fallback for older pydantic
 
 
 class TopAnnotationConfig(BaseModel):
-    """Configuration for top annotation tracks in oncoplots."""
+    """
+    Configuration for top annotation tracks in oncoplots.
+    """
 
     if ConfigDict is not None:
         model_config = ConfigDict(arbitrary_types_allowed=True)
     else:
-        model_config = BaseModel.model_config if hasattr(BaseModel, "model_config") else {}
+        model_config = (
+            BaseModel.model_config if hasattr(BaseModel, "model_config") else {}
+        )
 
     values: Annotated[pd.Series | dict[Any, Any] | Sequence[Any] | str, Any]
     colors: Annotated[dict, Any]
@@ -38,6 +42,17 @@ class TopAnnotationConfig(BaseModel):
 
     @field_validator("values", mode="before")
     def _coerce_values(cls, v):  # noqa: D417
+        """
+        Coerce various input types into a pandas Series for `values` field.
+
+        Args:
+           cls: Validator class reference.
+           v: Input value which may be a Series, dict, list, tuple, ndarray, or str/None.
+
+        Returns:
+           A `pd.Series` when appropriate, or the original value for strings/None.
+        """
+
         # None or string (column reference) pass through
         if v is None or isinstance(v, str):
             return v
@@ -51,10 +66,22 @@ class TopAnnotationConfig(BaseModel):
 
 
 class HeatmapAnnotationConfig(BaseModel):
+    """
+    Configuration for heatmap-style annotations displayed beneath the oncoplot.
+
+    Fields:
+       values: Column name or pd.Series mapping patient/sample -> annotation value.
+       colors: Optional mapping of category -> color used when rendering heatmap cells.
+       bottom_left_triangle_values / upper_right_triangle_values: Lists of values
+          that should be rendered as triangular halves inside the heatmap cell.
+    """
+
     if ConfigDict is not None:
         model_config = ConfigDict(arbitrary_types_allowed=True)
     else:
-        model_config = BaseModel.model_config if hasattr(BaseModel, "model_config") else {}
+        model_config = (
+            BaseModel.model_config if hasattr(BaseModel, "model_config") else {}
+        )
 
     values: Annotated[str | pd.Series | Sequence[Any], Any]
     # Allow constructing a HeatmapAnnotationConfig without explicitly providing `colors`.
@@ -71,6 +98,17 @@ class HeatmapAnnotationConfig(BaseModel):
 
     @field_validator("values", mode="before")
     def _coerce_heatmap_values(cls, v):  # noqa: D417
+        """
+        Coerce various input types into a pandas Series for Heatmap `values`.
+
+        Args:
+           cls: Validator class reference.
+           v: Input value (Series, dict, list, tuple, ndarray, or str/None).
+
+        Returns:
+           A `pd.Series` when appropriate, or the original value for strings/None.
+        """
+
         if v is None or isinstance(v, str):
             return v
         if isinstance(v, pd.Series):
@@ -89,6 +127,24 @@ def make_annotation_config(
     legend_title: str,
     **kwargs: Any,
 ) -> TopAnnotationConfig:
+    """
+    Convenience factory to create a `TopAnnotationConfig` from common inputs.
+
+    Args:
+       values: Series or mapping of patient->value (or a column name string).
+       colors: Mapping of category->color used for the annotation track.
+       display_name: Short name shown above the annotation.
+       legend_title: Title used in any legend for this annotation.
+       **kwargs: Additional `TopAnnotationConfig` keyword arguments.
+
+    Returns:
+       A populated `TopAnnotationConfig` instance.
+    """
+
     return TopAnnotationConfig(
-        values=values, colors=colors, display_name=display_name, legend_title=legend_title, **kwargs
+        values=values,
+        colors=colors,
+        display_name=display_name,
+        legend_title=legend_title,
+        **kwargs,
     )

@@ -26,6 +26,14 @@ class DefaultStyle:
     """
 
     def __init__(self) -> None:
+        """
+        Initialize the default style values.
+
+        Attributes:
+           font_family: Default font family for figures.
+           base_fontsize: Base font size (points) used for text scaling.
+           palette: Minimal color palette for common mutation categories.
+        """
         self.font_family = "DejaVu Sans"
         self.base_fontsize = 12
         # a small, neutral palette; consumers can override fully
@@ -36,6 +44,13 @@ class DefaultStyle:
         }
 
     def apply_theme(self, rc_overrides: Optional[dict] = None) -> None:
+        """
+        Apply the style to Matplotlib `rcParams`.
+
+        Args:
+           rc_overrides: Optional dict of rcParam keys/values to merge with the
+              defaults provided by this style.
+        """
         rc = {
             "font.family": self.font_family,
             "font.size": self.base_fontsize,

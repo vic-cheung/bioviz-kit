@@ -1,9 +1,17 @@
-from typing import Annotated, Any
+from typing import Annotated
 
 from pydantic import BaseModel, Field
 
 
 class StyledTableConfig(BaseModel):
+    """
+    Configuration for styled table rendering.
+
+    Controls table title, fonts, header/body colors, row heights, width and
+    behavior for automatic shrinking when many rows are present.
+
+    Each field corresponds to a visual parameter used by `generate_styled_table`.
+    """
     title: Annotated[str, Field(default="")]
     title_font_size: Annotated[float | int, Field(default=16)]
     header_bg_color: Annotated[str, Field(default="#1E6B5C")]

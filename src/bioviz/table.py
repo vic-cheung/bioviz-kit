@@ -18,6 +18,21 @@ def generate_styled_table(
     config: StyledTableConfig,
     ax: plt.Axes | None = None,
 ) -> plt.Figure | None:
+    """
+    Generate a styled matplotlib table figure from a DataFrame using `StyledTableConfig`.
+
+    Args:
+       df: pandas DataFrame containing the table data (rows x columns).
+       config: `StyledTableConfig` (pydantic) controlling visual aspects such as
+          title, font sizes, header/body colors, row heights, table width, and
+          automatic shrinking behavior when many rows are present.
+       ax: Optional matplotlib `Axes` to draw the table into; if omitted a new
+          figure and axes will be created and returned.
+
+    Returns:
+       A matplotlib `Figure` (or None if input DataFrame is empty).
+    """
+
     if df.empty:
         print("DataFrame is empty.")
         return None
@@ -31,7 +46,9 @@ def generate_styled_table(
     ax.axis("off")
 
     header_height = (
-        config.header_row_height if config.header_row_height is not None else config.row_height
+        config.header_row_height
+        if config.header_row_height is not None
+        else config.row_height
     )
 
     # Reduce margins so saved output is tight around the table
@@ -96,7 +113,9 @@ def generate_styled_table(
         family = header_family if is_header else body_family
         if family:
             text_obj.set_fontname(family)
-        text_obj.set_fontweight(config.header_font_weight if is_header else config.body_font_weight)
+        text_obj.set_fontweight(
+            config.header_font_weight if is_header else config.body_font_weight
+        )
         text_obj.set_color(config.header_text_color if is_header else "black")
         text_obj.set_ha("center")
         text_obj.set_va("center")
