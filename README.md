@@ -1,56 +1,93 @@
-bioviz
-======
+bioviz-kit
+==========
 
-A small, framework-agnostic plotting utilities package for plotting common
-clinical bioinformatics visualizations with a clean, publication-ready style.
+Framework-agnostic visualization library for publication-ready clinical and biological data plots.
 
-Installation
-------------
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 
-Install from PyPI using the package name `bioviz-kit` and import as `bioviz`:
+## Features
+
+- **Publication-ready styling** – Clean, professional visualizations out of the box
+- **Framework-agnostic** – Works with any data pipeline or analysis framework
+- **Customizable configurations** – Extensive theming and layout options
+- **Clinical & bioinformatics focused** – Specialized plot types for common analyses
+
+## Installation
+
+bioviz-kit
+==========
+
+Framework-agnostic visualization library for publication-ready clinical and biological data plots.
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+
+## Features
+
+- **Publication-ready styling** – Clean, professional visualizations out of the box
+- **Framework-agnostic** – Works with any data pipeline or analysis framework
+- **Customizable configurations** – Extensive theming and layout options
+- **Clinical & bioinformatics focused** – Specialized plot types for common analyses
+
+## Installation
+
+Install from PyPI:
 
 ```bash
 pip install bioviz-kit
-python -c "import bioviz; print(bioviz)"
 ```
 
-During development:
+Or install in development mode:
 
 ```bash
-python -m pip install -e .
+pip install -e .
 ```
 
-Requirements
-------------
+## Requirements
 
-This package depends on common plotting libraries which will be installed by pip:
+- Python 3.11+
+- pandas
+- matplotlib
+- seaborn
+- adjustText
 
-- `pandas`
-- `matplotlib`
-- `seaborn`
-- `adjustText`
-
-Usage
------
-
-Import top-level plotting modules:
+## Usage
 
 ```python
 from bioviz import lineplot, oncoplot
 
-# Use the functions provided by the modules, e.g.:
-# fig = lineplot.generate_styled_lineplot(df, config)
+# Generate styled plots with minimal configuration
+fig = lineplot.generate_styled_lineplot(df, config)
+fig = oncoplot.generate_styled_oncoplot(df, config)
 ```
 
-Design Notes
-------------
+See [examples/](examples/) for complete usage examples.
 
-- The package is intentionally agnostic to any company-specific styling. A lightweight
-	`DefaultStyle` is provided.
+## Examples
+
+- Example files live in the `examples/` directory. Recommended practices:
+    - Keep runnable `.py` scripts for quick CLI usage and reproducible examples.
+    - Provide companion `.ipynb` notebooks for narrative tutorials and figures. Convert with `jupytext` or `nbconvert` if needed:
+
+```bash
+pip install jupytext
+jupytext --to notebook examples/my_example.py -o examples/my_example.ipynb
+```
+
+    - Name files with short, descriptive snake_case (optionally numeric prefixes for ordered tutorials, e.g. `01_quickstart.ipynb`).
+    - Add a short header comment or top-level README in `examples/` describing each example's purpose and required inputs.
+
+## Documentation and ReadTheDocs
+
+TBD
+
+## Design Philosophy
+
+- Lightweight `DefaultStyle` provided; easily extended with custom themes
 
 
-Licensing
----------
+## Licensing
 
 - `bioviz-kit` is released under the MIT License © 2025 Victoria Cheung.
 
