@@ -179,12 +179,15 @@ fig_combined_single_df.savefig("line_plus_annotation_single_df_smoke.pdf")
 print("line_plus_annotation_single_df_smoke.pdf")
 
 # %%
-# 3) Table minimal data
-table_df = pd.DataFrame({"A": [1, 2, 3], "B": ["x", "y", "z"]})
+# 4) Table minimal data
+table_df = pd.DataFrame({"A": [1, 2, 3] * 20, "B": ["x", "y", "z"] * 20})
 table_cfg = StyledTableConfig(
     table_width=2,
-    row_height=0.3,
+    row_height=0.2,
     title="Minimal Table Example",
+    auto_shrink_total_height=True,
+    shrink_row_threshold=1,
+    max_total_height=4.0,
 )
 fig_table = generate_styled_table(table_df, table_cfg)
 if fig_table:
@@ -192,7 +195,28 @@ if fig_table:
     print("table_smoke.pdf")
 
 # %%
-# 4) Oncoplot minimal data with pathway (row-group) bars
+# 4b) Table with multi-line cells
+multi_table_df = pd.DataFrame(
+    {
+        "A": ["Line1\nLine2", "Single", "Line1\nLine2\nLine3\nLine4"],
+        "B": ["foo", "bar\nbaz", "qux"],
+    }
+)
+multi_table_cfg = StyledTableConfig(
+    table_width=2,
+    row_height=0.2,
+    title="Multiline Table Example",
+    auto_shrink_total_height=True,
+    shrink_row_threshold=1,
+    max_total_height=4.0,
+)
+fig_table_multi = generate_styled_table(multi_table_df, multi_table_cfg)
+if fig_table_multi:
+    print("table_multiline_smoke.pdf")
+
+
+# %%
+# 5) Oncoplot minimal data with pathway (row-group) bars
 mut_df = pd.DataFrame(
     {
         # include SNV, SV (bottom-left triangle) and CNV (upper-right triangle)

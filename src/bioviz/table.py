@@ -26,11 +26,8 @@ def generate_styled_table(
 
     created_fig = None
     if ax is None:
-        if config.absolute_font_size:
-            figsize = (config.table_scale[0], config.table_scale[1])
-            created_fig, ax = plt.subplots(figsize=figsize)
-        else:
-            created_fig, ax = plt.subplots()
+        # Use a consistent base figure size; avoid implicit scaling surprises
+        created_fig, ax = plt.subplots()
     fig = ax.figure
 
     ax.axis("off")
@@ -62,7 +59,8 @@ def generate_styled_table(
     row_heights = {}
     for (row, col), cell in table.get_celld().items():
         text = cell.get_text().get_text()
-        num_lines = text.count("\n") + 1
+        # Optionally ignore embedded newlines to keep uniform row heights
+        num_lines = text.count("\n") + 1 if config.respect_newlines else 1
         is_header = row == 0
         base_height = header_height if is_header else config.row_height
         if is_header:
@@ -72,12 +70,18 @@ def generate_styled_table(
         row_heights[row] = max(row_heights.get(row, base_height), needed_height)
 
     total_height = sum(row_heights.values())
-    table._bbox = [table_left, table_bottom, config.table_width, total_height]
 
-    if config.absolute_font_size:
-        table.scale(*config.table_scale)
-    else:
-        table.scale(*config.table_scale)
+    # When there are many rows, cap the overall table height to avoid oversized single-line cells
+    scale_factor = 1.0
+    if (
+        config.auto_shrink_total_height
+        and df.shape[0] >= config.shrink_row_threshold
+        and total_height >= config.max_total_height
+    ):
+        scale_factor = config.max_total_height / total_height
+
+    effective_total_height = total_height * scale_factor
+    table._bbox = [table_left, table_bottom, config.table_width, effective_total_height]
 
     for (row, col), cell in table.get_celld().items():
         text_obj = cell.get_text()
@@ -92,6 +96,7 @@ def generate_styled_table(
         text_obj.set_color(config.header_text_color if is_header else "black")
         text_obj.set_ha("center")
         text_obj.set_va("center")
+        # Keep row height fractions normalized; bbox enforces total height
         cell.set_height(row_heights[row] / total_height)
         if is_header:
             cell.set_facecolor(config.header_bg_color)
@@ -101,7 +106,7 @@ def generate_styled_table(
     if config.title:
         ax.text(
             0.5,
-            table_bottom + total_height + 0.05,
+            table_bottom + effective_total_height + 0.05,
             config.title,
             ha="center",
             va="bottom",
@@ -113,10 +118,8 @@ def generate_styled_table(
     # Tighten layout and adjust figure size to content. Use sensible minimums so very
     # small configs still produce a readable figure.
     padding_w, padding_h = 0.4, 0.4
-    scale_w, scale_h = config.table_scale
-    scale_norm = 12  # default scale; use as baseline to avoid huge figures
-    content_width = config.table_width * max(1.0, scale_w / scale_norm)
-    content_height = total_height * max(1.0, scale_h / scale_norm)
+    content_width = config.table_width
+    content_height = effective_total_height
     min_width, min_height = 2.0, 1.5
     fig.set_size_inches(
         max(content_width + padding_w, min_width),
