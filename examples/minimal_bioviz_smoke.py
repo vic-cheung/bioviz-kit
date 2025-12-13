@@ -1,5 +1,16 @@
+# ---
+# jupytext:
+#   formats: ipynb,py:percent
+#   text_representation:
+#     extension: .py
+#     format_name: percent
+# ---
 """
 Minimal smoke examples demonstrating bioviz line/line+annotation/oncoplot/table.
+
+This file is authored as a Jupytext `py:percent` script and pairs with
+`examples/minimal_bioviz_smoke.ipynb`. If you prefer an IDE workflow (e.g.
+VSCode), run the `.py` directly; it's designed to be lintable and editable.
 
 Run inside your project venv where `bioviz` deps are installed.
 """
@@ -26,19 +37,21 @@ from bioviz.table import generate_styled_table
 line_df = pd.DataFrame(
     {
         "Patient_ID": ["p1", "p1"],
-        "label": ["A", "A"],
-        "Timepoint": pd.Categorical(["T1", "T2"], categories=["T1", "T2"], ordered=True),
+        "Label": ["A", "A"],
+        "Timepoint": pd.Categorical(
+            ["T1", "T2"], categories=["T1", "T2"], ordered=True
+        ),
         "Value": [0.5, 1.0],
         "Variant_type": ["SNV", "SNV"],
     }
 )
 line_cfg = LinePlotConfig(
     entity_id="p1",
-    label_col="label",
+    label_col="Label",
     x="Timepoint",
     y="Value",
     secondary_group_col="Variant_type",
-    label_points=True,  # show point labels like the prior defaults
+    label_points=True,  # show point labels
     threshold=0.6,  # optional threshold line
     threshold_label=r"$LoD_{95}$",  # optional threshold label
     figure_transparent=True,
@@ -180,10 +193,11 @@ print("line_plus_annotation_single_df_smoke.pdf")
 
 # %%
 # 4) Table minimal data
-table_df = pd.DataFrame({"A": [1, 2, 3] * 20, "B": ["x", "y", "z"] * 20})
+table_df = pd.DataFrame({"A": [1, 2, 3] * 2, "B": ["x", "y", "z"] * 2})
 table_cfg = StyledTableConfig(
-    table_width=2,
-    row_height=0.2,
+    table_width=1.75,
+    header_row_height=0.2,
+    row_height=0.15,
     title="Minimal Table Example",
     auto_shrink_total_height=True,
     shrink_row_threshold=1,
@@ -204,7 +218,9 @@ multi_table_df = pd.DataFrame(
 )
 multi_table_cfg = StyledTableConfig(
     table_width=2,
+    header_row_height=0.2,
     row_height=0.2,
+    row_height_multiplier=0.75,
     title="Multiline Table Example",
     auto_shrink_total_height=True,
     shrink_row_threshold=1,
@@ -220,13 +236,12 @@ if fig_table_multi:
 mut_df = pd.DataFrame(
     {
         # include SNV, SV (bottom-left triangle) and CNV (upper-right triangle)
-        "Patient_ID": ["p1", "p1", "p2", "p2", "p1", "p2"],
-        "Gene": ["TP53", "KRAS", "KRAS", "TP53", "PIK3CA", "PIK3CA"],
-        "Mut_aa": ["R175H", "R175H", "G12D", "G12D", "E545K", "E545K"],
-        "Variant_type": ["SNV", "SNV", "CNV", "Fusion", "SNV", "SNV"],
+        "Patient_ID": ["p1", "p1", "p2", "p2", "p1", "p2", "p2"],
+        "Gene": ["TP53", "KRAS", "KRAS", "TP53", "PIK3CA", "PIK3CA", "PIK3CA"],
+        "Variant_type": ["SNV", "SNV", "CNV", "Fusion", "SNV", "SNV", "CNV"],
         # minimal top-annotation column for the example
-        "Cohort": ["A", "A", "B", "B", "A", "B"],
-        "Dose": ["100 mg", "100 mg", "200 mg", "200 mg", "100 mg", "200 mg"],
+        "Cohort": ["A", "A", "B", "B", "A", "B", "B"],
+        "Dose": ["100 mg", "100 mg", "200 mg", "200 mg", "100 mg", "200 mg", "200 mg"],
     }
 )
 

@@ -37,6 +37,7 @@ df = pd.DataFrame(
             "PARTICIPANT-3",
             "PARTICIPANT-4",
             "PARTICIPANT-4",
+            "PARTICIPANT-4",
             "PARTICIPANT-5",
             "PARTICIPANT-5",
             "PARTICIPANT-5",
@@ -57,6 +58,7 @@ df = pd.DataFrame(
             "DAIKON",
             "ALMOND",
             "PECAN",
+            "APPLE",
             "APPLE",
             "BANANA",
             "LETTUCE",
@@ -80,6 +82,7 @@ df = pd.DataFrame(
             "Neutral",
             "Neutral",
             "Popular",
+            "Unpopular",
             "Neutral",
             "Unpopular",
             "Popular",
@@ -105,6 +108,7 @@ df = pd.DataFrame(
             "Adult",
             "Adult",
             "Adult",
+            "Adult",
             "Child",
             "Child",
             "Child",
@@ -124,6 +128,7 @@ df = pd.DataFrame(
             "F",
             "F",
             "F",
+            "M",
             "M",
             "F",
             "M",
@@ -220,7 +225,10 @@ with PdfPages("oncoplot_aspects.pdf") as pdf:
             legend_category_order=["Age", "Sex", "Popularity"],
         )
         plotter = OncoplotPlotter(
-            df, onc_cfg, row_groups=row_groups, row_groups_color_dict=row_groups_color_dict
+            df,
+            onc_cfg,
+            row_groups=row_groups,
+            row_groups_color_dict=row_groups_color_dict,
         )
         fig_oncoplot = plotter.plot()
         fig_oncoplot.suptitle(f"Aspect = {aspect}", fontsize=20)
