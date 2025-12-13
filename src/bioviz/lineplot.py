@@ -580,7 +580,7 @@ def generate_styled_multigroup_lineplot(
             linestyle=getattr(config, "reference_style", "--"),
             linewidth=getattr(config, "reference_width", 1.0),
             alpha=getattr(config, "reference_alpha", 1.0),
-            zorder=1,
+            zorder=-1,
         )
         rdashes = getattr(config, "reference_dashes", (5, 5))
         if rdashes is not None:
@@ -896,29 +896,26 @@ def generate_lineplot_twinx(
     if use_absolute_scale_main:
         base_ylim = primary_config.absolute_ylim or (-5, 105)
         base_yticks = primary_config.absolute_yticks or [0, 25, 50, 75, 100]
-        ylim = base_ylim
-        yticks = base_yticks
-        new_ylim = ylim[1]
-        spacing = yticks[1] - yticks[0] if len(yticks) > 1 else 25
-        ax.set_ylim(ylim[0], ylim[1])
         ymax = combined_max
+        upper_bound = base_ylim[1]
+        if ymax > upper_bound:
+            upper_bound = math.ceil(ymax / 50.0) * 50
+        ylim = (base_ylim[0], upper_bound)
+        yticks = np.arange(base_ylim[0], upper_bound + 1, 25)
+        spacing = yticks[1] - yticks[0] if len(yticks) > 1 else 25
+        ax.set_ylim(*ylim)
+        new_ylim = ylim[1]
     else:
         if symmetric_ylim:
             ymax = combined_max
-            if ymax > default_ylim:
-                yticks = np.arange(-default_ylim + 5, ymax + 25, 25)
-                spacing = yticks[1] - yticks[0] if len(yticks) >= 2 else 5
-                new_ylim = math.ceil(ymax / spacing) * spacing
-                ax.set_ylim(-default_ylim, new_ylim)
-                yticks = ax.get_yticks()
-                spacing = yticks[1] - yticks[0] if len(yticks) > 1 else 1
-                _, new_ylim = ax.get_ylim()
-            else:
-                new_ylim = default_ylim
-                spacing = 25
-                ax.set_ylim(-default_ylim, new_ylim)
-                yticks = np.arange(-100, 101, spacing)
-                ax.set_yticks(yticks)
+            extent = default_ylim
+            if ymax > extent:
+                extent = math.ceil(ymax / 50.0) * 50
+            new_ylim = extent
+            spacing = 25
+            ax.set_ylim(-extent, extent)
+            yticks = np.arange(-extent, extent + 1, spacing)
+            ax.set_yticks(yticks)
         else:
             if has_df:
                 ymin = y1_min
@@ -965,7 +962,7 @@ def generate_lineplot_twinx(
                 linestyle=getattr(ann_cfg, "reference_style", "--"),
                 linewidth=getattr(ann_cfg, "reference_width", 1.0),
                 alpha=getattr(ann_cfg, "reference_alpha", 1.0),
-                zorder=1,
+                zorder=-1,
             )
             rdashes = getattr(ann_cfg, "reference_dashes", (5, 5))
             if rdashes is not None:
@@ -1040,7 +1037,7 @@ def generate_lineplot_twinx(
                 linestyle=overlay_vline_style,
                 linewidth=overlay_vline_width,
                 alpha=overlay_vline_alpha,
-                zorder=1,
+                zorder=-1,
             )
             if overlay_vline_dashes is not None:
                 vline_kwargs["dashes"] = overlay_vline_dashes
@@ -1157,7 +1154,7 @@ def generate_lineplot_twinx(
             linestyle=getattr(ann_cfg, "reference_style", "--"),
             linewidth=getattr(ann_cfg, "reference_width", 1.0),
             alpha=getattr(ann_cfg, "reference_alpha", 1.0),
-            zorder=1,
+            zorder=-1,
         )
         rdashes = getattr(ann_cfg, "reference_dashes", (5, 5))
         if rdashes is not None:
