@@ -262,13 +262,17 @@ def generate_styled_lineplot(
             # Place near the right edge of the plotting range for better stability with custom xlim
             x_span = xlim[1] - xlim[0]
             text_x = xlim[1] - 0.02 * x_span
+            label_color = getattr(config, "threshold_label_color", None) or getattr(
+                config, "threshold_color", "#C0C0C0"
+            )
             ax.text(
                 text_x,
                 text_y,
                 label_text,
-                fontsize=14,
+                fontsize=getattr(config, "threshold_label_fontsize", 14),
                 fontweight="normal",
-                color="#C0C0C0",
+                color=label_color,
+                alpha=getattr(config, "threshold_label_alpha", 1.0),
                 zorder=0,
                 ha="right",
             )

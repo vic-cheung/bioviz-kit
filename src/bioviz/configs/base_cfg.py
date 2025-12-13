@@ -59,9 +59,6 @@ class BasePlotConfig(BaseModel):
         ),
     ]
 
-    # Optional label for threshold annotations (e.g., LoD). Default is None for neutrality.
-    threshold_label: Annotated[str | None, Field(default=None)]
-
     # Figure-level display controls; keep axes facecolor opaque. These
     # configure the Figure patch used for export/transparent backgrounds.
     figure_facecolor: Annotated[str | None, Field(default=None)]

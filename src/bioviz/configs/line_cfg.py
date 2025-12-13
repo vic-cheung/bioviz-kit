@@ -5,7 +5,9 @@ from .base_cfg import BasePlotConfig
 
 
 class LinePlotConfig(BasePlotConfig):
-    """Unified config for single- and multi-series longitudinal line plots (and optional overlay)."""
+    """
+    Unified config for single- and multi-series longitudinal line plots (and optional overlay).
+    """
 
     # Identity / grouping
     entity_id: Annotated[str | int | None, Field(default=None, alias="patient_id")]
@@ -65,6 +67,10 @@ class LinePlotConfig(BasePlotConfig):
     threshold_below_label: Annotated[str, Field(default="Below Threshold")]
     threshold_above_label: Annotated[str, Field(default="Above Threshold")]
     filled_marker_scale: Annotated[float, Field(default=1.2)]
+    threshold_label: Annotated[str | None, Field(default=None)]
+    threshold_label_color: Annotated[str | None, Field(default=None)]
+    threshold_label_alpha: Annotated[float, Field(default=1.0)]
+    threshold_label_fontsize: Annotated[float, Field(default=14)]
 
     # Twin/annotations
     twin_alpha: Annotated[float, Field(default=0.5)]  # opacity for twin series
