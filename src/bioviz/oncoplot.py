@@ -14,10 +14,12 @@ import matplotlib.pyplot as plt  # type: ignore
 import matplotlib.transforms as mtransforms  # type: ignore
 import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
+from matplotlib import font_manager  # type: ignore
 from matplotlib.patches import Patch  # type: ignore
 
 from .plot_configs import HeatmapAnnotationConfig, OncoplotConfig
 from .style import DefaultStyle, StyleBase
+from bioviz.plot_utils import resolve_font_family
 
 # Do not apply a global style at import time; callers should pass a style.
 
@@ -1365,6 +1367,7 @@ class OncoplotPlotter:
         # Ensure newly added text objects have up-to-date extents before measuring spacing
         fig.canvas.draw()
 
+        legend_family = resolve_font_family()
         lgd = ax.legend(
             handles=legend_handles,
             bbox_to_anchor=bbox_to_anchor,
@@ -1372,11 +1375,15 @@ class OncoplotPlotter:
             frameon=False,
             handlelength=1,
             handleheight=1,
-            fontsize=legend_fontsize,
+            prop=font_manager.FontProperties(family=legend_family, size=legend_fontsize),
             ncol=1,
             title_fontsize=legend_title_fontsize,
             **legend_kwargs,
         )
+        if legend_family:
+            lgd.get_title().set_fontproperties(
+                font_manager.FontProperties(family=legend_family, size=legend_title_fontsize)
+            )
         # Bold the injected header labels (heatmap header + annotation headers)
         bold_labels = {heatmap_legend_label}
         bold_labels.update(

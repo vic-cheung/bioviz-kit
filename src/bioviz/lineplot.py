@@ -17,10 +17,9 @@ from matplotlib import font_manager
 from matplotlib.lines import Line2D
 
 from bioviz.configs import LinePlotConfig
-from bioviz.plot_utils import adjust_legend
-from bioviz.style import DefaultStyle
+from bioviz.plot_utils import adjust_legend, resolve_font_family
 
-DefaultStyle().apply_theme()
+
 # Expose public function
 __all__ = [
     "generate_lineplot",
@@ -405,12 +404,15 @@ def generate_styled_lineplot(
             ]
         )
 
+    # Use caller/applied rcParams for legend font; fall back to matplotlib default
+    legend_family = resolve_font_family()
+
     lgd = ax.legend(
         handles=handles + detection_handles,
         bbox_to_anchor=(1.25, 0.5),
         loc="center",
         frameon=False,
-        prop=font_manager.FontProperties(family=DefaultStyle().font_family, size=14, weight="bold"),
+        prop=font_manager.FontProperties(family=legend_family, size=14, weight="bold"),
     )
 
     if config.match_legend_text_color:
@@ -668,9 +670,7 @@ def generate_styled_multigroup_lineplot(
             bbox_to_anchor=(1.25, 0.5),
             loc="center",
             frameon=False,
-            prop=font_manager.FontProperties(
-                family=DefaultStyle().font_family, size=14, weight="bold"
-            ),
+            prop=font_manager.FontProperties(family=resolve_font_family(), size=14, weight="bold"),
         )
     else:
         leg = ax.get_legend()
@@ -1081,7 +1081,7 @@ def generate_lineplot_twinx(
                     y + 0.3,
                     label,
                     fontdict={
-                        "family": DefaultStyle().font_family,
+                        "family": resolve_font_family(),
                         "size": 10,
                         "weight": overlay_fontweight,
                     },
@@ -1105,7 +1105,7 @@ def generate_lineplot_twinx(
         ax.set_ylabel(
             r"Diameter %$\Delta$ from First Timepoint",
             fontdict={
-                "family": DefaultStyle().font_family,
+                "family": resolve_font_family(),
                 "size": ax.yaxis.label.get_fontsize(),
                 "weight": "bold",
             },
@@ -1119,9 +1119,7 @@ def generate_lineplot_twinx(
             handles=[section_label] + handles,
             labels=["Location"] + labels,
             frameon=False,
-            prop=font_manager.FontProperties(
-                family=DefaultStyle().font_family, size=14, weight="bold"
-            ),
+            prop=font_manager.FontProperties(family=resolve_font_family(), size=14, weight="bold"),
         )
         adjust_legend(ax, (1.2, 0.7))
         fig.subplots_adjust(right=primary_config.rhs_pdf_padding if primary_config else 0.85)
@@ -1306,7 +1304,7 @@ def generate_lineplot_twinx(
                 y + 0.3,
                 label,
                 fontdict={
-                    "family": DefaultStyle().font_family,
+                    "family": resolve_font_family(),
                     "size": 10,
                     "weight": overlay_fontweight,
                 },
@@ -1377,7 +1375,7 @@ def generate_lineplot_twinx(
     ax2.set_ylabel(
         r"Diameter %$\Delta$ from First Timepoint",
         fontdict={
-            "family": DefaultStyle().font_family,
+            "family": resolve_font_family(),
             "size": ax.yaxis.label.get_fontsize(),
             "weight": "bold",
         },
@@ -1405,7 +1403,7 @@ def generate_lineplot_twinx(
         handles=[section_label] + handles,
         labels=["Location"] + labels,
         frameon=False,
-        prop=font_manager.FontProperties(family=DefaultStyle().font_family, size=14, weight="bold"),
+        prop=font_manager.FontProperties(family=resolve_font_family(), size=14, weight="bold"),
     )
     adjust_legend(ax2, (1.2, 0.3))
     adjust_legend(ax, (1.2, 0.8), redraw=True)

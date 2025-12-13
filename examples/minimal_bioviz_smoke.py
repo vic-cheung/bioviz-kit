@@ -208,7 +208,7 @@ multi_table_cfg = StyledTableConfig(
     title="Multiline Table Example",
     auto_shrink_total_height=True,
     shrink_row_threshold=1,
-    max_total_height=4.0,
+    max_total_height=3,
 )
 fig_table_multi = generate_styled_table(multi_table_df, multi_table_cfg)
 if fig_table_multi:

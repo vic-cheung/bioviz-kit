@@ -8,9 +8,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 from bioviz.configs import StyledTableConfig
-from bioviz.style import DefaultStyle
-
-DefaultStyle().apply_theme()
+from bioviz.plot_utils import resolve_font_family
 
 __all__ = ["generate_styled_table"]
 
@@ -83,6 +81,10 @@ def generate_styled_table(
     effective_total_height = total_height * scale_factor
     table._bbox = [table_left, table_bottom, config.table_width, effective_total_height]
 
+    header_family = config.header_font_family or resolve_font_family()
+    body_family = config.body_font_family or resolve_font_family()
+    title_family = header_family or body_family or resolve_font_family()
+
     for (row, col), cell in table.get_celld().items():
         text_obj = cell.get_text()
         is_header = row == 0
@@ -91,7 +93,9 @@ def generate_styled_table(
         if len(text_obj.get_text()) > config.max_chars:
             font_size = max(8, font_size - config.shrink_by)
         text_obj.set_fontsize(font_size)
-        text_obj.set_fontname(config.header_font_family if is_header else config.body_font_family)
+        family = header_family if is_header else body_family
+        if family:
+            text_obj.set_fontname(family)
         text_obj.set_fontweight(config.header_font_weight if is_header else config.body_font_weight)
         text_obj.set_color(config.header_text_color if is_header else "black")
         text_obj.set_ha("center")
@@ -112,6 +116,7 @@ def generate_styled_table(
             va="bottom",
             fontsize=config.title_font_size,
             fontweight="bold",
+            fontfamily=title_family,
             transform=ax.transAxes,
         )
 
