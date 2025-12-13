@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "bioviz-kit"
 version = "0.2.1"
-description = "Framework-agnostic plotting utilities for visualizing data"
+description = "Framework-agnostic plotting utilities for biological and clinical data visualization"
 readme = "README.md"
 license = { file = "LICENSE" }
 authors = [ { name = "Victoria Cheung", email = "victoriakcheung@gmail.com" } ]
