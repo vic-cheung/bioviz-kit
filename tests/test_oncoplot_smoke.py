@@ -1,5 +1,4 @@
 # %%
-import math
 import numpy as np
 import pandas as pd
 import matplotlib.colors as mcolors
@@ -50,12 +49,8 @@ def test_oncoplot_shapes_centered():
         assert abs(cx - round(cx)) <= tol and abs(cy - round(cy)) <= tol
 
 
-import math
-import pytest
-import pandas as pd
 
-from bioviz.oncoplot import OncoplotPlotter
-from bioviz.plot_configs import OncoplotConfig, HeatmapAnnotationConfig
+from bioviz.plot_configs import OncoplotConfig
 
 
 def test_oncoplot_cell_alignment(tmp_path):
