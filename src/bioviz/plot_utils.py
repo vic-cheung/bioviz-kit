@@ -7,31 +7,6 @@ import matplotlib as mpl
 import numpy as np
 from matplotlib.axes import Axes
 
-try:
-    from tm_toolbox.data_preprocessing import get_filtered_entity_data
-except Exception:  # pragma: no cover - optional dependency
-
-    def get_filtered_entity_data(*args, **kwargs):
-        """
-        Placeholder for `get_filtered_entity_data` from `tm_toolbox` when that
-        optional dependency is unavailable.
-
-        This placeholder raises an informative ImportError instructing the user
-        to install `tm-toolbox` or provide an equivalent implementation.
-
-        Args:
-           *args: Positional arguments passed through to the real implementation.
-           **kwargs: Keyword arguments passed through to the real implementation.
-
-        Raises:
-           ImportError: Always; indicates the optional dependency is missing.
-        """
-        raise ImportError(
-            "get_filtered_entity_data requires tm_toolbox.data_preprocessing; "
-            "install tm-toolbox or provide this function"
-        )
-
-
 # Expose all public functions
 __all__ = [
     "resolve_font_family",
@@ -232,9 +207,7 @@ def get_oncoplot_dimensions_fixed_cell(
             adjusted_cell_width = max(min_cell_width, target_cell_width * scale_factor)
         if nrows > gene_threshold:
             scale_factor = min(1.0, 0.95 * (gene_threshold / nrows) ** 0.3)
-            adjusted_cell_height = max(
-                min_cell_height, target_cell_height * scale_factor
-            )
+            adjusted_cell_height = max(min_cell_height, target_cell_height * scale_factor)
     width = ncols * adjusted_cell_width
     height = nrows * adjusted_cell_height
     if num_top_annotations > 0:
