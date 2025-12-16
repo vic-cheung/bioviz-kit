@@ -663,6 +663,9 @@ class OncoplotPlotter:
         bar_x,
         bar_width,
     ) -> None:
+        # If no row_group_col provided or no row_groups, nothing to draw.
+        if not row_group_col or row_groups is None:
+            return
         """
         Draw row-group bars and labels on the left side of the oncoplot.
 
@@ -803,13 +806,20 @@ class OncoplotPlotter:
                 "and value_col (mutation/value type). Missing: " + ", ".join(missing_fields)
             )
 
+        # Normalize `row_group_col`: treat empty string/falsey as None so callers
+        # may omit it to disable all row-group related drawing logic.
+        self.row_group_col = (
+            config.row_group_col if getattr(config, "row_group_col", None) else None
+        )
+
         # Track whether the plotter should assemble row-groups. If the caller did
-        # not provide a `row_group_col` and did not supply a `row_groups` mapping,
-        # we will skip row-group assembly entirely (no dummy columns injected).
+        # not provide a `row_group_col` (None) or did not supply a `row_groups`
+        # mapping, we will skip row-group assembly entirely (no dummy columns
+        # injected) and avoid drawing bars/labels.
         self._has_row_groups = False
-        if config.row_group_col and row_groups is not None:
+        if self.row_group_col is not None and row_groups is not None:
             self._has_row_groups = True
-        elif config.row_group_col and config.row_group_col in self.df.columns:
+        elif self.row_group_col is not None and self.row_group_col in self.df.columns:
             self._has_row_groups = True
 
         self.col_split_by = config.col_split_by
@@ -818,7 +828,6 @@ class OncoplotPlotter:
         self.col_sort_by = config.col_sort_by or [config.x_col]
         self.x_col = config.x_col
         self.y_col = config.y_col
-        self.row_group_col = config.row_group_col
         self.figsize = config.figsize
         self.cell_aspect = config.cell_aspect
         self.top_annotations = config.top_annotations
@@ -1675,12 +1684,9 @@ class OncoplotPlotter:
         bar_x_shift = heatmap_left - total_offset_data - bar_width_draw
         self._row_group_bar_patches.clear()
         self._row_group_label_texts.clear()
-        if (
-            row_groups is not None
-            and isinstance(row_groups, pd.DataFrame)
-            and not row_groups.empty
-            and row_group_col in row_groups.columns
-        ):
+        # Only draw row-group bars/labels when the plotter was configured
+        # with a `row_group_col` and provided `row_groups` mapping.
+        if self._has_row_groups:
             for pathway in row_groups[row_group_col].unique():
                 color = (
                     row_groups_color_dict.get(pathway, "black")
