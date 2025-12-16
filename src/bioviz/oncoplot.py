@@ -1359,6 +1359,9 @@ class OncoplotPlotter:
             if pd.api.types.is_categorical_dtype(series):
                 series = series.cat.remove_unused_categories()
             present_values = set(series.dropna().unique())
+            # Filter mutation_value_order to only include observed values
+            if mutation_value_order:
+                mutation_value_order = [v for v in mutation_value_order if v in present_values]
         else:
             present_values = set(heatmap_annotation.colors.keys())
 
@@ -1431,6 +1434,8 @@ class OncoplotPlotter:
                     if pd.api.types.is_categorical_dtype(ann_values):
                         ann_values = ann_values.cat.remove_unused_categories()
                     present_ann_values = set(ann_values.dropna().unique())
+                    # Filter value_order to only include observed values
+                    value_order = [v for v in value_order if str(v) in present_ann_values]
                 else:
                     present_ann_values = set(ann_config.colors.keys())
 
