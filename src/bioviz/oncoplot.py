@@ -1465,16 +1465,26 @@ class OncoplotPlotter:
                         except Exception:
                             # fallback: positional/unnamed series
                             v = None
-                        if pd.notna(v):
-                            observed.append(v)
+                        # Ensure we check element-wise nullness
+                        if not (isinstance(v, (list, tuple, pd.Series, pd.Index))):
+                            if pd.notna(v):
+                                observed.append(v)
+                        else:
+                            # If the retrieved value is an array-like, extend with its non-null members
+                            for elem in v:
+                                if pd.notna(elem):
+                                    observed.append(elem)
 
-                    if pd.api.types.is_categorical_dtype(series):
-                        # If series has categorical dtype, remove unused categories then
-                        # re-evaluate observed values.
-                        try:
-                            series = series.cat.remove_unused_categories()
-                        except Exception:
-                            pass
+                    # If series has categorical dtype, remove unused categories then keep observed as-is
+                    try:
+                        dtype = getattr(series, "dtype", None)
+                        if isinstance(dtype, pd.CategoricalDtype):
+                            try:
+                                series = series.cat.remove_unused_categories()
+                            except Exception:
+                                pass
+                    except Exception:
+                        pass
 
                     present_ann_values = set(str(v) for v in observed)
                     # Filter value_order to only include observed values (string compare)
