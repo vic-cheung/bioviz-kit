@@ -62,6 +62,26 @@ class TopAnnotationConfig(BaseModel):
             return pd.Series(v)
         return v
 
+    @field_validator("colors", mode="before")
+    def _coerce_colors_keys(cls, v):
+        # Ensure mapping keys are strings to avoid mismatches when comparing
+        # against dataframe values that may be stringified in the plotting code.
+        if v is None:
+            return v
+        try:
+            return {str(k): val for k, val in dict(v).items()}
+        except Exception:
+            return v
+
+    @field_validator("legend_value_order", mode="before")
+    def _coerce_legend_order(cls, v):
+        if v is None:
+            return v
+        try:
+            return [str(x) for x in list(v)]
+        except Exception:
+            return v
+
 
 class HeatmapAnnotationConfig(BaseModel):
     """
@@ -114,6 +134,24 @@ class HeatmapAnnotationConfig(BaseModel):
         if isinstance(v, (list, tuple, np.ndarray)):
             return pd.Series(v)
         return v
+
+    @field_validator("colors", mode="before")
+    def _coerce_heatmap_colors_keys(cls, v):
+        if v is None:
+            return v
+        try:
+            return {str(k): val for k, val in dict(v).items()}
+        except Exception:
+            return v
+
+    @field_validator("legend_value_order", mode="before")
+    def _coerce_heatmap_legend_order(cls, v):
+        if v is None:
+            return v
+        try:
+            return [str(x) for x in list(v)]
+        except Exception:
+            return v
 
 
 def make_annotation_config(

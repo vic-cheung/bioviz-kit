@@ -790,19 +790,27 @@ class OncoplotPlotter:
         self._row_group_label_texts = []
 
         # Validate required logical columns up front to avoid inscrutable KeyErrors later.
+        # Allow callers to omit `row_group_col` when they don't want row-group bars/labels.
         required_fields = {
             "x_col": config.x_col,
             "y_col": config.y_col,
             "value_col": config.value_col,
-            "row_group_col": config.row_group_col,
         }
         missing_fields = [name for name, val in required_fields.items() if not val]
         if missing_fields:
             raise ValueError(
                 "OncoplotConfig must set x_col (patient/sample ID), y_col (feature/gene), "
-                "value_col (mutation/value type), and row_group_col (pathway/group). Missing: "
-                + ", ".join(missing_fields)
+                "and value_col (mutation/value type). Missing: " + ", ".join(missing_fields)
             )
+
+        # Track whether the plotter should assemble row-groups. If the caller did
+        # not provide a `row_group_col` and did not supply a `row_groups` mapping,
+        # we will skip row-group assembly entirely (no dummy columns injected).
+        self._has_row_groups = False
+        if config.row_group_col and row_groups is not None:
+            self._has_row_groups = True
+        elif config.row_group_col and config.row_group_col in self.df.columns:
+            self._has_row_groups = True
 
         self.col_split_by = config.col_split_by
         self.col_split_order = config.col_split_order
@@ -996,7 +1004,7 @@ class OncoplotPlotter:
 
         genes_ordered, row_group_positions, row_positions = [], [], []
         pos, last_pathway = 0.0, None
-        if (
+        if self._has_row_groups and (
             row_groups is not None
             and isinstance(row_groups, pd.DataFrame)
             and not row_groups.empty
@@ -1358,10 +1366,13 @@ class OncoplotPlotter:
                 series = pd.Series(heatmap_annotation.values)
             if pd.api.types.is_categorical_dtype(series):
                 series = series.cat.remove_unused_categories()
-            present_values = set(series.dropna().unique())
-            # Filter mutation_value_order to only include observed values
+            # Use stringified values for comparisons to avoid mismatches between
+            # numeric and string representations (e.g., 100 vs '100 mg') coming
+            # from upstream configs or pandas categorical categories.
+            present_values = set(str(v) for v in series.dropna().unique())
+            # Filter mutation_value_order to only include observed values (string compare)
             if mutation_value_order:
-                mutation_value_order = [v for v in mutation_value_order if v in present_values]
+                mutation_value_order = [v for v in mutation_value_order if str(v) in present_values]
         else:
             present_values = set(heatmap_annotation.colors.keys())
 
@@ -1430,11 +1441,34 @@ class OncoplotPlotter:
                 ann_border_width = getattr(ann_config, "border_width", 0.5)
 
                 if remove_unused_keys:
-                    ann_values = pd.Series(ann_config.values)
-                    if pd.api.types.is_categorical_dtype(ann_values):
-                        ann_values = ann_values.cat.remove_unused_categories()
-                    present_ann_values = set(ann_values.dropna().unique())
-                    # Filter value_order to only include observed values
+                    # Build a Series aligned to the plotted x_values (patient columns)
+                    if isinstance(ann_config.values, str):
+                        series = df[ann_config.values]
+                    else:
+                        series = pd.Series(ann_config.values)
+
+                    # Collect only values that correspond to the plotted x_values so
+                    # legends reflect the subset actually rendered (not the full-study map).
+                    observed = []
+                    for xv in x_values:
+                        try:
+                            v = series.get(xv)
+                        except Exception:
+                            # fallback: positional/unnamed series
+                            v = None
+                        if pd.notna(v):
+                            observed.append(v)
+
+                    if pd.api.types.is_categorical_dtype(series):
+                        # If series has categorical dtype, remove unused categories then
+                        # re-evaluate observed values.
+                        try:
+                            series = series.cat.remove_unused_categories()
+                        except Exception:
+                            pass
+
+                    present_ann_values = set(str(v) for v in observed)
+                    # Filter value_order to only include observed values (string compare)
                     value_order = [v for v in value_order if str(v) in present_ann_values]
                 else:
                     present_ann_values = set(ann_config.colors.keys())
@@ -1463,7 +1497,7 @@ class OncoplotPlotter:
                             else:
                                 annotation_handles.append(Patch(facecolor=face, label=str(value)))
                 if remove_unused_keys:
-                    if ann_values.isna().any():
+                    if any(pd.isna(v) for v in observed):
                         annotation_handles.append(Patch(color=ann_config.na_color, label="NA"))
                 else:
                     if hasattr(ann_config, "na_color") and ann_config.na_color is not None:
