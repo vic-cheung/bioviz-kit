@@ -999,14 +999,18 @@ def generate_lineplot_twinx(
 
     if use_absolute_scale_main:
         base_ylim = primary_config.absolute_ylim or (-5, 105)
-        base_yticks = primary_config.absolute_yticks or [0, 25, 50, 75, 100]
+        absolute_yticks = getattr(primary_config, "absolute_yticks", None)
         ymax = combined_max
         upper_bound = base_ylim[1]
         if ymax > upper_bound:
             upper_bound = math.ceil(ymax / 50.0) * 50
         ylim = (base_ylim[0], upper_bound)
-        yticks = np.arange(base_ylim[0], upper_bound + 1, 25)
-        spacing = yticks[1] - yticks[0] if len(yticks) > 1 else 25
+        if absolute_yticks:
+            yticks = np.asarray(absolute_yticks)
+            spacing = yticks[1] - yticks[0] if len(yticks) > 1 else 25
+        else:
+            yticks = np.arange(base_ylim[0], upper_bound + 1, 25)
+            spacing = yticks[1] - yticks[0] if len(yticks) > 1 else 25
         ax.set_ylim(*ylim)
         new_ylim = ylim[1]
     else:
