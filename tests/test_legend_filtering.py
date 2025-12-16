@@ -1,6 +1,6 @@
 import pandas as pd
 from bioviz.oncoplot import OncoplotPlotter
-from bioviz.plot_configs import HeatmapAnnotationConfig, TopAnnotationConfig, OncoplotConfig
+from bioviz.configs import HeatmapAnnotationConfig, TopAnnotationConfig, OncoplotConfig
 
 # %%
 # Build a minimal dataframe: two patients, only one mutation value present

@@ -3,8 +3,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.colors as mcolors
 from bioviz.oncoplot import OncoplotPlotter
-from bioviz.configs import OncoplotConfig
-from bioviz.plot_configs import HeatmapAnnotationConfig
+from bioviz.configs import HeatmapAnnotationConfig, OncoplotConfig
 
 
 # %%
@@ -47,10 +46,6 @@ def test_oncoplot_shapes_centered():
     tol = 0.3
     for cx, cy in centers:
         assert abs(cx - round(cx)) <= tol and abs(cy - round(cy)) <= tol
-
-
-
-from bioviz.plot_configs import OncoplotConfig
 
 
 def test_oncoplot_cell_alignment(tmp_path):

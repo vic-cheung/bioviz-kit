@@ -2,6 +2,12 @@ from typing import Annotated, Any
 
 from pydantic import BaseModel, Field
 
+try:
+    # pydantic v1 compatibility
+    from pydantic import root_validator  # type: ignore
+except Exception:
+    root_validator = None
+
 from .oncoplot_annotations_cfg import (
     TopAnnotationConfig,  # noqa: F401
     HeatmapAnnotationConfig,
@@ -103,9 +109,31 @@ class OncoplotConfig(BaseModel):
     # Defaults for rendering triangles in heatmap cells. These are passed
     # through to the constructed `HeatmapAnnotationConfig` when the
     # caller doesn't provide one explicitly.
-    heatmap_bottom_left_triangle_values: Annotated[
-        list[str], Field(default_factory=list)
-    ]
-    heatmap_upper_right_triangle_values: Annotated[
-        list[str], Field(default_factory=list)
-    ]
+    heatmap_bottom_left_triangle_values: Annotated[list[str], Field(default_factory=list)]
+    heatmap_upper_right_triangle_values: Annotated[list[str], Field(default_factory=list)]
+
+    # Compatibility mapping: allow callers to specify `bar_width` and treat
+    # it as an alias for `bar_width_points` when they intend point-based widths.
+    # Implement both a pre-root validator (pydantic v1) and a v2 post-init hook.
+    if root_validator is not None:
+
+        @root_validator(pre=True)
+        def _map_bar_width_to_points(cls, values):
+            if "bar_width" in values and "bar_width_points" not in values:
+                # Treat user-supplied bar_width as points if they provided it.
+                values["bar_width_points"] = values["bar_width"]
+            return values
+
+    def model_post_init(self, __context: dict | None = None) -> None:  # pydantic v2
+        # When using pydantic v2 the pre-validator above may not be present.
+        # If the user explicitly set `bar_width` but not `bar_width_points`,
+        # copy the value across so `bar_width` serves as an alias.
+        try:
+            fields_set = getattr(self, "__pydantic_fields_set__", set())
+        except Exception:
+            fields_set = set()
+        if "bar_width" in fields_set and "bar_width_points" not in fields_set:
+            try:
+                object.__setattr__(self, "bar_width_points", float(getattr(self, "bar_width", 0)))
+            except Exception:
+                pass

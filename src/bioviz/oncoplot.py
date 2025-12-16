@@ -513,6 +513,8 @@ class OncoplotPlotter:
         bar_shift_points=-240.0,
         label_shift_points=-220.0,
         use_points=True,
+        bar_width: float | None = None,
+        bar_width_points: float | None = None,
     ) -> None:
         """
         Shift row-group bar patches and their labels horizontally to avoid overlaps.
@@ -552,14 +554,35 @@ class OncoplotPlotter:
             bar_shift_data = bar_shift
             label_shift_data = label_shift
 
+        # Compute optional bar width in data units if caller provided it.
+        # Treat `bar_width` as a points-based alias for user convenience.
+        bar_width_data = None
+        if bar_width is not None or bar_width_points is not None:
+            try:
+                # Prefer explicit points arg; otherwise interpret `bar_width` as points.
+                bw_pts = bar_width_points if bar_width_points is not None else float(bar_width)
+                bar_width_data = bw_pts / pts_per_data_unit_x
+            except Exception:
+                bar_width_data = None
+
         referenced_bars = getattr(self, "_row_group_bar_patches", [])
         referenced_labels = getattr(self, "_row_group_label_texts", [])
         for patch in referenced_bars:
             patch.set_x(patch.get_x() + bar_shift_data)
+            if bar_width_data is not None:
+                try:
+                    patch.set_width(bar_width_data)
+                except Exception:
+                    pass
         if not referenced_bars:
             for patch in ax.patches:
                 if hasattr(patch, "_is_row_group_bar") and patch._is_row_group_bar:
                     patch.set_x(patch.get_x() + bar_shift_data)
+                    if bar_width_data is not None:
+                        try:
+                            patch.set_width(bar_width_data)
+                        except Exception:
+                            pass
         for txt in referenced_labels:
             txt.set_x(txt.get_position()[0] + label_shift_data)
         if not referenced_labels and row_groups is not None:
@@ -882,6 +905,21 @@ class OncoplotPlotter:
         self.fig_bottom_margin = config.fig_bottom_margin
         self.fig_y_margin = config.fig_y_margin
 
+        # Detect which config fields were explicitly set by the caller (pydantic)
+        fields_set = getattr(
+            config, "model_fields_set", getattr(config, "__pydantic_fields_set__", set())
+        )
+
+        # Treat `bar_width` as a shorthand alias for `bar_width_points` when the
+        # user provided it explicitly and did not provide `bar_width_points`.
+        # This makes `bar_width` consistently behave as a point-based width.
+        if "bar_width" in fields_set and "bar_width_points" not in fields_set:
+            try:
+                self.bar_width_points = float(self.bar_width)
+            except Exception:
+                # Ignore invalid conversion; leave defaults in place
+                pass
+
         # Apply provided style or default
         self.style = style or DefaultStyle()
         try:
@@ -954,7 +992,6 @@ class OncoplotPlotter:
         top_annotation_intra_spacer = self.top_annotation_intra_spacer
         col_split_gap = self.col_split_gap
         row_split_gap = self.row_split_gap
-        bar_width = self.bar_width
         bar_offset = self.bar_offset
         bar_buffer = self.bar_buffer
         row_group_label_fontsize = self.row_group_label_fontsize
@@ -1074,7 +1111,6 @@ class OncoplotPlotter:
         if auto_adjust:
             cell_w = float(getattr(config, "target_cell_width", 1.5))
             cell_h = float(getattr(config, "target_cell_height", 1.5))
-            aspect_factor = float(getattr(config, "aspect", 1.0) or 1.0)
 
             # Keep logical cell geometry stable; aspect is applied on the axes.
             base_cell_aspect = float(getattr(config, "cell_aspect", 1.0) or 1.0)
@@ -1604,7 +1640,6 @@ class OncoplotPlotter:
             gene_labels.append(text)
 
         use_point_offset = getattr(self.config, "xticklabel_use_points", False)
-        pts_per_data_unit = (fig.get_figheight() * 72.0) / max(nrows, 1)
         offset_val = float(self.xticklabel_yoffset)
         if use_point_offset:
             # Point-based offset: interpret xticklabel_yoffset directly as points.
