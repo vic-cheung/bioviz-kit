@@ -93,5 +93,5 @@ TBD
 
 ### Thanks
 
-This package was spun out of internal tooling at Revolution Medicines.
+This package was spun out of internal tooling I wrote at Revolution Medicines.
 Many thanks to the team there for allowing the code to be open sourced.
