@@ -15,6 +15,10 @@ src/bioviz/configs/line_cfg.py
 src/bioviz/configs/oncoplot_annotations_cfg.py
 src/bioviz/configs/oncoplot_cfg.py
 src/bioviz/configs/table_cfg.py
+src/bioviz/plot_composites/__init__.py
+src/bioviz/plot_composites/grouped.py
+src/bioviz/plot_composites/plot_composite_helpers.py
+src/bioviz/plot_composites/waterfall.py
 src/bioviz_kit.egg-info/PKG-INFO
 src/bioviz_kit.egg-info/SOURCES.txt
 src/bioviz_kit.egg-info/dependency_links.txt

@@ -1,0 +1,793 @@
+"""Volcano plotting with a pydantic `VolcanoConfig`.
+
+This file provides a single, explicit configuration object `VolcanoConfig`
+and a `plot_volcano(cfg)` function that uses it. No wrapper/shims for legacy
+APIs are provided — this is the canonical, hard refactor you requested.
+"""
+
+from __future__ import annotations
+
+from typing import Optional, Iterable, List, Dict, Tuple
+
+import math
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from pydantic import Field
+from .configs.volcano_cfg import VolcanoConfig
+
+try:
+    from adjustText import adjust_text
+except Exception:
+
+    def adjust_text(texts, *args, **kwargs):  # type: ignore
+        return None
+
+
+def _internal_resolve_values(df: pd.DataFrame, cfg: VolcanoConfig) -> List[str]:
+    # If caller provided exact values to label, honor that
+    if cfg.values_to_label:
+        base = list(cfg.values_to_label)
+        if cfg.additional_values_to_label:
+            base = list(dict.fromkeys(base + list(cfg.additional_values_to_label)))
+        return base
+
+    # Determine label source (explicit column or index fallback)
+    if cfg.label_col and cfg.label_col in df.columns:
+        labels_series = df[cfg.label_col].astype(str)
+    else:
+        labels_series = df.index.astype(str)
+
+    # Build a significance mask using the configured `y_col` and `sig_thresh`.
+    sig_mask = pd.Series(False, index=df.index)
+    try:
+        if cfg.y_col and cfg.y_col in df.columns:
+            sig_mask = df[cfg.y_col].astype(float).fillna(1.0) <= cfg.sig_thresh
+    except Exception:
+        sig_mask = pd.Series(False, index=df.index)
+
+    eff_m = (
+        df[cfg.x_col].abs() >= cfg.abs_x_thresh
+        if cfg.x_col in df.columns
+        else pd.Series(False, index=df.index)
+    )
+
+    mask = sig_mask & eff_m if cfg.sig_only else (sig_mask | eff_m)
+    base = labels_series.loc[mask].tolist()
+
+    if cfg.additional_values_to_label:
+        available = set(labels_series.tolist())
+        valid_add = [g for g in cfg.additional_values_to_label if g in available]
+        base = list(dict.fromkeys(base + valid_add))
+
+    return base
+
+
+def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.Axes]:
+    """Plot a volcano using the provided `VolcanoConfig`.
+
+    This function is intentionally strict: it requires a `VolcanoConfig` and
+    the dataframe to plot. It uses the config for everything and performs no
+    backward-compatibility shims.
+    """
+    df = df.copy()
+
+    # Resolve labels
+    values_to_label_resolved = _internal_resolve_values(df, cfg)
+
+    # y values (allow transformation of p-values to -log10 if requested)
+    # Start with raw values; we may replace with -log10(p) below.
+    y_vals = (
+        df[cfg.y_col]
+        if (cfg.y_col and cfg.y_col in df.columns)
+        else pd.Series(np.nan, index=df.index)
+    )
+    transformed_y = False
+    # Decide whether to transform the y-column to -log10:
+    # - `cfg.log_transform_ycol` True -> perform transform
+    # - False -> do not transform
+    do_transform = bool(getattr(cfg, "log_transform_ycol", False))
+
+    # Perform the -log10 transform only when explicitly requested.
+    if do_transform and cfg.y_col and cfg.y_col in df.columns:
+        try:
+            y_vals = -np.log10(
+                pd.to_numeric(df[cfg.y_col], errors="coerce").replace([np.inf, -np.inf], np.nan)
+            )
+            transformed_y = True
+        except Exception:
+            y_vals = df[cfg.y_col]
+
+    # Figure / axis
+    if cfg.ax is None:
+        fig, ax = plt.subplots(figsize=cfg.figsize)
+        # Make figure background transparent while keeping axes face white
+        try:
+            fig.patch.set_alpha(0.0)
+        except Exception:
+            pass
+        try:
+            ax.set_facecolor("white")
+        except Exception:
+            pass
+    else:
+        ax = cfg.ax
+        fig = ax.figure
+
+    # Helper: compute a point on the marker edge (in data coords) in the
+    # direction toward `target_disp` so connectors attach at the marker edge
+    # rather than the marker center. This uses `cfg.marker_size` (the scatter
+    # `s` parameter) to estimate a display-space radius.
+    def _marker_edge_data_point(xd: float, yd: float, target_disp: Tuple[float, float]):
+        try:
+            # center in display coords
+            center_disp = ax.transData.transform((xd, yd))
+            dx = target_disp[0] - center_disp[0]
+            dy = target_disp[1] - center_disp[1]
+            norm = math.hypot(dx, dy)
+            if norm <= 1e-8:
+                return xd, yd
+            ux, uy = dx / norm, dy / norm
+            # estimate marker radius in display pixels. `cfg.marker_size` is
+            # passed to scatter as `s` (points^2); approximate radius in
+            # points as sqrt(s)/2, then convert to pixels: pixels = points * dpi/72.
+            r_points = math.sqrt(max(cfg.marker_size, 1.0)) / 2.0
+            r_pixels = r_points * fig.dpi / 72.0
+            edge_disp = (center_disp[0] + ux * r_pixels, center_disp[1] + uy * r_pixels)
+            edge_data = ax.transData.inverted().transform(edge_disp)
+            return float(edge_data[0]), float(edge_data[1])
+        except Exception:
+            return xd, yd
+
+    # significance mask (use appropriate threshold when y was transformed)
+    sig_mask = pd.Series(False, index=df.index)
+    sig_thresh = getattr(cfg, "sig_thresh", None)
+    if sig_thresh is not None and cfg.y_col in df.columns:
+        if transformed_y:
+            try:
+                thr = -np.log10(sig_thresh)
+            except Exception:
+                thr = None
+            if thr is not None:
+                sig_mask = (y_vals.fillna(0.0) >= thr) & (df[cfg.x_col].abs() >= cfg.abs_x_thresh)
+        else:
+            sig_mask = (df[cfg.y_col].fillna(1.0) <= sig_thresh) & (
+                df[cfg.x_col].abs() >= cfg.abs_x_thresh
+            )
+
+    # color selection helpers
+    def _choose_direction_color(val):
+        try:
+            s = str(val).lower()
+        except Exception:
+            s = ""
+        if any(tok in s for tok in ("down", "decrease", "loss", "neg", "-")):
+            return cfg.palette.get("sig_down")
+        if any(tok in s for tok in ("up", "increase", "gain", "pos", "+")):
+            return cfg.palette.get("sig_up")
+        return cfg.palette.get("sig_up")
+
+    colors = []
+    if cfg.direction_col and cfg.direction_col in df.columns and cfg.direction_colors:
+        for i in df.index:
+            if not sig_mask.loc[i]:
+                colors.append(cfg.palette.get("nonsig"))
+            else:
+                colors.append(
+                    cfg.direction_colors.get(
+                        df.loc[i, cfg.direction_col], cfg.palette.get("sig_up")
+                    )
+                )
+    else:
+        for i in df.index:
+            if not sig_mask.loc[i]:
+                colors.append(cfg.palette.get("nonsig"))
+                continue
+            if cfg.direction_col and cfg.direction_col in df.columns:
+                color = _choose_direction_color(df.loc[i, cfg.direction_col])
+            else:
+                try:
+                    xv = float(df.loc[i, cfg.x_col])
+                except Exception:
+                    xv = 0.0
+                color = cfg.palette.get("sig_up") if xv >= 0 else cfg.palette.get("sig_down")
+            colors.append(color)
+
+    # axis limits: compute sensible defaults but allow caller overrides via cfg.xlim/cfg.ylim
+    x_data_min, x_data_max = df[cfg.x_col].min(), df[cfg.x_col].max()
+    y_data_max = y_vals.max()
+    x_limit = max(4, abs(x_data_min), abs(x_data_max))
+    y_limit = max(8, y_data_max)
+    # If caller provided explicit limits, use them. Otherwise use computed defaults.
+    if getattr(cfg, "xlim", None) is not None:
+        try:
+            ax.set_xlim(tuple(cfg.xlim))
+        except Exception:
+            ax.set_xlim(-x_limit, x_limit)
+    else:
+        ax.set_xlim(-x_limit, x_limit)
+
+    if getattr(cfg, "ylim", None) is not None:
+        try:
+            ax.set_ylim(tuple(cfg.ylim))
+        except Exception:
+            ax.set_ylim(bottom=-0.5, top=y_limit)
+    else:
+        ax.set_ylim(bottom=-0.5, top=y_limit)
+
+    # draw threshold lines
+    ax.axvline(x=0.0, color="#000000", linestyle="-", linewidth=0.8, zorder=1)
+    if cfg.x_thresh:
+        for xt in cfg.x_thresh:
+            ax.axvline(
+                x=xt,
+                color=(cfg.x_thresh_line_color or cfg.thresh_line_color),
+                linestyle=(cfg.x_thresh_line_style or cfg.thresh_line_style),
+                linewidth=(cfg.x_thresh_line_width or cfg.thresh_line_width),
+                zorder=1,
+            )
+    else:
+        # If caller didn't provide explicit x_thresholds, draw lines
+        # at ±abs_x_thresh when it's set to a finite positive value.
+        try:
+            if cfg.abs_x_thresh is not None and cfg.abs_x_thresh > 0:
+                ax.axvline(
+                    x=cfg.abs_x_thresh,
+                    color=(cfg.x_thresh_line_color or cfg.thresh_line_color),
+                    linestyle=(cfg.x_thresh_line_style or cfg.thresh_line_style),
+                    linewidth=(cfg.x_thresh_line_width or cfg.thresh_line_width),
+                    zorder=1,
+                )
+                ax.axvline(
+                    x=-cfg.abs_x_thresh,
+                    color=(cfg.x_thresh_line_color or cfg.thresh_line_color),
+                    linestyle=(cfg.x_thresh_line_style or cfg.thresh_line_style),
+                    linewidth=(cfg.x_thresh_line_width or cfg.thresh_line_width),
+                    zorder=1,
+                )
+        except Exception:
+            pass
+    if cfg.y_thresh is not None:
+        thr_y = cfg.y_thresh
+    elif transformed_y and getattr(cfg, "sig_thresh", None) is not None:
+        try:
+            thr_y = -np.log10(getattr(cfg, "sig_thresh", None))
+        except Exception:
+            thr_y = None
+    else:
+        thr_y = None
+
+    if thr_y is not None:
+        ax.axhline(
+            y=thr_y,
+            color=(cfg.y_thresh_line_color or cfg.thresh_line_color),
+            linestyle=(cfg.y_thresh_line_style or cfg.thresh_line_style),
+            linewidth=(cfg.y_thresh_line_width or cfg.thresh_line_width),
+            zorder=1,
+        )
+
+    # scatter (use explicit cfg.marker_size)
+    ax.scatter(
+        df[cfg.x_col],
+        y_vals,
+        c=colors,
+        edgecolor="black",
+        linewidths=0.5,
+        s=cfg.marker_size,
+        zorder=3,
+    )
+
+    # build labels aggregated by coordinates
+    all_texts = []
+    orig_points = []
+    forced_texts = []
+    forced_points = []
+    adjustable_texts = []
+    adjustable_points = []
+    coord_to_labels = {}
+    for i, row in df.iterrows():
+        try:
+            coord = (float(row[cfg.x_col]), float(y_vals.loc[i]))
+        except Exception:
+            continue
+        dir_val = (
+            row[cfg.direction_col]
+            if (cfg.direction_col and cfg.direction_col in df.columns)
+            else None
+        )
+        # Resolve label value (use label_col if present, else use index)
+        try:
+            if cfg.label_col and cfg.label_col in df.columns:
+                labval = str(row[cfg.label_col])
+            else:
+                labval = str(i)
+        except Exception:
+            labval = str(i)
+        coord_to_labels.setdefault(coord, []).append((i, labval, bool(sig_mask.loc[i]), dir_val))
+
+    x_min, x_max = ax.get_xlim()
+    y_min, y_max = ax.get_ylim()
+    # Build a group -> color map for left/right labels if possible
+    group_side_color = {}
+    try:
+        if cfg.direction_col and cfg.direction_col in df.columns:
+            # Build means for each group and assign colors strictly by sign
+            g_kwargs = cfg.group_label_kwargs or {}
+            color_val = g_kwargs.get("color", {})
+            color_map = color_val if isinstance(color_val, dict) else {}
+            means = df.groupby(cfg.direction_col)[cfg.x_col].mean()
+            for grp in means.index:
+                lab = str(grp)
+                # explicit override first
+                if lab in color_map:
+                    group_side_color[lab] = color_map[lab]
+                    continue
+                if cfg.direction_colors and lab in (cfg.direction_colors or {}):
+                    group_side_color[lab] = cfg.direction_colors.get(lab)
+                    continue
+                # assign by mean sign
+                try:
+                    if means.loc[grp] < 0:
+                        group_side_color[lab] = cfg.palette.get("sig_down")
+                    else:
+                        group_side_color[lab] = cfg.palette.get("sig_up")
+                except Exception:
+                    group_side_color[lab] = cfg.palette.get("nonsig")
+    except Exception:
+        group_side_color = {}
+
+    for coord, items in coord_to_labels.items():
+        x, y = coord
+        if not (x_min <= x <= x_max and y_min <= y <= y_max):
+            continue
+        items = [it for it in items if it[1] in values_to_label_resolved]
+        sig_items = [it for it in items if it[2]]
+        nonsig_items = [it for it in items if not it[2]]
+        stacked = sig_items + nonsig_items
+        labels = [it[1] for it in stacked]
+        if not labels:
+            continue
+        text_str = "\n".join(labels)
+        # Determine group-based color if available
+        group_val = stacked[0][3] if stacked and len(stacked) and len(stacked[0]) > 3 else None
+        ann_color = None
+        if group_val is not None and str(group_val) in group_side_color:
+            ann_color = group_side_color[str(group_val)]
+
+        # If no group color found, fall back to the actual marker color for the representative point
+        point_color = None
+        try:
+            rep_idx = stacked[0][0]
+            # map index to position in colors list
+            pos = list(df.index).index(rep_idx)
+            point_color = colors[pos]
+        except Exception:
+            point_color = None
+
+        # Choose placement mode: forced outward by point sign, or adjustable
+        forced_mode = getattr(cfg, "force_label_side_by_point_sign", False)
+        if forced_mode:
+            # deterministic outward placement (no adjust_text for these)
+            # compute offset in data units according to `label_offset_mode`
+            mode = getattr(cfg, "label_offset_mode", "fraction")
+            raw_offset = getattr(cfg, "label_offset", 0.05)
+            if mode == "fraction":
+                x0, x1 = ax.get_xlim()
+                span = float(x1 - x0) if x1 != x0 else 1.0
+                offset_data = raw_offset * span
+            elif mode == "axes":
+                # convert axis fraction to display then to data units using a small dx
+                try:
+                    disp0 = ax.transAxes.transform((0.0, 0.0))
+                    disp1 = ax.transAxes.transform((raw_offset, 0.0))
+                    dx_disp = disp1[0] - disp0[0]
+                    data_dx = (
+                        ax.transData.inverted().transform((dx_disp, 0))[0]
+                        - ax.transData.inverted().transform((0, 0))[0]
+                    )
+                    offset_data = data_dx
+                except Exception:
+                    offset_data = raw_offset
+            else:
+                # data mode
+                offset_data = raw_offset
+
+            if x < 0:
+                tx = x - offset_data
+                ha = "right"
+            else:
+                tx = x + offset_data
+                ha = "left"
+            ty = y
+            is_sig = bool(stacked and stacked[0][2])
+            if is_sig:
+                color_final = (
+                    ann_color
+                    or point_color
+                    or cfg.annotation_sig_color
+                    or cfg.palette.get("sig_up")
+                )
+                weight = getattr(cfg, "annotation_fontweight_sig", "bold")
+                fontsize = cfg.fontsize_sig
+            else:
+                color_final = (
+                    ann_color or point_color or getattr(cfg, "annotation_nonsig_color", "#6e6e6e")
+                )
+                weight = getattr(cfg, "annotation_fontweight_nonsig", "normal")
+                fontsize = cfg.fontsize_nonsig
+
+            # Compute label y so the connector from label->point is ~45 degrees
+            try:
+                # point display coords
+                p_disp = ax.transData.transform((x, y))
+                # display x of the label (same y assumed initially)
+                label_x_disp = ax.transData.transform((tx, y))[0]
+                dx_disp = label_x_disp - p_disp[0]
+                # aim for dy_disp ~= abs(dx_disp) to get ~45°; place label above the point
+                dy_disp = abs(dx_disp)
+                label_y_disp = p_disp[1] + dy_disp
+                # convert back to data coords for the y position
+                ty = ax.transData.inverted().transform((label_x_disp, label_y_disp))[1]
+            except Exception:
+                ty = y
+
+            t = ax.text(
+                tx,
+                ty,
+                text_str,
+                fontsize=fontsize,
+                fontweight=weight,
+                color=color_final,
+                ha=ha,
+                clip_on=False,
+                zorder=4,
+            )
+            force_adjust = getattr(cfg, "force_labels_adjustable", False)
+            if force_adjust:
+                # include forced labels in the adjustable/adjust_text flow
+                adjustable_texts.append(t)
+                adjustable_points.append((x, y))
+            else:
+                # straight connector from label to point
+                try:
+                    # Attach connector to the marker edge in the direction of
+                    # the label (so the connector points toward the label).
+                    try:
+                        if getattr(cfg, "attach_to_marker_edge", True):
+                            label_disp = ax.transData.transform((tx, ty))
+                            attach_x, attach_y = _marker_edge_data_point(x, y, label_disp)
+                        else:
+                            attach_x, attach_y = x, y
+                    except Exception:
+                        attach_x, attach_y = x, y
+                    ax.annotate(
+                        "",
+                        xy=(attach_x, attach_y),
+                        xytext=(tx, ty),
+                        arrowprops={
+                            "arrowstyle": "-",
+                            "color": cfg.connector_color,
+                            "lw": cfg.connector_width,
+                            "alpha": 0.8,
+                            "shrinkA": 0,
+                            "shrinkB": 0,
+                            "connectionstyle": "arc3,rad=0",
+                        },
+                        zorder=3.5,
+                    )
+                except Exception:
+                    pass
+                forced_texts.append(t)
+                forced_points.append((x, y))
+            all_texts.append(t)
+            all_texts.append(t)
+        else:
+            # adjustable placement (subject to adjust_text)
+            if stacked and stacked[0][2]:
+                color_final = (
+                    ann_color
+                    or point_color
+                    or cfg.annotation_sig_color
+                    or cfg.palette.get("sig_up")
+                )
+                t = ax.text(
+                    x,
+                    y,
+                    text_str,
+                    fontsize=cfg.fontsize_sig,
+                    fontweight=getattr(cfg, "annotation_fontweight_sig", "bold"),
+                    color=color_final,
+                    clip_on=False,
+                    zorder=4,
+                )
+            else:
+                color_final = (
+                    ann_color or point_color or getattr(cfg, "annotation_nonsig_color", "#6e6e6e")
+                )
+                ha = "right" if x < 0 else "left"
+                # random horizontal offset and vertical jitter (interpreted per mode)
+                lo, hi = getattr(cfg, "horiz_offset_range", (0.02, 0.06))
+                samp = np.random.uniform(lo, hi)
+                if getattr(cfg, "label_offset_mode", "fraction") == "fraction":
+                    x0, x1 = ax.get_xlim()
+                    span = float(x1 - x0) if x1 != x0 else 1.0
+                    horiz_offset = -abs(samp * span) if x < 0 else abs(samp * span)
+                elif getattr(cfg, "label_offset_mode", "fraction") == "axes":
+                    # convert axes fraction to data dx
+                    try:
+                        disp0 = ax.transAxes.transform((0.0, 0.0))
+                        disp1 = ax.transAxes.transform((samp, 0.0))
+                        dx_disp = disp1[0] - disp0[0]
+                        data_dx = (
+                            ax.transData.inverted().transform((dx_disp, 0))[0]
+                            - ax.transData.inverted().transform((0, 0))[0]
+                        )
+                        horiz_offset = -abs(data_dx) if x < 0 else abs(data_dx)
+                    except Exception:
+                        horiz_offset = -abs(samp) if x < 0 else abs(samp)
+                else:
+                    horiz_offset = -abs(samp) if x < 0 else abs(samp)
+
+                vlo, vhi = getattr(cfg, "vert_jitter_range", (-0.03, 0.03))
+                vj = np.random.uniform(vlo, vhi)
+                if getattr(cfg, "label_offset_mode", "fraction") == "fraction":
+                    x0, x1 = ax.get_xlim()
+                    span = float(x1 - x0) if x1 != x0 else 1.0
+                    vert_jitter = vj * span
+                else:
+                    vert_jitter = vj
+                t = ax.text(
+                    x + horiz_offset,
+                    y + vert_jitter,
+                    text_str,
+                    fontsize=cfg.fontsize_nonsig,
+                    color=color_final,
+                    fontweight=getattr(cfg, "annotation_fontweight_nonsig", "normal"),
+                    ha=ha,
+                    clip_on=False,
+                    zorder=4,
+                )
+            adjustable_texts.append(t)
+            adjustable_points.append((x, y))
+            all_texts.append(t)
+
+    # Axis labels: show transformed math-style labels when appropriate
+    # Axis labels (overrides allowed)
+    if cfg.x_label:
+        ax.set_xlabel(cfg.x_label)
+    else:
+        x_label = cfg.x_col
+        lx = cfg.x_col.lower()
+        if "log2" in lx or "log_2" in lx:
+            # Keep 'OR' non-italicized inside math mode
+            ax.set_xlabel(r"$\log_{2}(\mathrm{OR})$")
+        else:
+            ax.set_xlabel(cfg.x_col)
+
+    if cfg.y_label:
+        ax.set_ylabel(cfg.y_label)
+    else:
+        if transformed_y:
+            # Render the original column name literally inside math text to avoid
+            # interpreting underscores as subscripts (e.g. p_adj)
+            safe_col = cfg.y_col.replace("_", r"\_")
+            ax.set_ylabel(r"$-\log_{10}(\text{%s})$" % safe_col)
+        else:
+            ax.set_ylabel(cfg.y_col)
+
+    # Title and font sizes
+    if cfg.title:
+        ax.set_title(cfg.title, fontsize=cfg.title_fontsize)
+    ax.xaxis.label.set_size(cfg.axis_label_fontsize)
+    ax.yaxis.label.set_size(cfg.axis_label_fontsize)
+    for tick in ax.xaxis.get_ticklabels() + ax.yaxis.get_ticklabels():
+        tick.set_fontsize(cfg.tick_label_fontsize)
+
+    # Group labels at top: infer from direction_col if not explicitly provided
+    if cfg.group_label_top is None and cfg.direction_col and cfg.direction_col in df.columns:
+        try:
+            means = df.groupby(cfg.direction_col)[cfg.x_col].mean().dropna()
+            if len(means) >= 2:
+                sorted_idx = means.sort_values().index.tolist()
+                cfg_group = (str(sorted_idx[0]), str(sorted_idx[-1]))
+            elif len(means) == 1:
+                cfg_group = (str(means.index[0]), "")
+            else:
+                cfg_group = None
+        except Exception:
+            unique_vals = list(pd.Series(df[cfg.direction_col].astype(str)).unique())
+            if len(unique_vals) >= 2:
+                cfg_group = (unique_vals[0], unique_vals[1])
+            elif len(unique_vals) == 1:
+                cfg_group = (unique_vals[0], "")
+            else:
+                cfg_group = None
+    else:
+        cfg_group = cfg.group_label_top
+
+    if cfg_group:
+        try:
+            left_label, right_label = cfg_group
+            g_kwargs = cfg.group_label_kwargs or {}
+            color_val = g_kwargs.get("color", {})
+            color_map = color_val if isinstance(color_val, dict) else {}
+            fontsize_g = g_kwargs.get("fontsize", int(cfg.axis_label_fontsize * 0.9))
+            left_rot = g_kwargs.get("rotation", 12)
+            right_rot = g_kwargs.get("rotation_right", -12)
+            ax.text(
+                0.02,
+                1.02,
+                left_label,
+                transform=ax.transAxes,
+                ha="left",
+                va="bottom",
+                fontsize=fontsize_g,
+                fontweight="bold",
+                color=color_map.get(left_label, cfg.palette.get("sig_up", "#000000")),
+                rotation=left_rot,
+            )
+            ax.text(
+                0.98,
+                1.02,
+                right_label,
+                transform=ax.transAxes,
+                ha="right",
+                va="bottom",
+                fontsize=fontsize_g,
+                fontweight="bold",
+                color=color_map.get(right_label, cfg.palette.get("nonsig", "gainsboro")),
+                rotation=right_rot,
+            )
+        except Exception:
+            pass
+
+    # local staggering for adjustable texts
+    for i in range(1, len(adjustable_texts)):
+        x_prev, y_prev = adjustable_texts[i - 1].get_position()
+        x_curr, y_curr = adjustable_texts[i].get_position()
+        if abs(x_curr - x_prev) < 0.2 and abs(y_curr - y_prev) < 0.2:
+            adjustable_texts[i].set_position((x_curr, y_prev + 0.4))
+
+    # apply adjust_text only to adjustable labels
+    if getattr(cfg, "use_adjust_text", True) and cfg.adjust and adjustable_texts:
+        try:
+            adjust_text(
+                adjustable_texts,
+                x=[p[0] for p in adjustable_points],
+                y=[p[1] for p in adjustable_points],
+                ax=ax,
+                expand=(2.5, 2.5),
+                force_text=(1.2, 1.5),
+                force_points=(0.01, 0.01),
+                autoalign="xy",
+                arrowprops=None,
+                lim=30000,
+                ensure_inside_axes=True,
+            )
+        except Exception:
+            pass
+
+    # Draw connector lines from adjustable points to their text bboxes.
+    # Forced texts already received straight connectors at placement time.
+    try:
+        fig.canvas.draw()
+        renderer = fig.canvas.get_renderer()
+    except Exception:
+        renderer = None
+
+    for txt, orig in zip(adjustable_texts, adjustable_points):
+        try:
+            tx, ty = txt.get_position()
+            ox, oy = orig
+            if math.hypot(tx - ox, ty - oy) <= 1e-8:
+                continue
+
+            if renderer is None:
+                # Attach to marker edge when renderer isn't available; aim
+                # toward the text position (display coords of tx/ty)
+                try:
+                    if getattr(cfg, "attach_to_marker_edge", True):
+                        label_disp = ax.transData.transform((tx, ty))
+                        attach_x, attach_y = _marker_edge_data_point(ox, oy, label_disp)
+                    else:
+                        attach_x, attach_y = ox, oy
+                except Exception:
+                    attach_x, attach_y = ox, oy
+                ax.annotate(
+                    "",
+                    xy=(attach_x, attach_y),
+                    xytext=(tx, ty),
+                    arrowprops={
+                        "arrowstyle": "-",
+                        "color": cfg.connector_color,
+                        "lw": cfg.connector_width,
+                        "alpha": 0.8,
+                        "shrinkA": 0,
+                        "shrinkB": 0,
+                        "connectionstyle": "arc3,rad=0",
+                    },
+                    zorder=3.5,
+                )
+                continue
+
+            bbox = txt.get_window_extent(renderer=renderer)
+            # Convert data point to display coords
+            point_disp = ax.transData.transform((ox, oy))
+
+            # Determine which horizontal edge of the text bbox is closer
+            # to the point (left or right) and connect to that edge.
+            left_edge_x = bbox.x0
+            right_edge_x = bbox.x1
+            # If point is left of text, attach to left edge; if right, to right edge;
+            # if inside horizontally, attach to nearest edge.
+            if point_disp[0] <= left_edge_x:
+                attach_x = left_edge_x
+            elif point_disp[0] >= right_edge_x:
+                attach_x = right_edge_x
+            else:
+                # inside horizontally -> choose nearest edge
+                attach_x = (
+                    left_edge_x
+                    if (point_disp[0] - left_edge_x) < (right_edge_x - point_disp[0])
+                    else right_edge_x
+                )
+
+            attach_y = bbox.y0 + bbox.height / 2.0
+            attach_data = ax.transData.inverted().transform((attach_x, attach_y))
+            # compute marker-edge attach point in data coords
+            try:
+                if getattr(cfg, "attach_to_marker_edge", True):
+                    # Aim the marker-edge attach point toward the text bbox attach
+                    # display coordinate (attach_x, attach_y) computed above.
+                    label_disp = (attach_x, attach_y)
+                    attach_marker_x, attach_marker_y = _marker_edge_data_point(ox, oy, label_disp)
+                else:
+                    attach_marker_x, attach_marker_y = ox, oy
+            except Exception:
+                attach_marker_x, attach_marker_y = ox, oy
+
+            ax.annotate(
+                "",
+                xy=(attach_marker_x, attach_marker_y),
+                xytext=(attach_data[0], attach_data[1]),
+                arrowprops={
+                    "arrowstyle": "-",
+                    "color": cfg.connector_color,
+                    "lw": cfg.connector_width,
+                    "alpha": 0.8,
+                    "shrinkA": 0,
+                    "shrinkB": 0,
+                    "connectionstyle": "arc3,rad=0",
+                },
+                zorder=3.5,
+            )
+        except Exception:
+            pass
+
+        xs = [t.get_position()[0] for t in all_texts]
+        ys = [t.get_position()[1] for t in all_texts]
+        if xs and ys:
+            max_x = max(abs(min(xs)), abs(max(xs)), x_limit)
+            ax.set_xlim(-max_x - 0.5, max_x + 0.5)
+            max_y = max(max(ys), y_limit)
+            ax.set_ylim(bottom=-0.5, top=max_y + 0.5)
+
+    # Respect explicit ticks from config if provided, otherwise keep existing logic
+    if getattr(cfg, "xticks", None) is not None:
+        try:
+            ax.set_xticks(list(cfg.xticks))
+        except Exception:
+            pass
+    elif cfg.xtick_step is not None:
+        left = int(math.floor(ax.get_xlim()[0] / cfg.xtick_step) * cfg.xtick_step)
+        right = int(math.ceil(ax.get_xlim()[1] / cfg.xtick_step) * cfg.xtick_step)
+        ax.set_xticks(list(range(left, right + 1, int(cfg.xtick_step))))
+
+    if getattr(cfg, "yticks", None) is not None:
+        try:
+            ax.set_yticks(list(cfg.yticks))
+        except Exception:
+            pass
+
+    plt.tight_layout()
+    return fig, ax

@@ -5,6 +5,7 @@ adjusttext>=0.8
 loguru>=0.7
 pydantic<3,>=1.10
 ipykernel>=7.1.0
+statsmodels>=0.14.6
 
 [testing]
 pytest

@@ -18,6 +18,7 @@ dependencies = [
 	"loguru>=0.7",
 	"pydantic>=1.10,<3",
 	"ipykernel>=7.1.0",
+	"statsmodels>=0.14.6",
 ]
 
 classifiers = [
