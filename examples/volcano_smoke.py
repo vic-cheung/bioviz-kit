@@ -10,7 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 import pandas as pd
 from bioviz.configs.volcano_cfg import VolcanoConfig
-from bioviz.plot_composites.volcano import plot_volcano
+from bioviz.plots.volcano import plot_volcano
 
 
 def make_df():

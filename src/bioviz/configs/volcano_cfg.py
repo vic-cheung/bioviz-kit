@@ -190,6 +190,32 @@ class VolcanoConfig(BaseModel):
 
     adjust: bool = True
 
+    # Whether to transform the y-column using -log10 (e.g., p-values -> -log10(p))
+    log_transform_ycol: bool = Field(
+        False,
+        description=("When True, the y column will be transformed with -log10 before plotting."),
+    )
+
+    # Nudging / label layout knobs used by the plotting code but optional
+    nudge_padding_pixels: float = Field(
+        6.0,
+        description=(
+            "Display-space padding used when nudging labels away from nearby markers (pixels)."
+        ),
+    )
+
+    horiz_offset_range: Tuple[float, float] = Field(
+        (0.02, 0.06),
+        description=("Range (lo,hi) for horizontal offset fractions used when placing labels."),
+    )
+
+    vert_jitter_range: Tuple[float, float] = Field(
+        (-0.03, 0.03),
+        description=(
+            "Range (lo,hi) for vertical jitter applied to labels as fraction of axis span."
+        ),
+    )
+
     # ------ Layout & Axes ------
     x_label: Optional[str] = Field(
         None,

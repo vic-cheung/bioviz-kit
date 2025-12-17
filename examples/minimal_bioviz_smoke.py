@@ -25,12 +25,12 @@ from bioviz.configs import (
     StyledTableConfig,
     TopAnnotationConfig,
 )
-from bioviz.lineplot import (
+from bioviz.plots.lineplot import (
     generate_lineplot,
     generate_lineplot_twinx,
 )
-from bioviz.oncoplot import OncoplotPlotter
-from bioviz.table import generate_styled_table
+from bioviz.plots.oncoplot import OncoplotPlotter
+from bioviz.plots.table import generate_styled_table
 
 # %%
 # 1) Line plot minimal data
@@ -38,9 +38,7 @@ line_df = pd.DataFrame(
     {
         "Patient_ID": ["p1", "p1"],
         "Label": ["A", "A"],
-        "Timepoint": pd.Categorical(
-            ["T1", "T2"], categories=["T1", "T2"], ordered=True
-        ),
+        "Timepoint": pd.Categorical(["T1", "T2"], categories=["T1", "T2"], ordered=True),
         "Value": [0.5, 1.0],
         "Variant_type": ["SNV", "SNV"],
     }
