@@ -4,7 +4,7 @@ Writes two PNGs demonstrating different connector colors/widths and attach behav
 
 import pandas as pd
 import numpy as np
-from bioviz.plot_composites.configs.volcano_cfg import VolcanoConfig
+from bioviz.configs.volcano_cfg import VolcanoConfig
 from bioviz.plot_composites.volcano import plot_volcano
 
 # Create a minimal dataframe

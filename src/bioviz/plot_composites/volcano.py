@@ -14,7 +14,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import warnings
-from .configs.volcano_cfg import VolcanoConfig
+from bioviz.configs.volcano_cfg import VolcanoConfig
 
 try:
     from adjustText import adjust_text
@@ -100,12 +100,13 @@ def _internal_resolve_values(df: pd.DataFrame, cfg: VolcanoConfig) -> List[str]:
         base = labels_series.loc[eff_m].tolist()
     elif mode == "sig_and_thresh":
         base = labels_series.loc[sig_mask & eff_m].tolist()
-        else:
-            # auto: choose labels that are both significant and beyond the
-            # x-axis threshold (intersection). Use `label_mode` to select
-            # other behaviors explicitly (e.g., 'sig' or 'sig_and_thresh').
-            mask = sig_mask & eff_m
-            base = labels_series.loc[mask].tolist()
+    elif mode == "sig_or_thresh":
+        base = labels_series.loc[sig_mask | eff_m].tolist()
+    else:
+        # 'auto' (and any unknown value) defaults to the intersection
+        # of significance and magnitude — label points that meet both.
+        mask = sig_mask & eff_m
+        base = labels_series.loc[mask].tolist()
 
     if cfg.additional_values_to_label:
         available = set(labels_series.tolist())
@@ -390,7 +391,11 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
     # plot isn't entirely nonsignificant by default.
     try:
         has_y_thresh = getattr(cfg, "y_col_thresh", None) is not None and cfg.y_col in df.columns
-        has_x_thresh = getattr(cfg, "abs_x_thresh", None) is not None and cfg.abs_x_thresh > 0 and cfg.x_col in df.columns
+        has_x_thresh = (
+            getattr(cfg, "abs_x_thresh", None) is not None
+            and cfg.abs_x_thresh > 0
+            and cfg.x_col in df.columns
+        )
         if (color_mode == "sig") and (not has_y_thresh) and (not has_x_thresh):
             color_mode = "all"
     except Exception:

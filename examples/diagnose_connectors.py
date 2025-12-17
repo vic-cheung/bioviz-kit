@@ -1,4 +1,4 @@
-from bioviz.plot_composites.configs.volcano_cfg import VolcanoConfig
+from bioviz.configs.volcano_cfg import VolcanoConfig
 from bioviz.plot_composites.volcano import plot_volcano
 import pandas as pd
 import numpy as np
@@ -45,6 +45,7 @@ for ln in hlines:
 
 fig.canvas.draw()
 from pathlib import Path
+
 Path("examples").mkdir(parents=True, exist_ok=True)
 fig.savefig("examples/diagnose_connectors_out.png")
 print("Wrote examples/diagnose_connectors_out.png")

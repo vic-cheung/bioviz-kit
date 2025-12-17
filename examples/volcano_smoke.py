@@ -9,7 +9,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 import pandas as pd
-from bioviz.plot_composites.configs.volcano_cfg import VolcanoConfig
+from bioviz.configs.volcano_cfg import VolcanoConfig
 from bioviz.plot_composites.volcano import plot_volcano
 
 
