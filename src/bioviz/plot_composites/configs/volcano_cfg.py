@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional, Iterable, List, Dict, Tuple, Any
+from typing import Optional, Iterable, List, Dict, Tuple, Any, Literal
 
 import matplotlib.pyplot as plt
 from pydantic import BaseModel, Field, validator
@@ -22,6 +22,11 @@ class VolcanoConfig(BaseModel):
     # column must be a p-value.
     y_col_thresh: float = 0.05
     abs_x_thresh: float = 2.0
+    # Whether significance requires both y threshold AND abs(x) >= abs_x_thresh.
+    # When True (default) a point is considered significant only if it meets
+    # the y threshold and the x magnitude threshold. When False, significance
+    # is determined by the y threshold alone.
+    sig_requires_x_thresh: bool = True
     # `sig_only` was removed; prefer using `label_mode` to control label selection.
     # The plotting code treats `label_mode='auto'` as: label points that are
     # significant AND beyond the x-axis threshold (i.e. intersection), which
@@ -102,12 +107,48 @@ class VolcanoConfig(BaseModel):
     label_offset: float = 0.03
 
     # How labels are selected when `values_to_label` is not provided.
-    # Options:
-    # - 'auto': existing behavior (sig OR abs(x) >= abs_x_thresh when sig_only False)
-    # - 'sig': label only significant points (y <= y_col_thresh or transformed equivalent)
-    # - 'sig_or_thresh': label points that are significant OR beyond the x threshold
-    # - 'all': label every point
-    label_mode: str = "auto"
+    # Allowed values:
+    # - 'auto': default. Label points that are considered significant according
+    #   to `y_col_thresh`. If `sig_requires_x_thresh` is True, the point must
+    #   also meet the `abs_x_thresh` magnitude (i.e. both tests) to be
+    #   considered significant for 'auto'. This is the recommended behavior.
+    # - 'sig': label only points that meet the y threshold (transformed if
+    #   `log_transform_ycol` is True) regardless of x magnitude.
+    # - 'sig_and_thresh': label only points that meet BOTH the y threshold
+    #   and the |x| >= `abs_x_thresh` requirement. This is equivalent to the
+    #   intersection of the two tests and is useful when you want to require
+    #   both criteria explicitly (different from 'sig', which ignores x).
+    # - 'thresh': label points that meet the x-axis magnitude threshold
+    #   (|x| >= `abs_x_thresh`) regardless of the y threshold.
+    # - 'sig_or_thresh': label points that either meet the y threshold OR have
+    #   |x| >= `abs_x_thresh` (union of the two tests).
+    # - 'all': label every point in the dataset.
+    # Note: `sig_requires_x_thresh` is retained for backward compatibility
+    # and influences the meaning of 'auto'. Prefer using explicit
+    # `label_mode` values ('sig', 'thresh', 'sig_and_thresh', 'sig_or_thresh')
+    # for unambiguous behavior.
+    label_mode: Literal[
+        "auto",
+        "sig",
+        "sig_and_thresh",
+        "thresh",
+        "sig_or_thresh",
+        "all",
+    ] = "auto"
+
+    # Control how points are colored with respect to thresholds/significance.
+    # Allowed values:
+    # - 'sig': color points considered significant by y threshold (and
+    #    optionally x magnitude if `sig_requires_x_thresh` is True).
+    # - 'thresh': color points that meet the x-axis magnitude threshold
+    #    (|x| >= `abs_x_thresh`) only.
+    # - 'sig_and_thresh': color points that meet BOTH the y threshold and
+    #    the x magnitude threshold.
+    # - 'sig_or_thresh': color points that meet either the y threshold OR
+    #    the x magnitude threshold.
+    # - 'all': color all points as 'sig' (useful for debugging or forcing
+    #    single-color annotation behavior).
+    color_mode: Literal["sig", "thresh", "sig_and_thresh", "sig_or_thresh", "all"] = "sig"
 
     # Ranges used for adjustable label horizontal offset and vertical jitter.
     # Interpreted according to `label_offset_mode` (fractions if mode='fraction').
@@ -146,6 +187,10 @@ class VolcanoConfig(BaseModel):
     connector_color_sig_right: Optional[str] = None
     connector_color_nonsig_left: Optional[str] = None
     connector_color_nonsig_right: Optional[str] = None
+
+    # When True, connectors inherit the marker color for the matched data
+    # point (useful when you want connectors to visually match point color).
+    connector_color_use_point_color: bool = False
 
     # Execution
     ax: Optional[plt.Axes] = None

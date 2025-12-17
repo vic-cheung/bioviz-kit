@@ -1,3 +1,5 @@
+# %%
+from pathlib import Path
 from bioviz.plot_composites.configs.volcano_cfg import VolcanoConfig
 from bioviz.plot_composites.volcano import plot_volcano
 import pandas as pd
@@ -23,10 +25,15 @@ explicit_positions = {
 }
 
 cfg = VolcanoConfig(
-    label_col="gene", explicit_label_positions=explicit_positions, explicit_label_replace=True
+    x_col="log2_or",
+    y_col="p_adj",
+    label_col="gene",
+    log_transform_ycol=True,
+    explicit_label_positions=explicit_positions,
+    explicit_label_replace=True,
+    sig_requires_x_thresh=False,
 )
 fig, ax = plot_volcano(cfg, df)
-from pathlib import Path
 
 Path("examples").mkdir(parents=True, exist_ok=True)
 fig.savefig("examples/explicit_with_labelcol.png")

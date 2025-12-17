@@ -35,22 +35,28 @@ write_demo(cfg_default, "examples/volcano_connector_demo.default.png")
 
 # Custom connectors
 cfg_custom = VolcanoConfig(
-    values_to_label=idx[:6],
+    # values_to_label=idx[:6], <--if nothing is passed, automatically labels sig points
     connector_color="#ff00aa",
     connector_width=1.4,
     log_transform_ycol=True,
     label_col="label",
+    sig_requires_x_thresh=False,  # <-- this controls point colors
 )
 write_demo(cfg_custom, "examples/volcano_connector_demo.custom.png")
+cfg_custom.additional_values_to_label = idx[:6]
+write_demo(cfg_custom, "examples/volcano_connector_demo.custom.with_added_labels.png")
 
 # Disable edge-attach (connect to center)
 cfg_center = VolcanoConfig(
-    values_to_label=idx[:6],
+    # values_to_label=idx[:6],
     attach_to_marker_edge=False,
     connector_color="#0077cc",
     log_transform_ycol=True,
     label_col="label",
+    sig_requires_x_thresh=False,
+    label_mode="sig_and_thresh",
 )
+
 write_demo(cfg_center, "examples/volcano_connector_demo.center.png")
 
 # Hierarchical connector color demo: set explicit sign+side colors so we can
@@ -66,6 +72,8 @@ cfg_hier = VolcanoConfig(
     connector_color_sig="#aa00ff",
     connector_color_nonsig="#00ffaa",
     label_col="label",
+    log_transform_ycol=True,
+    sig_requires_x_thresh=False,
 )
 write_demo(cfg_hier, "examples/volcano_connector_demo.hier.png")
 
@@ -74,6 +82,8 @@ cfg_explicit_replace = VolcanoConfig(
     explicit_label_positions={"g1": (-0.5, 1.0), "g2": (2.5, 0.5)},
     explicit_label_replace=True,
     label_col="label",
+    log_transform_ycol=True,
+    sig_requires_x_thresh=False,
 )
 write_demo(cfg_explicit_replace, "examples/volcano_connector_demo.explicit_replace.png")
 
@@ -83,5 +93,7 @@ cfg_explicit_add = VolcanoConfig(
     explicit_label_positions=[("g1", (-0.5, 1.0)), ("g2", (2.5, 0.5))],
     explicit_label_replace=False,
     label_col="label",
+    log_transform_ycol=True,
+    sig_requires_x_thresh=False,
 )
 write_demo(cfg_explicit_add, "examples/volcano_connector_demo.explicit_add.png")

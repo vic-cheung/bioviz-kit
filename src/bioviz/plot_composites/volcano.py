@@ -28,8 +28,28 @@ def _internal_resolve_values(df: pd.DataFrame, cfg: VolcanoConfig) -> List[str]:
     # If caller provided exact values to label, honor that
     if cfg.values_to_label:
         base = list(cfg.values_to_label)
-        if cfg.additional_values_to_label:
-            base = list(dict.fromkeys(base + list(cfg.additional_values_to_label)))
+        # Warn about any requested labels that are not present in the DataFrame
+        try:
+            if cfg.label_col and cfg.label_col in df.columns:
+                available = set(df[cfg.label_col].astype(str).tolist())
+            else:
+                available = set(df.index.astype(str).tolist())
+            missing = [v for v in base if v not in available]
+            if missing:
+                warnings.warn(f"Requested labels not found in DataFrame: {missing}", UserWarning)
+            if cfg.additional_values_to_label:
+                # Warn about missing additions, but only append the valid ones
+                add = list(cfg.additional_values_to_label)
+                missing_add = [v for v in add if v not in available]
+                if missing_add:
+                    warnings.warn(
+                        f"Additional requested labels not found in DataFrame: {missing_add}",
+                        UserWarning,
+                    )
+                valid_add = [v for v in add if v in available]
+                base = list(dict.fromkeys(base + valid_add))
+        except Exception:
+            pass
         return base
 
     # Determine label source (explicit column or index fallback)
@@ -60,7 +80,16 @@ def _internal_resolve_values(df: pd.DataFrame, cfg: VolcanoConfig) -> List[str]:
     try:
         y_thresh = getattr(cfg, "y_col_thresh", None)
         if y_thresh is not None and cfg.y_col and cfg.y_col in df.columns:
-            sig_mask = df[cfg.y_col].astype(float).fillna(1.0) <= y_thresh
+            y_mask = df[cfg.y_col].astype(float).fillna(1.0) <= y_thresh
+            if getattr(cfg, "sig_requires_x_thresh", True):
+                eff_x = (
+                    df[cfg.x_col].abs() >= cfg.abs_x_thresh
+                    if cfg.x_col in df.columns
+                    else pd.Series(False, index=df.index)
+                )
+                sig_mask = y_mask & eff_x
+            else:
+                sig_mask = y_mask
     except Exception:
         sig_mask = pd.Series(False, index=df.index)
 
@@ -76,19 +105,79 @@ def _internal_resolve_values(df: pd.DataFrame, cfg: VolcanoConfig) -> List[str]:
         base = labels_series.tolist()
     elif mode == "sig":
         base = labels_series.loc[sig_mask].tolist()
-    elif mode == "sig_or_thresh":
-        base = labels_series.loc[sig_mask | eff_m].tolist()
+    elif mode == "thresh":
+        base = labels_series.loc[eff_m].tolist()
+    elif mode == "sig_and_thresh":
+        base = labels_series.loc[sig_mask & eff_m].tolist()
     else:
         # auto: choose labels that are both significant and beyond the
         # x-axis threshold (intersection). Use `label_mode` to select
-        # other behaviors explicitly (e.g., 'sig' or 'sig_or_thresh').
-        mask = sig_mask & eff_m
+        # other behaviors explicitly (e.g., 'sig' or 'sig_and_thresh').
+        # Respect the configuration option that controls whether significance
+        # requires passing the x-axis magnitude threshold as well.
+        if getattr(cfg, "sig_requires_x_thresh", True):
+            mask = sig_mask & eff_m
+        else:
+            mask = sig_mask
         base = labels_series.loc[mask].tolist()
 
     if cfg.additional_values_to_label:
         available = set(labels_series.tolist())
         valid_add = [g for g in cfg.additional_values_to_label if g in available]
         base = list(dict.fromkeys(base + valid_add))
+
+    return base
+
+
+def resolve_labels(df: pd.DataFrame, cfg: VolcanoConfig) -> List[str]:
+    """Return the final list of labels `plot_volcano` will use.
+
+    This helper mirrors the internal selection logic, including:
+    - honoring `values_to_label` and `additional_values_to_label`,
+    - applying `label_mode` when `values_to_label` isn't provided,
+    - excluding explicit placements when `explicit_label_replace` is True
+      (so callers can see the de-duplicated final set used for auto-labeling).
+    Useful for debugging or UI workflows where you want to preview labels
+    before re-rendering.
+    """
+    # Start from the internal resolved list (this handles values_to_label/additional)
+    base = _internal_resolve_values(df, cfg)
+
+    # If explicit_label_positions are present and explicit_label_replace=True,
+    # those explicit labels are removed from the auto-label set inside
+    # plot_volcano; reflect that behavior here so the returned list matches
+    # what will actually be auto-labeled.
+    explicit_map = {}
+    if getattr(cfg, "explicit_label_positions", None) is not None:
+        try:
+            elp = cfg.explicit_label_positions
+            if isinstance(elp, dict):
+                explicit_map = {str(k): v for k, v in elp.items()}
+            elif hasattr(elp, "columns"):
+                cols = [c.lower() for c in elp.columns]
+                if "label" in cols and ("x" in cols and "y" in cols):
+                    for _, r in elp.iterrows():
+                        explicit_map[str(r["label"])] = (float(r["x"]), float(r["y"]))
+                else:
+                    labcol = cfg.label_col
+                    xcol = cfg.x_col
+                    ycol = cfg.y_col
+                    for _, r in elp.iterrows():
+                        try:
+                            explicit_map[str(r[labcol])] = (float(r[xcol]), float(r[ycol]))
+                        except Exception:
+                            continue
+            else:
+                for it in elp:
+                    try:
+                        explicit_map[str(it[0])] = (float(it[1][0]), float(it[1][1]))
+                    except Exception:
+                        continue
+        except Exception:
+            explicit_map = {}
+
+    if explicit_map and getattr(cfg, "explicit_label_replace", True):
+        base = [v for v in base if v not in explicit_map]
 
     return base
 
@@ -271,18 +360,33 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
     # significance mask (use appropriate threshold when y was transformed)
     sig_mask = pd.Series(False, index=df.index)
     y_col_thresh = getattr(cfg, "y_col_thresh", None)
-    if y_col_thresh is not None and cfg.y_col in df.columns:
-        if transformed_y:
-            try:
-                thr = -np.log10(y_col_thresh)
-            except Exception:
-                thr = None
-            if thr is not None:
-                sig_mask = (y_vals.fillna(0.0) >= thr) & (df[cfg.x_col].abs() >= cfg.abs_x_thresh)
-        else:
-            sig_mask = (df[cfg.y_col].fillna(1.0) <= y_col_thresh) & (
-                df[cfg.x_col].abs() >= cfg.abs_x_thresh
-            )
+    try:
+        # build y-based mask depending on whether we transformed the y values
+        if y_col_thresh is not None and cfg.y_col in df.columns:
+            if transformed_y:
+                try:
+                    thr = -np.log10(y_col_thresh)
+                except Exception:
+                    thr = None
+                if thr is not None:
+                    y_mask = y_vals.fillna(0.0) >= thr
+                else:
+                    y_mask = pd.Series(False, index=df.index)
+            else:
+                y_mask = df[cfg.y_col].fillna(1.0) <= y_col_thresh
+
+            # optionally require the x magnitude threshold as well
+            if getattr(cfg, "sig_requires_x_thresh", True):
+                eff_x = (
+                    df[cfg.x_col].abs() >= cfg.abs_x_thresh
+                    if cfg.x_col in df.columns
+                    else pd.Series(False, index=df.index)
+                )
+                sig_mask = y_mask & eff_x
+            else:
+                sig_mask = y_mask
+    except Exception:
+        sig_mask = pd.Series(False, index=df.index)
 
     # color selection helpers
     def _choose_direction_color(val):
@@ -296,10 +400,28 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
             return cfg.palette.get("sig_up")
         return cfg.palette.get("sig_up")
 
+    # Determine which points are considered "colored" according to the
+    # requested `cfg.color_mode` and then map colors accordingly. This
+    # separates selection logic from label selection so callers can choose
+    # independent behaviors for coloring vs labeling.
+    color_mode = getattr(cfg, "color_mode", "sig")
+    if color_mode == "all":
+        color_mask = pd.Series(True, index=df.index)
+    elif color_mode == "sig":
+        color_mask = sig_mask.copy()
+    elif color_mode == "thresh":
+        color_mask = eff_m.copy()
+    elif color_mode == "sig_and_thresh":
+        color_mask = sig_mask & eff_m
+    elif color_mode == "sig_or_thresh":
+        color_mask = sig_mask | eff_m
+    else:
+        color_mask = sig_mask.copy()
+
     colors = []
     if cfg.direction_col and cfg.direction_col in df.columns and cfg.direction_colors:
         for i in df.index:
-            if not sig_mask.loc[i]:
+            if not color_mask.loc[i]:
                 colors.append(cfg.palette.get("nonsig"))
             else:
                 colors.append(
@@ -309,7 +431,7 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
                 )
     else:
         for i in df.index:
-            if not sig_mask.loc[i]:
+            if not color_mask.loc[i]:
                 colors.append(cfg.palette.get("nonsig"))
                 continue
             if cfg.direction_col and cfg.direction_col in df.columns:
@@ -483,6 +605,21 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
                         continue
         except Exception:
             explicit_map = {}
+    # Warn if explicit labels reference names not present in the DataFrame
+    try:
+        if explicit_map:
+            if cfg.label_col and cfg.label_col in df.columns:
+                available_labels = set(df[cfg.label_col].astype(str).tolist())
+            else:
+                available_labels = set(df.index.astype(str).tolist())
+            missing_explicit = [k for k in explicit_map.keys() if k not in available_labels]
+            if missing_explicit:
+                warnings.warn(
+                    f"Explicit label positions reference labels not in DataFrame: {missing_explicit}",
+                    UserWarning,
+                )
+    except Exception:
+        pass
 
     x_min, x_max = ax.get_xlim()
     y_min, y_max = ax.get_ylim()
@@ -581,7 +718,10 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
                         except Exception:
                             attach_x, attach_y = ox, oy
 
-                        conn_color = _select_connector_color(is_sig, ox)
+                        if getattr(cfg, "connector_color_use_point_color", False) and point_color:
+                            conn_color = point_color
+                        else:
+                            conn_color = _select_connector_color(is_sig, ox)
                         ax.plot(
                             [attach_x, lx],
                             [attach_y, ly],
