@@ -17,8 +17,8 @@ import pandas as pd  # type: ignore
 from matplotlib import font_manager  # type: ignore
 from matplotlib.patches import Patch  # type: ignore
 
-from .plot_configs import HeatmapAnnotationConfig, OncoplotConfig
-from .style import DefaultStyle, StyleBase
+from bioviz.configs import HeatmapAnnotationConfig, OncoplotConfig
+from bioviz.utils.style import DefaultStyle, StyleBase
 from bioviz.utils.plotting import resolve_font_family
 
 # Do not apply a global style at import time; callers should pass a style.

@@ -6,7 +6,7 @@ to use optional dependencies when available (`statannotations`) but falls
 back to conservative implementations otherwise.
 """
 
-from typing import Iterable, List, Tuple, Optional
+from typing import List, Tuple, Optional
 
 import numpy as np
 import pandas as pd

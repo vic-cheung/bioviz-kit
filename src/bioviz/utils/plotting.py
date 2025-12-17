@@ -2,8 +2,7 @@
 Helper plotting utilities moved to `bioviz.utils.plotting`.
 
 This module consolidates a small set of helpers used by multiple plotting
-submodules (lineplot, oncoplot, table, etc.). It is intended as the new
-home for functions previously exposed via `bioviz.plot_utils`.
+submodules (lineplot, oncoplot, table, etc.)
 """
 
 import matplotlib as mpl
