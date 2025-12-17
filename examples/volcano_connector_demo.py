@@ -27,7 +27,7 @@ def write_demo(cfg, fname):
 
 
 # Default behavior (attach to marker edge, gray connectors)
-cfg_default = VolcanoConfig(values_to_label=idx[:6])
+cfg_default = VolcanoConfig(values_to_label=idx[:6], label_col="label")
 write_demo(cfg_default, "examples/volcano_connector_demo.default.png")
 
 # Custom connectors
@@ -36,6 +36,7 @@ cfg_custom = VolcanoConfig(
     connector_color="#ff00aa",
     connector_width=1.4,
     log_transform_ycol=True,
+    label_col="label",
 )
 write_demo(cfg_custom, "examples/volcano_connector_demo.custom.png")
 
@@ -45,6 +46,7 @@ cfg_center = VolcanoConfig(
     attach_to_marker_edge=False,
     connector_color="#0077cc",
     log_transform_ycol=True,
+    label_col="label",
 )
 write_demo(cfg_center, "examples/volcano_connector_demo.center.png")
 
@@ -60,5 +62,23 @@ cfg_hier = VolcanoConfig(
     connector_color_right="#00aaff",
     connector_color_sig="#aa00ff",
     connector_color_nonsig="#00ffaa",
+    label_col="label",
 )
 write_demo(cfg_hier, "examples/volcano_connector_demo.hier.png")
+
+# Explicit label placements: dict-style (replace defaults)
+cfg_explicit_replace = VolcanoConfig(
+    explicit_label_positions={"g1": (-0.5, 1.0), "g2": (2.5, 0.5)},
+    explicit_label_replace=True,
+    label_col="label",
+)
+write_demo(cfg_explicit_replace, "examples/volcano_connector_demo.explicit_replace.png")
+
+# Explicit label placements: iterable-style (in addition to auto labels)
+cfg_explicit_add = VolcanoConfig(
+    values_to_label=idx[:6],
+    explicit_label_positions=[("g1", (-0.5, 1.0)), ("g2", (2.5, 0.5))],
+    explicit_label_replace=False,
+    label_col="label",
+)
+write_demo(cfg_explicit_add, "examples/volcano_connector_demo.explicit_add.png")

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional, Iterable, List, Dict, Tuple
+from typing import Optional, Iterable, List, Dict, Tuple, Any
 
 import matplotlib.pyplot as plt
 from pydantic import BaseModel, Field, validator
@@ -10,17 +10,22 @@ class VolcanoConfig(BaseModel):
     # Data columns: x_col and y_col are required; label_col is optional.
     x_col: str = "log2_or"
     y_col: str = "p_adj"
-    label_col: Optional[str] = "label"
+    label_col: Optional[str] = None
 
     # Label selection
     values_to_label: Optional[List[str]] = None
     additional_values_to_label: Optional[List[str]] = None
-    # Generic significance threshold (e.g. p-value threshold). If your
-    # dataframe has a column of p-values (named arbitrarily) set this to
-    # the numeric cutoff to mark significance.
-    sig_thresh: float = 0.05
+    # Generic threshold for the `y_col` (e.g. p-value cutoff). If your
+    # dataframe has a column of values to threshold (named arbitrarily),
+    # set this to the numeric cutoff to mark significance. The name was
+    # changed from `sig_thresh` to `y_col_thresh` to avoid implying the
+    # column must be a p-value.
+    y_col_thresh: float = 0.05
     abs_x_thresh: float = 2.0
-    sig_only: bool = True
+    # `sig_only` was removed; prefer using `label_mode` to control label selection.
+    # The plotting code treats `label_mode='auto'` as: label points that are
+    # significant AND beyond the x-axis threshold (i.e. intersection), which
+    # matches the simplified, less-ambiguous default behavior.
 
     # Direction / coloring
     direction_col: Optional[str] = None
@@ -96,6 +101,14 @@ class VolcanoConfig(BaseModel):
     # Default label_offset acts as fraction of axis span when mode=='fraction'
     label_offset: float = 0.03
 
+    # How labels are selected when `values_to_label` is not provided.
+    # Options:
+    # - 'auto': existing behavior (sig OR abs(x) >= abs_x_thresh when sig_only False)
+    # - 'sig': label only significant points (y <= y_col_thresh or transformed equivalent)
+    # - 'sig_or_thresh': label points that are significant OR beyond the x threshold
+    # - 'all': label every point
+    label_mode: str = "auto"
+
     # Ranges used for adjustable label horizontal offset and vertical jitter.
     # Interpreted according to `label_offset_mode` (fractions if mode='fraction').
     horiz_offset_range: Tuple[float, float] = (0.02, 0.06)
@@ -131,6 +144,22 @@ class VolcanoConfig(BaseModel):
 
     # Execution
     ax: Optional[plt.Axes] = None
+    # Explicit label placements: allows the caller to provide explicit
+    # positions for particular labels. Accepts one of:
+    # - dict mapping label -> (x, y)
+    # - iterable of (label, (x, y)) tuples
+    # - pandas.DataFrame with columns ('label','x','y') or with label column
+    #   matching `label_col` and coordinate columns matching `x_col`/`y_col` or 'x'/'y'.
+    explicit_label_positions: Optional[Any] = None
+    # If True, labels provided in `explicit_label_positions` will replace
+    # any automatic labeling for those labels (they won't also be auto-placed).
+    # If False, explicit labels will be placed in addition to any automatic
+    # labels selected by `values_to_label` or significance rules.
+    explicit_label_replace: bool = True
+    # If True, explicit labels participate in the adjust_text flow and may be
+    # moved by `adjust_text`. Default False (explicit positions are respected
+    # unless the user opts into adjustment).
+    explicit_label_adjustable: bool = False
 
     model_config = {"arbitrary_types_allowed": True}
 

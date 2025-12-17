@@ -30,6 +30,7 @@ def main():
     # Variant 1: forced outward labels with rotation
     out1 = Path(__file__).with_suffix(".forced.png")
     cfg1 = VolcanoConfig()
+    cfg1.label_col = "label"
     cfg1.force_label_side_by_point_sign = True
     cfg1.log_transform_ycol = True
     fig1, ax1 = plot_volcano(cfg1, df)
@@ -39,6 +40,7 @@ def main():
     # Variant 2: forced outward labels with rotation
     out2 = Path(__file__).with_suffix(".forced_adjusted.png")
     cfg2 = VolcanoConfig()
+    cfg2.label_col = "label"
     cfg2.force_label_side_by_point_sign = True
     cfg2.force_labels_adjustable = True
     cfg2.log_transform_ycol = True
@@ -49,6 +51,7 @@ def main():
     # Variant 3: use adjust_text branch (no forced placement)
     out3 = Path(__file__).with_suffix(".adjust.png")
     cfg3 = VolcanoConfig()
+    cfg3.label_col = "label"
     cfg3.force_label_side_by_point_sign = False
     cfg3.log_transform_ycol = True
     cfg3.use_adjust_text = True

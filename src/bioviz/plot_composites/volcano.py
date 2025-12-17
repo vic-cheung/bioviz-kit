@@ -13,6 +13,7 @@ import math
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import warnings
 from pydantic import Field
 from .configs.volcano_cfg import VolcanoConfig
 
@@ -36,7 +37,24 @@ def _internal_resolve_values(df: pd.DataFrame, cfg: VolcanoConfig) -> List[str]:
     if cfg.label_col and cfg.label_col in df.columns:
         labels_series = df[cfg.label_col].astype(str)
     else:
-        labels_series = df.index.astype(str)
+        # fallback: create a Series from the DataFrame index so callers
+        # can use `.loc` consistently later on
+        labels_series = pd.Series(df.index.astype(str), index=df.index)
+
+    # Warn the user if no explicit label column or explicit labels were
+    # provided — the plotting code will fall back to using the DataFrame
+    # index as labels which is often unintentional.
+    if not (cfg.label_col and cfg.label_col in df.columns) and not cfg.values_to_label:
+        try:
+            warnings.warn(
+                "No `label_col` found and no `values_to_label` provided; "
+                "labels will be taken from the DataFrame index. "
+                "If you intended to label using a column, set `cfg.label_col` or "
+                "provide `values_to_label`.",
+                UserWarning,
+            )
+        except Exception:
+            pass
 
     # Build a significance mask using the configured `y_col` and `sig_thresh`.
     sig_mask = pd.Series(False, index=df.index)
@@ -52,8 +70,20 @@ def _internal_resolve_values(df: pd.DataFrame, cfg: VolcanoConfig) -> List[str]:
         else pd.Series(False, index=df.index)
     )
 
-    mask = sig_mask & eff_m if cfg.sig_only else (sig_mask | eff_m)
-    base = labels_series.loc[mask].tolist()
+    # label_mode controls which points are chosen when `values_to_label` is not provided
+    mode = getattr(cfg, "label_mode", "auto")
+    if mode == "all":
+        base = labels_series.tolist()
+    elif mode == "sig":
+        base = labels_series.loc[sig_mask].tolist()
+    elif mode == "sig_or_thresh":
+        base = labels_series.loc[sig_mask | eff_m].tolist()
+    else:
+        # auto: choose labels that are both significant and beyond the
+        # x-axis threshold (intersection). Use `label_mode` to select
+        # other behaviors explicitly (e.g., 'sig' or 'sig_or_thresh').
+        mask = sig_mask & eff_m
+        base = labels_series.loc[mask].tolist()
 
     if cfg.additional_values_to_label:
         available = set(labels_series.tolist())
@@ -139,6 +169,39 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
         except Exception:
             return xd, yd
 
+    def _select_connector_color(is_sig: bool, ox: float):
+        """Return connector color using hierarchical precedence:
+        most-specific (sign+side) -> side -> sign -> nonsig -> generic.
+        """
+        try:
+            # Most specific: sign + side
+            if is_sig:
+                if ox < 0 and getattr(cfg, "connector_color_sig_left", None):
+                    return cfg.connector_color_sig_left
+                if ox >= 0 and getattr(cfg, "connector_color_sig_right", None):
+                    return cfg.connector_color_sig_right
+            else:
+                if ox < 0 and getattr(cfg, "connector_color_nonsig_left", None):
+                    return cfg.connector_color_nonsig_left
+                if ox >= 0 and getattr(cfg, "connector_color_nonsig_right", None):
+                    return cfg.connector_color_nonsig_right
+
+            # Per-side override
+            side_color = cfg.connector_color_left if ox < 0 else cfg.connector_color_right
+            if side_color:
+                return side_color
+
+            # Per-significance override
+            if is_sig and getattr(cfg, "connector_color_sig", None):
+                return cfg.connector_color_sig
+            if (not is_sig) and getattr(cfg, "connector_color_nonsig", None):
+                return cfg.connector_color_nonsig
+
+            # Final fallback
+            return cfg.connector_color
+        except Exception:
+            return cfg.connector_color
+
     def _nudge_label_if_overlapping(text_obj, marker_x, marker_y, marker_radius_pixels=None):
         try:
             fig.canvas.draw()
@@ -208,17 +271,17 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
 
     # significance mask (use appropriate threshold when y was transformed)
     sig_mask = pd.Series(False, index=df.index)
-    sig_thresh = getattr(cfg, "sig_thresh", None)
-    if sig_thresh is not None and cfg.y_col in df.columns:
+    y_col_thresh = getattr(cfg, "y_col_thresh", None)
+    if y_col_thresh is not None and cfg.y_col in df.columns:
         if transformed_y:
             try:
-                thr = -np.log10(sig_thresh)
+                thr = -np.log10(y_col_thresh)
             except Exception:
                 thr = None
             if thr is not None:
                 sig_mask = (y_vals.fillna(0.0) >= thr) & (df[cfg.x_col].abs() >= cfg.abs_x_thresh)
         else:
-            sig_mask = (df[cfg.y_col].fillna(1.0) <= sig_thresh) & (
+            sig_mask = (df[cfg.y_col].fillna(1.0) <= y_col_thresh) & (
                 df[cfg.x_col].abs() >= cfg.abs_x_thresh
             )
 
@@ -316,9 +379,9 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
             pass
     if cfg.y_thresh is not None:
         thr_y = cfg.y_thresh
-    elif transformed_y and getattr(cfg, "sig_thresh", None) is not None:
+    elif transformed_y and getattr(cfg, "y_col_thresh", None) is not None:
         try:
-            thr_y = -np.log10(getattr(cfg, "sig_thresh", None))
+            thr_y = -np.log10(getattr(cfg, "y_col_thresh", None))
         except Exception:
             thr_y = None
     else:
@@ -334,7 +397,7 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
         )
 
     # scatter (use explicit cfg.marker_size)
-    ax.scatter(
+    sc = ax.scatter(
         df[cfg.x_col],
         y_vals,
         c=colors,
@@ -343,6 +406,11 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
         s=cfg.marker_size,
         zorder=3,
     )
+    try:
+        # avoid clipping markers at the axes boundary
+        sc.set_clip_on(False)
+    except Exception:
+        pass
 
     # build labels aggregated by coordinates
     all_texts = []
@@ -373,8 +441,157 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
             labval = str(i)
         coord_to_labels.setdefault(coord, []).append((i, labval, bool(sig_mask.loc[i]), dir_val))
 
+    # Parse explicit label placements if provided. Support dict, iterable of
+    # (label, (x,y)) tuples, or a DataFrame with label/x/y columns.
+    explicit_map = {}
+    if getattr(cfg, "explicit_label_positions", None) is not None:
+        try:
+            elp = cfg.explicit_label_positions
+            # dict-like
+            if isinstance(elp, dict):
+                for k, v in elp.items():
+                    try:
+                        explicit_map[str(k)] = (float(v[0]), float(v[1]))
+                    except Exception:
+                        continue
+            # DataFrame-like
+            elif hasattr(elp, "columns"):
+                # prefer explicit 'label','x','y' columns
+                cols = [c.lower() for c in elp.columns]
+                if "label" in cols and ("x" in cols and "y" in cols):
+                    for _, r in elp.iterrows():
+                        try:
+                            explicit_map[str(r["label"])] = (float(r["x"]), float(r["y"]))
+                        except Exception:
+                            continue
+                else:
+                    # try using label_col and x_col/y_col names
+                    labcol = cfg.label_col
+                    xcol = cfg.x_col
+                    ycol = cfg.y_col
+                    for _, r in elp.iterrows():
+                        try:
+                            explicit_map[str(r[labcol])] = (float(r[xcol]), float(r[ycol]))
+                        except Exception:
+                            continue
+            else:
+                # iterable of (label,(x,y))
+                for it in elp:
+                    try:
+                        lab = str(it[0])
+                        xy = it[1]
+                        explicit_map[lab] = (float(xy[0]), float(xy[1]))
+                    except Exception:
+                        continue
+        except Exception:
+            explicit_map = {}
+
     x_min, x_max = ax.get_xlim()
     y_min, y_max = ax.get_ylim()
+    # Place any explicit labels requested by the caller.
+    if explicit_map:
+        # Optionally remove explicit labels from the auto-label set so they
+        # aren't duplicated. Default behavior is to replace automatic labels.
+        if getattr(cfg, "explicit_label_replace", True):
+            try:
+                values_to_label_resolved = [
+                    v for v in values_to_label_resolved if v not in explicit_map
+                ]
+            except Exception:
+                pass
+        for lab, (lx, ly) in explicit_map.items():
+            # skip if outside axes
+            if not (x_min <= lx <= x_max and y_min <= ly <= y_max):
+                continue
+            # find if this label corresponds to a data point to inherit sig status
+            matched_idx = None
+            try:
+                # match by label column or index
+                if cfg.label_col and cfg.label_col in df.columns:
+                    matches = df.index[df[cfg.label_col].astype(str) == lab].tolist()
+                else:
+                    matches = df.index[df.index.astype(str) == lab].tolist()
+                matched_idx = matches[0] if matches else None
+            except Exception:
+                matched_idx = None
+
+            is_sig = False
+            point_color = None
+            dir_val = None
+            if matched_idx is not None:
+                try:
+                    is_sig = bool(sig_mask.loc[matched_idx])
+                    pos = list(df.index).index(matched_idx)
+                    point_color = colors[pos]
+                    dir_val = (
+                        df.loc[matched_idx, cfg.direction_col]
+                        if (cfg.direction_col and cfg.direction_col in df.columns)
+                        else None
+                    )
+                except Exception:
+                    is_sig = False
+
+            # choose annotation color
+            if is_sig:
+                ann_color = point_color or cfg.annotation_sig_color or cfg.palette.get("sig_up")
+                weight = getattr(cfg, "annotation_fontweight_sig", "bold")
+                fontsize = cfg.fontsize_sig
+            else:
+                ann_color = getattr(cfg, "annotation_nonsig_color", "#7f7f7f")
+                weight = getattr(cfg, "annotation_fontweight_nonsig", "normal")
+                fontsize = cfg.fontsize_nonsig
+
+            t = ax.text(
+                lx,
+                ly,
+                lab,
+                fontsize=fontsize,
+                fontweight=weight,
+                color=ann_color,
+                zorder=4,
+                clip_on=False,
+            )
+            _nudge_label_if_overlapping(t, lx, ly)
+            # Optionally include explicit labels in the adjust_text flow
+            if getattr(cfg, "explicit_label_adjustable", False):
+                adjustable_texts.append(t)
+                try:
+                    if matched_idx is not None:
+                        adjustable_points.append(
+                            (float(df.loc[matched_idx, cfg.x_col]), float(y_vals.loc[matched_idx]))
+                        )
+                    else:
+                        adjustable_points.append((lx, ly))
+                except Exception:
+                    adjustable_points.append((lx, ly))
+                adjustable_point_sigs.append(is_sig)
+            else:
+                # Draw connector from marker (if we matched a point) or skip
+                if matched_idx is not None:
+                    try:
+                        ox = float(df.loc[matched_idx, cfg.x_col])
+                        oy = float(y_vals.loc[matched_idx])
+                    except Exception:
+                        ox, oy = None, None
+                    if ox is not None:
+                        try:
+                            if getattr(cfg, "attach_to_marker_edge", True):
+                                label_disp = ax.transData.transform((lx, ly))
+                                attach_x, attach_y = _marker_edge_data_point(ox, oy, label_disp)
+                            else:
+                                attach_x, attach_y = ox, oy
+                        except Exception:
+                            attach_x, attach_y = ox, oy
+
+                        conn_color = _select_connector_color(is_sig, ox)
+                        ax.plot(
+                            [attach_x, lx],
+                            [attach_y, ly],
+                            color=conn_color,
+                            linewidth=cfg.connector_width,
+                            alpha=0.8,
+                            zorder=3.5,
+                        )
     # Build a group -> color map for left/right labels if possible
     group_side_color = {}
     try:
@@ -531,50 +748,7 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
                             attach_x, attach_y = x, y
                     except Exception:
                         attach_x, attach_y = x, y
-                    # choose connector color: side overrides -> sig/nonsig -> generic
-                    try:
-                        # First try most-specific (significance + side)
-                        if is_sig:
-                            conn_color = (
-                                cfg.connector_color_sig_left
-                                if x < 0 and cfg.connector_color_sig_left
-                                else cfg.connector_color_sig_right
-                                if x >= 0 and cfg.connector_color_sig_right
-                                else None
-                            )
-                        else:
-                            conn_color = (
-                                cfg.connector_color_nonsig_left
-                                if x < 0 and cfg.connector_color_nonsig_left
-                                else cfg.connector_color_nonsig_right
-                                if x >= 0 and cfg.connector_color_nonsig_right
-                                else None
-                            )
-                        # then per-side override
-                        if not conn_color:
-                            conn_color = (
-                                cfg.connector_color_left if x < 0 else cfg.connector_color_right
-                            )
-                        # then per-significance override
-                        if not conn_color:
-                            conn_color = (
-                                cfg.connector_color_sig
-                                if is_sig and cfg.connector_color_sig
-                                else None
-                            )
-                        if not conn_color:
-                            conn_color = (
-                                cfg.connector_color_nonsig
-                                if (not is_sig) and cfg.connector_color_nonsig
-                                else None
-                            )
-                        # final fallback
-                        if not conn_color:
-                            conn_color = cfg.connector_color
-                    except Exception:
-                        conn_color = cfg.connector_color
-
-                    print("DEBUG: about to annotate forced connector", flush=True)
+                    conn_color = _select_connector_color(is_sig, x)
                     # draw a simple straight connector line from marker edge to label
                     ax.plot(
                         [attach_x, tx],
@@ -588,7 +762,6 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
                     pass
                 forced_texts.append(t)
                 forced_points.append((x, y))
-            all_texts.append(t)
             all_texts.append(t)
         else:
             # adjustable placement (subject to adjust_text)
@@ -835,51 +1008,17 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
                 except Exception:
                     attach_x, attach_y = ox, oy
                 try:
-                    # Most-specific: sign+side
-                    if was_sig:
-                        conn_color = (
-                            cfg.connector_color_sig_left
-                            if ox < 0 and cfg.connector_color_sig_left
-                            else cfg.connector_color_sig_right
-                            if ox >= 0 and cfg.connector_color_sig_right
-                            else None
-                        )
-                    else:
-                        conn_color = (
-                            cfg.connector_color_nonsig_left
-                            if ox < 0 and cfg.connector_color_nonsig_left
-                            else cfg.connector_color_nonsig_right
-                            if ox >= 0 and cfg.connector_color_nonsig_right
-                            else None
-                        )
-                    # side override
-                    if not conn_color:
-                        conn_color = (
-                            cfg.connector_color_left if ox < 0 else cfg.connector_color_right
-                        )
-                    # sign-only override
-                    if not conn_color:
-                        conn_color = (
-                            cfg.connector_color_sig if was_sig and cfg.connector_color_sig else None
-                        )
-                    if not conn_color:
-                        conn_color = (
-                            cfg.connector_color_nonsig
-                            if (not was_sig) and cfg.connector_color_nonsig
-                            else None
-                        )
-                    if not conn_color:
-                        conn_color = cfg.connector_color
+                    conn_color = _select_connector_color(was_sig, ox)
+                    ax.plot(
+                        [attach_x, tx],
+                        [attach_y, ty],
+                        color=conn_color,
+                        linewidth=cfg.connector_width,
+                        alpha=0.8,
+                        zorder=3.5,
+                    )
                 except Exception:
-                    conn_color = cfg.connector_color
-                ax.plot(
-                    [attach_x, tx],
-                    [attach_y, ty],
-                    color=conn_color,
-                    linewidth=cfg.connector_width,
-                    alpha=0.8,
-                    zorder=3.5,
-                )
+                    pass
                 continue
 
             bbox = txt.get_window_extent(renderer=renderer)
@@ -919,46 +1058,17 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
                 attach_marker_x, attach_marker_y = ox, oy
 
             try:
-                if was_sig:
-                    conn_color = (
-                        cfg.connector_color_sig_left
-                        if ox < 0 and cfg.connector_color_sig_left
-                        else cfg.connector_color_sig_right
-                        if ox >= 0 and cfg.connector_color_sig_right
-                        else None
-                    )
-                else:
-                    conn_color = (
-                        cfg.connector_color_nonsig_left
-                        if ox < 0 and cfg.connector_color_nonsig_left
-                        else cfg.connector_color_nonsig_right
-                        if ox >= 0 and cfg.connector_color_nonsig_right
-                        else None
-                    )
-                if not conn_color:
-                    conn_color = cfg.connector_color_left if ox < 0 else cfg.connector_color_right
-                if not conn_color:
-                    conn_color = (
-                        cfg.connector_color_sig if was_sig and cfg.connector_color_sig else None
-                    )
-                if not conn_color:
-                    conn_color = (
-                        cfg.connector_color_nonsig
-                        if (not was_sig) and cfg.connector_color_nonsig
-                        else None
-                    )
-                if not conn_color:
-                    conn_color = cfg.connector_color
+                conn_color = _select_connector_color(was_sig, ox)
+                ax.plot(
+                    [attach_marker_x, attach_data[0]],
+                    [attach_marker_y, attach_data[1]],
+                    color=conn_color,
+                    linewidth=cfg.connector_width,
+                    alpha=0.8,
+                    zorder=3.5,
+                )
             except Exception:
-                conn_color = cfg.connector_color
-            ax.plot(
-                [attach_marker_x, attach_data[0]],
-                [attach_marker_y, attach_data[1]],
-                color=conn_color,
-                linewidth=cfg.connector_width,
-                alpha=0.8,
-                zorder=3.5,
-            )
+                pass
         except Exception:
             pass
 
@@ -969,6 +1079,31 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
             ax.set_xlim(-max_x - 0.5, max_x + 0.5)
             max_y = max(max(ys), y_limit)
             ax.set_ylim(bottom=-0.5, top=max_y + 0.5)
+
+    # Expand axis limits slightly by the marker radius (converted from
+    # display pixels to data units) so large markers near the plot edge are
+    # not visually clipped when saving.
+    try:
+        # Only expand limits when the caller did not explicitly provide them.
+        do_pad_x = getattr(cfg, "xlim", None) is None
+        do_pad_y = getattr(cfg, "ylim", None) is None
+        if do_pad_x or do_pad_y:
+            r_points = math.sqrt(max(cfg.marker_size, 1.0)) / 2.0
+            r_pixels = r_points * fig.dpi / 72.0
+            # Convert pixel deltas to data-space deltas
+            zero_data = ax.transData.inverted().transform((0.0, 0.0))
+            dx_data = ax.transData.inverted().transform((r_pixels, 0.0))[0] - zero_data[0]
+            dy_data = ax.transData.inverted().transform((0.0, r_pixels))[1] - zero_data[1]
+            x0, x1 = ax.get_xlim()
+            y0, y1 = ax.get_ylim()
+            pad_x = abs(dx_data) + 0.05
+            pad_y = abs(dy_data) + 0.05
+            if do_pad_x:
+                ax.set_xlim(x0 - pad_x, x1 + pad_x)
+            if do_pad_y:
+                ax.set_ylim(y0 - pad_y, y1 + pad_y)
+    except Exception:
+        pass
 
     # Respect explicit ticks from config if provided, otherwise keep existing logic
     if getattr(cfg, "xticks", None) is not None:
