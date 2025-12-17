@@ -25,7 +25,7 @@ from bioviz.configs import (
     StyledTableConfig,
     TopAnnotationConfig,
 )
-from bioviz.plots import generate_lineplot, generate_lineplot_twinx
+from bioviz.plots import LinePlotter
 from bioviz.plots import OncoplotPlotter
 from bioviz.plots import generate_styled_table
 
@@ -53,7 +53,8 @@ line_cfg = LinePlotConfig(
     ylim=(0, 1.2),
     xlim=None,
 )
-fig = generate_lineplot(line_df, line_cfg)
+lp = LinePlotter(line_df, line_cfg)
+fig, ax = lp.plot()
 if fig:
     fig.savefig("line_smoke.pdf")
 print("line_smoke.pdf")
@@ -77,7 +78,8 @@ primary_config = LinePlotConfig(
     baseline=0,
     align_first_tick_to_origin=True,
 )
-fig = generate_lineplot(primary_df, primary_config)
+lp2 = LinePlotter(primary_df, primary_config)
+fig, ax = lp2.plot()
 plt.show()
 if fig:
     fig.savefig("line_overlay_smoke.pdf")
@@ -104,12 +106,10 @@ secondary_config = LinePlotConfig(
     title="Twin x-axis overlay",
     align_first_tick_to_origin=False,
 )
-fig_combined = generate_lineplot_twinx(
-    df=primary_df,
+fig_combined = lp2.plot(
     twinx_data=twinx_df,
-    primary_config=primary_config,
     secondary_config=secondary_config,
-)
+)[0]
 fig_combined.savefig("line_plus_annotation_smoke.pdf")
 print("line_plus_annotation_smoke.pdf")
 
@@ -136,12 +136,10 @@ raw_secondary_cfg = LinePlotConfig(
 # Set independent limits per axis: primary -100..100, secondary 0..100
 primary_config.ylim = (-101, 101)
 raw_secondary_cfg.ylim = (-0.5, 100.5)
-fig_combined_raw = generate_lineplot_twinx(
-    df=primary_df,
+fig_combined_raw = lp2.plot(
     twinx_data=raw_twin_df,
-    primary_config=primary_config,
     secondary_config=raw_secondary_cfg,
-)
+)[0]
 fig_combined_raw.savefig("line_plus_annotation_raw_smoke.pdf")
 print("line_plus_annotation_raw_smoke.pdf")
 
@@ -177,12 +175,11 @@ twin_single_cfg_overlay = LinePlotConfig(
     overlay_col="Assessment",
     title="Twin overlay (single df)",
 )
-fig_combined_single_df = generate_lineplot_twinx(
-    df=twin_single_df,
-    twinx_data=None,  # reuses df for overlay layer
-    primary_config=twin_single_cfg_main,
+lp3 = LinePlotter(twin_single_df, twin_single_cfg_main)
+fig_combined_single_df = lp3.plot(
+    twinx_data=None,
     secondary_config=twin_single_cfg_overlay,
-)
+)[0]
 fig_combined_single_df.savefig("line_plus_annotation_single_df_smoke.pdf")
 print("line_plus_annotation_single_df_smoke.pdf")
 
