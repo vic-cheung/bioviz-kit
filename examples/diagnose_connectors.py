@@ -15,7 +15,13 @@ df = pd.DataFrame(
     }
 )
 
-cfg = VolcanoConfig(values_to_label=idx[:6], connector_width=1.4, log_transform_ycol=True)
+cfg = VolcanoConfig(
+    x_col="log2_or",
+    y_col="p_adj",
+    values_to_label=idx[:6],
+    connector_width=1.4,
+    log_transform_ycol=True,
+)
 fig, ax = plot_volcano(cfg, df)
 
 # Find horizontal lines (Line2D) and their y data

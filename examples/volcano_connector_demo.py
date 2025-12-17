@@ -31,7 +31,10 @@ def write_demo(cfg, fname):
 
 # Default behavior (attach to marker edge, gray connectors)
 cfg_default = VolcanoConfig(
-    x_col="log2_or", y_col="p_adj", values_to_label=idx[:6], label_col="label"
+    x_col="log2_or",
+    y_col="p_adj",
+    values_to_label=idx[:6],
+    label_col="label",
 )
 write_demo(cfg_default, "examples/volcano_connector_demo.default.png")
 
