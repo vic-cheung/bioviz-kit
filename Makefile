@@ -24,7 +24,7 @@ install-all:
 	uv pip install -e ".[dev]"
 
 # --------------------------------------
-# Type checking with timestamped output
+# Linting with timestamped output
 # --------------------------------------
 RUFF_DIR:= $(CURDIR)/.ruff_checks
 RUFF_TIMESTAMP := $(shell date +%Y%m%d_%H%M%S)
