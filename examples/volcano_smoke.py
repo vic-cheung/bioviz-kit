@@ -10,7 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 import pandas as pd
 from bioviz.configs.volcano_cfg import VolcanoConfig
-from bioviz.plots import plot_volcano
+from bioviz.plots import VolcanoPlotter
 
 
 def make_df():
@@ -35,8 +35,9 @@ def main():
     cfg1.log_transform_ycol = True
     cfg1.label_mode = "sig_and_thresh"
     cfg1.color_mode = "sig_and_thresh"
-    fig1, ax1 = plot_volcano(cfg1, df)
-    fig1.savefig(out1)
+    vp1 = VolcanoPlotter(df, cfg1)
+    fig1, ax1 = vp1.plot()
+    vp1.save(out1)
     print("Wrote", out1)
 
     # Variant 2: forced outward labels with rotation
@@ -48,8 +49,9 @@ def main():
     cfg2.log_transform_ycol = True
     cfg2.label_mode = "sig_and_thresh"
     cfg2.color_mode = "sig_and_thresh"
-    fig2, ax2 = plot_volcano(cfg2, df)
-    fig2.savefig(out2)
+    vp2 = VolcanoPlotter(df, cfg2)
+    fig2, ax2 = vp2.plot()
+    vp2.save(out2)
     print("Wrote", out2)
 
     # Variant 3: use adjust_text branch (no forced placement)
@@ -62,8 +64,9 @@ def main():
     cfg3.adjust = True
     cfg3.label_mode = "auto"
     cfg3.color_mode = "sig_or_thresh"
-    fig3, ax3 = plot_volcano(cfg3, df)
-    fig3.savefig(out3)
+    vp3 = VolcanoPlotter(df, cfg3)
+    fig3, ax3 = vp3.plot()
+    vp3.save(out3)
     print("Wrote", out3)
 
 

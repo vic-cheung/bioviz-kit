@@ -1,5 +1,5 @@
 from bioviz.configs.volcano_cfg import VolcanoConfig
-from bioviz.plots import plot_volcano
+from bioviz.plots import VolcanoPlotter
 import pandas as pd
 import numpy as np
 from matplotlib.lines import Line2D
@@ -22,7 +22,8 @@ cfg = VolcanoConfig(
     connector_width=1.4,
     log_transform_ycol=True,
 )
-fig, ax = plot_volcano(cfg, df)
+vp = VolcanoPlotter(df, cfg)
+fig, ax = vp.plot()
 
 # Find horizontal lines (Line2D) and their y data
 

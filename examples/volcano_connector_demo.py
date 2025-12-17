@@ -5,7 +5,7 @@ Writes two PNGs demonstrating different connector colors/widths and attach behav
 import pandas as pd
 import numpy as np
 from bioviz.configs.volcano_cfg import VolcanoConfig
-from bioviz.plots import plot_volcano
+from bioviz.plots import VolcanoPlotter
 
 # Create a minimal dataframe
 np.random.seed(1)
@@ -20,12 +20,13 @@ df = pd.DataFrame(
 
 
 def write_demo(cfg, fname):
-    fig, ax = plot_volcano(cfg, df)
+    vp = VolcanoPlotter(df, cfg)
+    fig, ax = vp.plot()
     # Ensure target directory exists
     from pathlib import Path
 
     Path(fname).parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(fname)
+    vp.save(fname)
     print("Wrote", fname)
 
 

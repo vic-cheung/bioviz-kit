@@ -39,6 +39,8 @@ _PUBLIC_FUNCS = {
     # oncoplot exports
     "plot_oncoplot": ("bioviz.plots.oncoplot", "plot_oncoplot"),
     "OncoplotPlotter": ("bioviz.plots.oncoplot", "OncoplotPlotter"),
+    # volcano class wrapper
+    "VolcanoPlotter": ("bioviz.plots.volcano", "VolcanoPlotter"),
     # lineplot / table helpers
     "generate_lineplot": ("bioviz.plots.lineplot", "generate_lineplot"),
     "generate_styled_table": ("bioviz.plots.table", "generate_styled_table"),

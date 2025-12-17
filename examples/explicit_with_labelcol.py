@@ -1,7 +1,7 @@
 # %%
 from pathlib import Path
 from bioviz.configs.volcano_cfg import VolcanoConfig
-from bioviz.plots import plot_volcano
+from bioviz.plots import VolcanoPlotter
 import pandas as pd
 import numpy as np
 
@@ -34,8 +34,9 @@ cfg = VolcanoConfig(
     label_mode="all",
     color_mode="all",
 )
-fig, ax = plot_volcano(cfg, df)
+vp = VolcanoPlotter(df, cfg)
+vp.plot()
 
 Path("examples").mkdir(parents=True, exist_ok=True)
-fig.savefig("examples/explicit_with_labelcol.png")
+vp.save("examples/explicit_with_labelcol.png")
 print("Wrote examples/explicit_with_labelcol.png")

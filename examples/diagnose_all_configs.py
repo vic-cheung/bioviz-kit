@@ -1,5 +1,5 @@
 from bioviz.configs.volcano_cfg import VolcanoConfig
-from bioviz.plots import plot_volcano
+from bioviz.plots import VolcanoPlotter
 import pandas as pd
 import numpy as np
 from matplotlib.lines import Line2D
@@ -80,7 +80,8 @@ configs.append(
 )
 
 for name, cfg in configs:
-    fig, ax = plot_volcano(cfg, df)
+    vp = VolcanoPlotter(df, cfg)
+    fig, ax = vp.plot()
     # collect lines
     lines = [a for a in ax.get_lines() if isinstance(a, Line2D)]
     # identify connector-like lines (short segments)

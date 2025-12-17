@@ -7,7 +7,7 @@ APIs are provided — this is the canonical, hard refactor you requested.
 
 from __future__ import annotations
 
-from typing import List, Tuple
+from typing import List, Tuple, Optional, Mapping, Dict
 
 import math
 import numpy as np
@@ -1269,3 +1269,173 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
 
     plt.tight_layout()
     return fig, ax
+
+
+class VolcanoPlotter:
+    """Stateful, interactive wrapper around the functional API.
+
+    Mirrors the interaction pattern of `OncoplotPlotter`: the instance
+    exposes `.df` and `.config` attributes, and the constructor accepts
+    either `(df, config)` or `(config, df)` for backwards compatibility.
+    Rendering delegates to `plot_volcano` so the pure function remains
+    the canonical implementation.
+    """
+
+    def __init__(self, df: pd.DataFrame, config: VolcanoConfig | dict):
+        """Construct with `(df, config)` matching `OncoplotPlotter`.
+
+        `config` may be a `VolcanoConfig` or a dict understood by it.
+        """
+        if isinstance(config, dict):
+            config = VolcanoConfig(**config)
+        self.df: pd.DataFrame = df.copy()
+        self.last_df: pd.DataFrame = self.df
+        self.config: VolcanoConfig = config
+        self.cfg: VolcanoConfig = config  # backward alias
+        self.fig: Optional[plt.Figure] = None
+        self.ax: Optional[plt.Axes] = None
+        # history of explicit annotations added via .annotate()
+        self.annotation_history: List[Dict] = []
+
+    # Data / rendering -------------------------------------------------
+    def set_data(self, df: pd.DataFrame) -> "VolcanoPlotter":
+        self.df = df.copy()
+        self.last_df = self.df
+        return self
+
+    def plot(self, df: Optional[pd.DataFrame] = None) -> Tuple[plt.Figure, plt.Axes]:
+        """Render the volcano. If `df` is provided, set it as the current data.
+
+        Returns the `(fig, ax)` produced by `plot_volcano` and stores them
+        on the instance.
+        """
+        if df is not None:
+            self.set_data(df)
+        if self.df is None or self.config is None:
+            raise RuntimeError(
+                "Both dataframe and config are required; set them before calling .plot()"
+            )
+        # Delegate to the canonical function so behavior stays centralized
+        self.fig, self.ax = plot_volcano(self.config, self.df)
+        return self.fig, self.ax
+
+    def save(self, path: str, **save_kwargs) -> None:
+        from pathlib import Path
+
+        if self.fig is None:
+            raise RuntimeError("No figure available; call .plot(df) first")
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
+        self.fig.savefig(path, **save_kwargs)
+
+    # Convenience interactive operations --------------------------------
+    def update_config(self, **kwargs) -> "VolcanoPlotter":
+        """Update configuration in-place and return self for chaining."""
+        for k, v in kwargs.items():
+            try:
+                setattr(self.cfg, k, v)
+            except Exception:
+                continue
+        return self
+
+    def annotate(
+        self, explicit_positions: Mapping[str, Tuple[float, float]], replace: bool = True
+    ) -> "VolcanoPlotter":
+        """Add explicit label placements and re-render.
+
+        `explicit_positions` should be a mapping label -> (x, y).
+        If `replace` is True the explicit placements replace auto labels
+        (cfg.explicit_label_replace=True). The placements are recorded in
+        `annotation_history` so callers can inspect what was added.
+        """
+        try:
+            # normalize to dict[str, (x,y)]
+            new_map = {str(k): (float(v[0]), float(v[1])) for k, v in explicit_positions.items()}
+        except Exception:
+            raise ValueError("explicit_positions must be a mapping label->(x,y)")
+
+        # record
+        self.annotation_history.append({"explicit": new_map, "replace": replace})
+
+        # apply to config and re-render
+        try:
+            if self.config is None:
+                self.config = VolcanoConfig(
+                    explicit_label_positions=new_map, explicit_label_replace=bool(replace)
+                )
+            else:
+                self.config.explicit_label_positions = new_map
+                self.config.explicit_label_replace = bool(replace)
+            self.cfg = self.config
+        except Exception:
+            pass
+        # Replot with updated config
+        if self.df is not None:
+            self.plot(self.df)
+        return self
+
+    def label_more(self, n: int = 10) -> "VolcanoPlotter":
+        """Convenience to expand `cfg.values_to_label` using the internal
+        resolver -- useful for interactive 'label more' flows.
+        """
+        if self.df is None or self.config is None:
+            raise RuntimeError("No dataframe available; call .set_data(df) or .plot(df) first")
+        resolved = resolve_labels(self.df, self.config)
+        if not resolved:
+            return self
+        already = (
+            list(self.config.values_to_label)
+            if getattr(self.config, "values_to_label", None)
+            else []
+        )
+        to_add = [v for v in resolved if v not in already][:n]
+        new_vals = list(dict.fromkeys(already + to_add))
+        try:
+            self.config.values_to_label = new_vals
+            self.cfg = self.config
+        except Exception:
+            pass
+        # re-render
+        self.plot(self.df)
+        return self
+
+    # Serialization / utilities ----------------------------------------
+    def to_dict(self) -> Dict:
+        try:
+            return {
+                "cfg": self.config.model_dump() if self.config is not None else {},
+                "annotations": list(self.annotation_history),
+            }
+        except Exception:
+            return {"cfg": {}, "annotations": list(self.annotation_history)}
+
+    @classmethod
+    def from_dict(cls, data: Mapping) -> "VolcanoPlotter":
+        c = data.get("cfg", {})
+        vp = cls(c if isinstance(c, VolcanoConfig) else c)
+        # restore annotation history if present
+        ah = data.get("annotations", None)
+        if ah is not None:
+            try:
+                vp.annotation_history = list(ah)
+            except Exception:
+                vp.annotation_history = []
+        return vp
+
+    def close(self) -> None:
+        try:
+            if self.fig is not None:
+                plt.close(self.fig)
+        finally:
+            self.fig = None
+            self.ax = None
+
+    def resolve_labels(self) -> List[str]:
+        if self.last_df is None:
+            raise RuntimeError("No dataframe plotted yet; call .plot(df) first")
+        return resolve_labels(self.last_df, self.cfg)
+
+    def __enter__(self) -> "VolcanoPlotter":
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        self.close()
