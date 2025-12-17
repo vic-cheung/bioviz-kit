@@ -1087,7 +1087,8 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
         # Only expand limits when the caller did not explicitly provide them.
         do_pad_x = getattr(cfg, "xlim", None) is None
         do_pad_y = getattr(cfg, "ylim", None) is None
-        if do_pad_x or do_pad_y:
+        # Respect the caller's preference via cfg.pad_by_marker
+        if (do_pad_x or do_pad_y) and getattr(cfg, "pad_by_marker", True):
             r_points = math.sqrt(max(cfg.marker_size, 1.0)) / 2.0
             r_pixels = r_points * fig.dpi / 72.0
             # Convert pixel deltas to data-space deltas

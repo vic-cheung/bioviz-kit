@@ -123,6 +123,11 @@ class VolcanoConfig(BaseModel):
     marker_size: float = 50.0
     # Whether connectors should attach to the marker edge instead of the center
     attach_to_marker_edge: bool = True
+    # When True, expand axis limits by the marker display radius so large
+    # markers near the edge are not visually clipped when saving figures.
+    # Set to False to preserve exact axis limits (useful when caller set
+    # `xlim`/`ylim` explicitly and does not want automatic padding).
+    pad_by_marker: bool = True
     # Connector (annotation line) styling
     connector_color: str = "gray"
     connector_width: float = 0.8
