@@ -72,11 +72,11 @@ def plot_grouped_boxplots(
         seen = set()
         new_handles = []
         new_labels = []
-        for h, l in zip(handles, labels):
-            if l not in seen:
-                seen.add(l)
+        for h, lbl in zip(handles, labels):
+            if lbl not in seen:
+                seen.add(lbl)
                 new_handles.append(h)
-                new_labels.append(l)
+                new_labels.append(lbl)
         ax.legend(new_handles, new_labels, title=hue)
 
     # Statistical annotations: compute p-values, optionally correct, then annotate
@@ -89,9 +89,6 @@ def plot_grouped_boxplots(
         try:
             if use_bh_correction and len(pvals) > 0:
                 valid_idx = [i for i, pv in enumerate(pvals) if not np.isnan(pv)]
-                pvals_arr = np.array(
-                    [pvals[i] if i in valid_idx else np.nan for i in range(len(pvals))], dtype=float
-                )
                 # multipletests requires array of pvals without nans; handle mapping
                 pv_for_correction = [pvals[i] for i in valid_idx]
                 if len(pv_for_correction) > 0:
@@ -122,7 +119,6 @@ def plot_grouped_boxplots(
             # Determine x positions
             x_positions = {cat: i for i, cat in enumerate(order)}
             # If hue is present, annotation placement is trickier; place above max of the pair
-            y_max_global = df[y].max(skipna=True) if y in df.columns else 0
             offset = (df[y].std(skipna=True) or 1.0) * 0.1
             # count stacked annotations to avoid overlap
             stack_counts = {}

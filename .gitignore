@@ -39,4 +39,5 @@ Rprof.out
 # --- System Files ---
 *.DS_Store
 .ty_checks/
+.ruff_checks/
 

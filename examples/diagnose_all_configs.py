@@ -2,6 +2,7 @@ from bioviz.plot_composites.configs.volcano_cfg import VolcanoConfig
 from bioviz.plot_composites.volcano import plot_volcano
 import pandas as pd
 import numpy as np
+from matplotlib.lines import Line2D
 
 np.random.seed(1)
 idx = [f"g{i}" for i in range(1, 11)]
@@ -78,25 +79,23 @@ configs.append(
     )
 )
 
-from matplotlib.lines import Line2D
-
 for name, cfg in configs:
     fig, ax = plot_volcano(cfg, df)
     # collect lines
     lines = [a for a in ax.get_lines() if isinstance(a, Line2D)]
     # identify connector-like lines (short segments)
     connector_like = []
-    for l in lines:
-        xdata = np.array(l.get_xdata())
-        ydata = np.array(l.get_ydata())
+    for ln in lines:
+        xdata = np.array(ln.get_xdata())
+        ydata = np.array(ln.get_ydata())
         if (
             np.ptp(xdata) < (ax.get_xlim()[1] - ax.get_xlim()[0]) * 0.9
             and np.ptp(ydata) < (ax.get_ylim()[1] - ax.get_ylim()[0]) * 0.9
         ):
-            connector_like.append(l)
+            connector_like.append(ln)
     # find horizontal threshold
     thr_y = None
-    hlines = [l for l in lines if len(set(np.round(l.get_ydata(), 6))) == 1]
+    hlines = [ln for ln in lines if len(set(np.round(ln.get_ydata(), 6))) == 1]
     if hlines:
         thr_y = float(hlines[-1].get_ydata()[0])
     print(f"{name}: total Line2D={len(lines)}, connector_like={len(connector_like)}, thr_y={thr_y}")

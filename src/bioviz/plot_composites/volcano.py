@@ -7,14 +7,13 @@ APIs are provided — this is the canonical, hard refactor you requested.
 
 from __future__ import annotations
 
-from typing import Optional, Iterable, List, Dict, Tuple
+from typing import List, Tuple
 
 import math
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import warnings
-from pydantic import Field
 from .configs.volcano_cfg import VolcanoConfig
 
 try:
@@ -207,7 +206,6 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
             fig.canvas.draw()
             renderer = fig.canvas.get_renderer()
             bbox = text_obj.get_window_extent(renderer=renderer)
-            center_disp = ax.transData.transform((marker_x, marker_y))
             if marker_radius_pixels is None:
                 r_points = math.sqrt(max(cfg.marker_size, 1.0)) / 2.0
                 marker_radius_pixels = r_points * fig.dpi / 72.0
@@ -414,7 +412,6 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
 
     # build labels aggregated by coordinates
     all_texts = []
-    orig_points = []
     forced_texts = []
     forced_points = []
     adjustable_texts = []
@@ -870,7 +867,6 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
     if cfg.x_label:
         ax.set_xlabel(cfg.x_label)
     else:
-        x_label = cfg.x_col
         lx = cfg.x_col.lower()
         if "log2" in lx or "log_2" in lx:
             # Keep 'OR' non-italicized inside math mode
