@@ -55,11 +55,12 @@ def _internal_resolve_values(df: pd.DataFrame, cfg: VolcanoConfig) -> List[str]:
         except Exception:
             pass
 
-    # Build a significance mask using the configured `y_col` and `sig_thresh`.
+    # Build a significance mask using the configured `y_col` and `y_col_thresh`.
     sig_mask = pd.Series(False, index=df.index)
     try:
-        if cfg.y_col and cfg.y_col in df.columns:
-            sig_mask = df[cfg.y_col].astype(float).fillna(1.0) <= cfg.sig_thresh
+        y_thresh = getattr(cfg, "y_col_thresh", None)
+        if y_thresh is not None and cfg.y_col and cfg.y_col in df.columns:
+            sig_mask = df[cfg.y_col].astype(float).fillna(1.0) <= y_thresh
     except Exception:
         sig_mask = pd.Series(False, index=df.index)
 
