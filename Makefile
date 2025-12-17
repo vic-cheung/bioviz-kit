@@ -35,7 +35,7 @@ ruff:
 	@mkdir -p $(RUFF_DIR)
 	@echo "Running ruff..."
 	@RUFF_OUTPUT=$(RUFF_DIR)/ruff_$(shell date +%Y%m%d_%H%M%S).txt; \
-	uv run ruff check . > $$RUFF_OUTPUT 2>&1; \
+	uv run ruff check . --fix > $$RUFF_OUTPUT 2>&1; \
 	RU_RC=$$?; \
 	if [ $$RU_RC -ne 0 ]; then \
 		echo "[ruff reported issues or failed (exit code $$RU_RC)] See details: $$RUFF_OUTPUT"; \
