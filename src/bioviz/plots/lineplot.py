@@ -31,7 +31,8 @@ __all__ = [
 
 
 class LinePlotter:
-    """Stateful wrapper for line plots.
+    """
+    Stateful wrapper for line plots.
 
     Construct with `(df, config)` where `config` is a `LinePlotConfig` or
     dict acceptable to it. Delegates rendering to the canonical
@@ -59,16 +60,58 @@ class LinePlotter:
                 continue
         return self
 
-    def plot(self, df: Optional[pd.DataFrame] = None, draw_legend: bool = True):
-        """Render the line plot and store `fig, ax` on the instance."""
+    def plot(
+        self,
+        df: Optional[pd.DataFrame] = None,
+        *,
+        twinx_data: Optional[pd.DataFrame] = None,
+        secondary_config: Optional[LinePlotConfig | dict] = None,
+        annotation_color_dict: Optional[dict] = None,
+        annotation_source: str = "auto",
+        draw_legend: bool = True,
+    ):
+        """Render the line plot and store `fig, ax` on the instance.
+
+        This dispatcher supports:
+        - Single-/multi-group plots via `generate_lineplot` (the default).
+        - Twin-axis overlay plots via `generate_lineplot_twinx` when `twinx_data`
+          or `secondary_config` is provided.
+
+        Note: `generate_lineplot` already inspects the provided `LinePlotConfig`
+        to choose between single-series and multi-group variants (based on
+        `group_col` / `label_col`). The twin-axis case requires explicit
+        `twinx_data` (or a `secondary_config` describing the overlay) and is
+        dispatched here.
+        """
+
         if df is not None:
             self.set_data(df)
         if self.df is None or self.config is None:
             raise RuntimeError(
                 "Both dataframe and config are required; construct with (df, config)"
             )
-        # choose dispatcher
-        self.fig = generate_lineplot(self.df, self.config, ax=None, draw_legend=draw_legend)
+
+        # If twin-axis data or a secondary config is provided, delegate to the
+        # twinx generator which handles combined/secondary-only/primary-only modes.
+        if twinx_data is not None or secondary_config is not None:
+            sec_cfg = None
+            if isinstance(secondary_config, dict):
+                sec_cfg = LinePlotConfig(**secondary_config)
+            elif isinstance(secondary_config, LinePlotConfig):
+                sec_cfg = secondary_config
+
+            self.fig = generate_lineplot_twinx(
+                df=self.df,
+                twinx_data=twinx_data,
+                primary_config=self.config,
+                secondary_config=sec_cfg,
+                annotation_color_dict=annotation_color_dict,
+                annotation_source=annotation_source,
+            )
+        else:
+            # default single/multi-group dispatcher
+            self.fig = generate_lineplot(self.df, self.config, ax=None, draw_legend=draw_legend)
+
         # ensure ax is available when the generator returns a fig
         if self.fig is None:
             self.ax = None
