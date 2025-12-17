@@ -84,7 +84,7 @@ def _internal_resolve_values(df: pd.DataFrame, cfg: VolcanoConfig) -> List[str]:
     except Exception:
         sig_mask = pd.Series(False, index=df.index)
 
-    eff_m = (
+    eff_mask = (
         df[cfg.x_col].abs() >= cfg.abs_x_thresh
         if cfg.x_col in df.columns
         else pd.Series(False, index=df.index)
@@ -97,15 +97,15 @@ def _internal_resolve_values(df: pd.DataFrame, cfg: VolcanoConfig) -> List[str]:
     elif mode == "sig":
         base = labels_series.loc[sig_mask].tolist()
     elif mode == "thresh":
-        base = labels_series.loc[eff_m].tolist()
+        base = labels_series.loc[eff_mask].tolist()
     elif mode == "sig_and_thresh":
-        base = labels_series.loc[sig_mask & eff_m].tolist()
+        base = labels_series.loc[sig_mask & eff_mask].tolist()
     elif mode == "sig_or_thresh":
-        base = labels_series.loc[sig_mask | eff_m].tolist()
+        base = labels_series.loc[sig_mask | eff_mask].tolist()
     else:
         # 'auto' (and any unknown value) defaults to the intersection
         # of significance and magnitude — label points that meet both.
-        mask = sig_mask & eff_m
+        mask = sig_mask & eff_mask
         base = labels_series.loc[mask].tolist()
 
     if cfg.additional_values_to_label:
@@ -368,6 +368,18 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
     except Exception:
         sig_mask = pd.Series(False, index=df.index)
 
+    # magnitude-based mask (points whose absolute x value exceeds the
+    # configured `abs_x_thresh`). Define here so color/label selection
+    # logic below can reference it regardless of control flow.
+    try:
+        abs_x_thresh = getattr(cfg, "abs_x_thresh", None)
+        if abs_x_thresh is not None and cfg.x_col in df.columns:
+            eff_mask = df[cfg.x_col].abs() >= abs_x_thresh
+        else:
+            eff_mask = pd.Series(False, index=df.index)
+    except Exception:
+        eff_mask = pd.Series(False, index=df.index)
+
     # color selection helpers
     def _choose_direction_color(val):
         try:
@@ -405,11 +417,11 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
     elif color_mode == "sig":
         color_mask = sig_mask.copy()
     elif color_mode == "thresh":
-        color_mask = eff_m.copy()
+        color_mask = eff_mask.copy()
     elif color_mode == "sig_and_thresh":
-        color_mask = sig_mask & eff_m
+        color_mask = sig_mask & eff_mask
     elif color_mode == "sig_or_thresh":
-        color_mask = sig_mask | eff_m
+        color_mask = sig_mask | eff_mask
     else:
         color_mask = sig_mask.copy()
 

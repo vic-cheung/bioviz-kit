@@ -126,7 +126,6 @@ def apply_statannotations(
     # Simple drawing: determine x positions in the axis coordinate system
     cats = list(pd.Categorical(df[x]).categories)
     x_positions = {cat: i for i, cat in enumerate(cats)}
-    y_max = df[y].max(skipna=True) if not df[y].dropna().empty else 1.0
     y_std = float(df[y].std(skipna=True) or 1.0)
     offset = y_std * 0.1
     # Stack multiple annotations to avoid overlap

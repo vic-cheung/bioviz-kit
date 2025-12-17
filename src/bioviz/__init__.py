@@ -50,17 +50,12 @@ def __getattr__(name: str):
         AttributeError: If `name` is not a recognized submodule.
     """
 
-    # First handle the existing submodule imports
-    if name in __all__ and name not in _PUBLIC_FUNCS:
+    # Lazily import submodules listed in __all__ on first access. We do not
+    # provide legacy convenience callables at the package root to keep the
+    # initializer lightweight and avoid exposing symbols unexpectedly.
+    if name in __all__:
         module = __import__(f"bioviz.{name}", fromlist=[name])
         globals()[name] = module
         return module
 
-    # Then handle lazy exported convenience functions
-    if name in _PUBLIC_FUNCS:
-        mod_name, func_name = _PUBLIC_FUNCS[name]
-        module = __import__(mod_name, fromlist=[func_name])
-        func = getattr(module, func_name)
-        globals()[name] = func
-        return func
     raise AttributeError(f"module {__name__} has no attribute {name}")

@@ -3,6 +3,7 @@ from bioviz.plot_composites.volcano import plot_volcano
 import pandas as pd
 import numpy as np
 from matplotlib.lines import Line2D
+from pathlib import Path
 
 np.random.seed(1)
 idx = [f"g{i}" for i in range(1, 11)]
@@ -44,7 +45,6 @@ for ln in hlines:
     print("  y =", float(ln.get_ydata()[0]))
 
 fig.canvas.draw()
-from pathlib import Path
 
 Path("examples").mkdir(parents=True, exist_ok=True)
 fig.savefig("examples/diagnose_connectors_out.png")
