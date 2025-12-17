@@ -31,7 +31,8 @@ cfg = VolcanoConfig(
     log_transform_ycol=True,
     explicit_label_positions=explicit_positions,
     explicit_label_replace=True,
-    sig_requires_x_thresh=False,
+    label_mode="all",
+    color_mode="all",
 )
 fig, ax = plot_volcano(cfg, df)
 

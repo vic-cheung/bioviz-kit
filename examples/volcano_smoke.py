@@ -29,33 +29,39 @@ def main():
 
     # Variant 1: forced outward labels with rotation
     out1 = Path(__file__).with_suffix(".forced.png")
-    cfg1 = VolcanoConfig()
+    cfg1 = VolcanoConfig(x_col="log2_or", y_col="p_adj")
     cfg1.label_col = "label"
     cfg1.force_label_side_by_point_sign = True
     cfg1.log_transform_ycol = True
+    cfg1.label_mode = "sig_and_thresh"
+    cfg1.color_mode = "sig_and_thresh"
     fig1, ax1 = plot_volcano(cfg1, df)
     fig1.savefig(out1)
     print("Wrote", out1)
 
     # Variant 2: forced outward labels with rotation
     out2 = Path(__file__).with_suffix(".forced_adjusted.png")
-    cfg2 = VolcanoConfig()
+    cfg2 = VolcanoConfig(x_col="log2_or", y_col="p_adj")
     cfg2.label_col = "label"
     cfg2.force_label_side_by_point_sign = True
     cfg2.force_labels_adjustable = True
     cfg2.log_transform_ycol = True
+    cfg2.label_mode = "sig_and_thresh"
+    cfg2.color_mode = "sig_and_thresh"
     fig2, ax2 = plot_volcano(cfg2, df)
     fig2.savefig(out2)
     print("Wrote", out2)
 
     # Variant 3: use adjust_text branch (no forced placement)
     out3 = Path(__file__).with_suffix(".adjust.png")
-    cfg3 = VolcanoConfig()
+    cfg3 = VolcanoConfig(x_col="log2_or", y_col="p_adj")
     cfg3.label_col = "label"
     cfg3.force_label_side_by_point_sign = False
     cfg3.log_transform_ycol = True
     cfg3.use_adjust_text = True
     cfg3.adjust = True
+    cfg3.label_mode = "auto"
+    cfg3.color_mode = "sig_or_thresh"
     fig3, ax3 = plot_volcano(cfg3, df)
     fig3.savefig(out3)
     print("Wrote", out3)
