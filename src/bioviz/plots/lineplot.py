@@ -6,6 +6,7 @@ Ported and adapted from tm_toolbox. Uses neutral `DefaultStyle`.
 
 # %%
 import math
+from typing import Optional, List, Dict
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -27,6 +28,77 @@ __all__ = [
     "generate_styled_multigroup_lineplot",
     "generate_lineplot_twinx",
 ]
+
+
+class LinePlotter:
+    """Stateful wrapper for line plots.
+
+    Construct with `(df, config)` where `config` is a `LinePlotConfig` or
+    dict acceptable to it. Delegates rendering to the canonical
+    `generate_lineplot`/`generate_styled_lineplot` functions.
+    """
+
+    def __init__(self, df: pd.DataFrame, config: LinePlotConfig | dict):
+        if isinstance(config, dict):
+            config = LinePlotConfig(**config)
+        self.df = df.copy()
+        self.config = config
+        self.fig: Optional[plt.Figure] = None
+        self.ax: Optional[plt.Axes] = None
+        self.annotation_history: List[Dict] = []
+
+    def set_data(self, df: pd.DataFrame) -> "LinePlotter":
+        self.df = df.copy()
+        return self
+
+    def update_config(self, **kwargs) -> "LinePlotter":
+        for k, v in kwargs.items():
+            try:
+                setattr(self.config, k, v)
+            except Exception:
+                continue
+        return self
+
+    def plot(self, df: Optional[pd.DataFrame] = None, draw_legend: bool = True):
+        """Render the line plot and store `fig, ax` on the instance."""
+        if df is not None:
+            self.set_data(df)
+        if self.df is None or self.config is None:
+            raise RuntimeError(
+                "Both dataframe and config are required; construct with (df, config)"
+            )
+        # choose dispatcher
+        self.fig = generate_lineplot(self.df, self.config, ax=None, draw_legend=draw_legend)
+        # ensure ax is available when the generator returns a fig
+        if self.fig is None:
+            self.ax = None
+        else:
+            try:
+                self.ax = self.fig.axes[0] if self.fig.axes else None
+            except Exception:
+                self.ax = None
+        return self.fig, self.ax
+
+    def save(self, path: str, **save_kwargs) -> None:
+        from pathlib import Path
+
+        if self.fig is None:
+            raise RuntimeError("No figure available; call .plot() first")
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
+        self.fig.savefig(path, **save_kwargs)
+
+    def annotate(self, *args, **kwargs) -> "LinePlotter":
+        # placeholder for future annotation methods; record call
+        self.annotation_history.append({"args": args, "kwargs": kwargs})
+        return self
+
+    def close(self) -> None:
+        try:
+            if self.fig is not None:
+                plt.close(self.fig)
+        finally:
+            self.fig = None
+            self.ax = None
 
 
 def generate_lineplot(
