@@ -19,7 +19,7 @@ from matplotlib.patches import Patch  # type: ignore
 
 from .plot_configs import HeatmapAnnotationConfig, OncoplotConfig
 from .style import DefaultStyle, StyleBase
-from bioviz.plot_utils import resolve_font_family
+from bioviz.utils.plotting import resolve_font_family
 
 # Do not apply a global style at import time; callers should pass a style.
 

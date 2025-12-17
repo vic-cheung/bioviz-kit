@@ -17,7 +17,7 @@ from matplotlib import font_manager
 from matplotlib.lines import Line2D
 
 from bioviz.configs import LinePlotConfig
-from bioviz.plot_utils import adjust_legend, resolve_font_family
+from bioviz.utils.plotting import adjust_legend, resolve_font_family
 
 
 # Expose public function

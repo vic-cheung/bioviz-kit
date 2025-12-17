@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 from bioviz.configs import StyledTableConfig
-from bioviz.plot_utils import resolve_font_family
+from bioviz.utils.plotting import resolve_font_family
 
 __all__ = ["generate_styled_table"]
 

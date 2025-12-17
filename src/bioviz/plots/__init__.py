@@ -4,7 +4,7 @@ Attributes are loaded lazily to avoid importing optional heavy
 dependencies (e.g. `statsmodels`) when the parent package is imported.
 """
 
-__all__ = ["plot_grouped_boxplots", "plot_waterfall", "plot_volcano", "waterfall_with_distribution"]
+__all__ = ["plot_grouped_boxplots", "plot_waterfall", "plot_volcano", "waterfall_with_distribution", "resolve_labels"]
 
 
 def __getattr__(name: str):
@@ -20,6 +20,11 @@ def __getattr__(name: str):
         return _obj
     if name == "plot_volcano":
         from .volcano import plot_volcano as _obj
+
+        globals()[name] = _obj
+        return _obj
+    if name == "resolve_labels":
+        from .volcano import resolve_labels as _obj
 
         globals()[name] = _obj
         return _obj

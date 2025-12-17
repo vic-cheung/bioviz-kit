@@ -9,9 +9,9 @@ __all__ = [
     "oncoplot",
     "table",
     "style",
-    "plot_utils",
     "plot_configs",
-    "plot_composites",
+    "utils",
+    "plots",
 ]
 
 __version__ = "0.1.0"
