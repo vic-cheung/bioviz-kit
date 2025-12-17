@@ -83,7 +83,7 @@ class VolcanoConfig(BaseModel):
     annotation_fontweight_sig: str = "bold"
     annotation_fontweight_nonsig: str = "normal"
     annotation_sig_color: Optional[str] = None
-    annotation_nonsig_color: str = "#6e6e6e"
+    annotation_nonsig_color: str = "#7f7f7f"
     # Force labels outward by point sign: left for x<0, right for x>0
     force_label_side_by_point_sign: bool = False
     # Horizontal label offset (data units) when forcing side
@@ -112,7 +112,22 @@ class VolcanoConfig(BaseModel):
     attach_to_marker_edge: bool = True
     # Connector (annotation line) styling
     connector_color: str = "gray"
-    connector_width: float = 0.7
+    connector_width: float = 0.8
+    # Optional per-category connector colors. Each can be None to fall back
+    # to the generic `connector_color`.
+    connector_color_sig: Optional[str] = None
+    connector_color_nonsig: Optional[str] = None
+    # Per-side overrides (left/right) useful when you want different colors
+    # for left vs right labels (e.g., negative vs positive x).
+    connector_color_left: Optional[str] = None
+    connector_color_right: Optional[str] = None
+    # Optional explicit per-(significance × side) colors. These are the most
+    # specific overrides and will be consulted first when selecting connector
+    # colors. Each can be None to fall back to the less-specific fields.
+    connector_color_sig_left: Optional[str] = None
+    connector_color_sig_right: Optional[str] = None
+    connector_color_nonsig_left: Optional[str] = None
+    connector_color_nonsig_right: Optional[str] = None
 
     # Execution
     ax: Optional[plt.Axes] = None

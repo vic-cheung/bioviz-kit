@@ -139,6 +139,73 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
         except Exception:
             return xd, yd
 
+    def _nudge_label_if_overlapping(text_obj, marker_x, marker_y, marker_radius_pixels=None):
+        try:
+            fig.canvas.draw()
+            renderer = fig.canvas.get_renderer()
+            bbox = text_obj.get_window_extent(renderer=renderer)
+            center_disp = ax.transData.transform((marker_x, marker_y))
+            if marker_radius_pixels is None:
+                r_points = math.sqrt(max(cfg.marker_size, 1.0)) / 2.0
+                marker_radius_pixels = r_points * fig.dpi / 72.0
+            # Use bbox center to detect overlap, but shift the text anchor
+            # (respecting its horizontal/vertical alignment) in display
+            # coordinates so the anchor moves consistently with the visual
+            # position of the text.
+            # Consider ALL markers: find the closest marker whose display
+            # position is within the nudge padding and push the text away
+            # from that marker to avoid landing on top of other markers.
+            cols = [c for c in ax.collections if hasattr(c, "get_offsets")]
+            marker_disp_positions = []
+            for c in cols:
+                try:
+                    offs = c.get_offsets()
+                    for off in offs:
+                        marker_disp_positions.append(
+                            tuple(ax.transData.transform((off[0], off[1])))
+                        )
+                except Exception:
+                    continue
+
+            bbox_center = (bbox.x0 + bbox.width / 2.0, bbox.y0 + bbox.height / 2.0)
+            padding = getattr(cfg, "nudge_padding_pixels", 6.0)
+            closest = None
+            closest_dist = float("inf")
+            for md in marker_disp_positions:
+                d = math.hypot(bbox_center[0] - md[0], bbox_center[1] - md[1])
+                if d < closest_dist:
+                    closest_dist = d
+                    closest = md
+
+            if closest is not None and closest_dist < (marker_radius_pixels + padding):
+                # Prefer to nudge horizontally toward the side with more free space
+                ax_left, ax_right = ax.bbox.x0, ax.bbox.x1
+                space_left = bbox_center[0] - ax_left
+                space_right = ax_right - bbox_center[0]
+                horiz_dir = 1.0 if space_right >= space_left else -1.0
+
+                # compute directional vector away from the closest marker
+                ux = (bbox_center[0] - closest[0]) / (closest_dist + 1e-8)
+                uy = (bbox_center[1] - closest[1]) / (closest_dist + 1e-8)
+                # bias horizontal movement to preferred side
+                ux = horiz_dir
+                shift_pixels = marker_radius_pixels + padding - closest_dist
+                # limit vertical movement so labels remain horizontally aligned
+                uy = uy * 0.25
+                text_anchor_data = text_obj.get_position()
+                text_anchor_disp = ax.transData.transform(
+                    (text_anchor_data[0], text_anchor_data[1])
+                )
+                new_anchor_disp = (
+                    text_anchor_disp[0] + ux * shift_pixels,
+                    text_anchor_disp[1] + uy * shift_pixels,
+                )
+                new_anchor_data = ax.transData.inverted().transform(new_anchor_disp)
+                text_obj.set_position((new_anchor_data[0], new_anchor_data[1]))
+                fig.canvas.draw()
+        except Exception:
+            return
+
     # significance mask (use appropriate threshold when y was transformed)
     sig_mask = pd.Series(False, index=df.index)
     sig_thresh = getattr(cfg, "sig_thresh", None)
@@ -284,6 +351,7 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
     forced_points = []
     adjustable_texts = []
     adjustable_points = []
+    adjustable_point_sigs = []
     coord_to_labels = {}
     for i, row in df.iterrows():
         try:
@@ -410,9 +478,9 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
                 weight = getattr(cfg, "annotation_fontweight_sig", "bold")
                 fontsize = cfg.fontsize_sig
             else:
-                color_final = (
-                    ann_color or point_color or getattr(cfg, "annotation_nonsig_color", "#6e6e6e")
-                )
+                # Always use the configured nonsignificant annotation color
+                # if provided; otherwise use a medium gray.
+                color_final = getattr(cfg, "annotation_nonsig_color", "#7f7f7f")
                 weight = getattr(cfg, "annotation_fontweight_nonsig", "normal")
                 fontsize = cfg.fontsize_nonsig
 
@@ -442,11 +510,14 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
                 clip_on=False,
                 zorder=4,
             )
+            # Nudge label if it overlaps its marker
+            _nudge_label_if_overlapping(t, x, y)
             force_adjust = getattr(cfg, "force_labels_adjustable", False)
             if force_adjust:
                 # include forced labels in the adjustable/adjust_text flow
                 adjustable_texts.append(t)
                 adjustable_points.append((x, y))
+                adjustable_point_sigs.append(is_sig)
             else:
                 # straight connector from label to point
                 try:
@@ -460,19 +531,57 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
                             attach_x, attach_y = x, y
                     except Exception:
                         attach_x, attach_y = x, y
-                    ax.annotate(
-                        "",
-                        xy=(attach_x, attach_y),
-                        xytext=(tx, ty),
-                        arrowprops={
-                            "arrowstyle": "-",
-                            "color": cfg.connector_color,
-                            "lw": cfg.connector_width,
-                            "alpha": 0.8,
-                            "shrinkA": 0,
-                            "shrinkB": 0,
-                            "connectionstyle": "arc3,rad=0",
-                        },
+                    # choose connector color: side overrides -> sig/nonsig -> generic
+                    try:
+                        # First try most-specific (significance + side)
+                        if is_sig:
+                            conn_color = (
+                                cfg.connector_color_sig_left
+                                if x < 0 and cfg.connector_color_sig_left
+                                else cfg.connector_color_sig_right
+                                if x >= 0 and cfg.connector_color_sig_right
+                                else None
+                            )
+                        else:
+                            conn_color = (
+                                cfg.connector_color_nonsig_left
+                                if x < 0 and cfg.connector_color_nonsig_left
+                                else cfg.connector_color_nonsig_right
+                                if x >= 0 and cfg.connector_color_nonsig_right
+                                else None
+                            )
+                        # then per-side override
+                        if not conn_color:
+                            conn_color = (
+                                cfg.connector_color_left if x < 0 else cfg.connector_color_right
+                            )
+                        # then per-significance override
+                        if not conn_color:
+                            conn_color = (
+                                cfg.connector_color_sig
+                                if is_sig and cfg.connector_color_sig
+                                else None
+                            )
+                        if not conn_color:
+                            conn_color = (
+                                cfg.connector_color_nonsig
+                                if (not is_sig) and cfg.connector_color_nonsig
+                                else None
+                            )
+                        # final fallback
+                        if not conn_color:
+                            conn_color = cfg.connector_color
+                    except Exception:
+                        conn_color = cfg.connector_color
+
+                    print("DEBUG: about to annotate forced connector", flush=True)
+                    # draw a simple straight connector line from marker edge to label
+                    ax.plot(
+                        [attach_x, tx],
+                        [attach_y, ty],
+                        color=conn_color,
+                        linewidth=cfg.connector_width,
+                        alpha=0.8,
                         zorder=3.5,
                     )
                 except Exception:
@@ -490,9 +599,40 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
                     or cfg.annotation_sig_color
                     or cfg.palette.get("sig_up")
                 )
+                # place significant labels slightly offset so connectors can be drawn
+                lo, hi = getattr(cfg, "horiz_offset_range", (0.02, 0.06))
+                samp = np.random.uniform(lo, hi)
+                if getattr(cfg, "label_offset_mode", "fraction") == "fraction":
+                    x0, x1 = ax.get_xlim()
+                    span = float(x1 - x0) if x1 != x0 else 1.0
+                    horiz_offset = -abs(samp * span) if x < 0 else abs(samp * span)
+                elif getattr(cfg, "label_offset_mode", "fraction") == "axes":
+                    try:
+                        disp0 = ax.transAxes.transform((0.0, 0.0))
+                        disp1 = ax.transAxes.transform((samp, 0.0))
+                        dx_disp = disp1[0] - disp0[0]
+                        data_dx = (
+                            ax.transData.inverted().transform((dx_disp, 0))[0]
+                            - ax.transData.inverted().transform((0, 0))[0]
+                        )
+                        horiz_offset = -abs(data_dx) if x < 0 else abs(data_dx)
+                    except Exception:
+                        horiz_offset = -abs(samp) if x < 0 else abs(samp)
+                else:
+                    horiz_offset = -abs(samp) if x < 0 else abs(samp)
+
+                vlo, vhi = getattr(cfg, "vert_jitter_range", (-0.03, 0.03))
+                vj = np.random.uniform(vlo, vhi)
+                if getattr(cfg, "label_offset_mode", "fraction") == "fraction":
+                    x0, x1 = ax.get_xlim()
+                    span = float(x1 - x0) if x1 != x0 else 1.0
+                    vert_jitter = vj * span
+                else:
+                    vert_jitter = vj
+
                 t = ax.text(
-                    x,
-                    y,
+                    x + horiz_offset,
+                    y + vert_jitter,
                     text_str,
                     fontsize=cfg.fontsize_sig,
                     fontweight=getattr(cfg, "annotation_fontweight_sig", "bold"),
@@ -501,9 +641,8 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
                     zorder=4,
                 )
             else:
-                color_final = (
-                    ann_color or point_color or getattr(cfg, "annotation_nonsig_color", "#6e6e6e")
-                )
+                # Force nonsig annotation text color from config
+                color_final = getattr(cfg, "annotation_nonsig_color", "#7f7f7f")
                 ha = "right" if x < 0 else "left"
                 # random horizontal offset and vertical jitter (interpreted per mode)
                 lo, hi = getattr(cfg, "horiz_offset_range", (0.02, 0.06))
@@ -547,8 +686,10 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
                     clip_on=False,
                     zorder=4,
                 )
+                _nudge_label_if_overlapping(t, x, y)
             adjustable_texts.append(t)
             adjustable_points.append((x, y))
+            adjustable_point_sigs.append(stacked and stacked[0][2])
             all_texts.append(t)
 
     # Axis labels: show transformed math-style labels when appropriate
@@ -675,7 +816,7 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
     except Exception:
         renderer = None
 
-    for txt, orig in zip(adjustable_texts, adjustable_points):
+    for txt, orig, was_sig in zip(adjustable_texts, adjustable_points, adjustable_point_sigs):
         try:
             tx, ty = txt.get_position()
             ox, oy = orig
@@ -693,19 +834,50 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
                         attach_x, attach_y = ox, oy
                 except Exception:
                     attach_x, attach_y = ox, oy
-                ax.annotate(
-                    "",
-                    xy=(attach_x, attach_y),
-                    xytext=(tx, ty),
-                    arrowprops={
-                        "arrowstyle": "-",
-                        "color": cfg.connector_color,
-                        "lw": cfg.connector_width,
-                        "alpha": 0.8,
-                        "shrinkA": 0,
-                        "shrinkB": 0,
-                        "connectionstyle": "arc3,rad=0",
-                    },
+                try:
+                    # Most-specific: sign+side
+                    if was_sig:
+                        conn_color = (
+                            cfg.connector_color_sig_left
+                            if ox < 0 and cfg.connector_color_sig_left
+                            else cfg.connector_color_sig_right
+                            if ox >= 0 and cfg.connector_color_sig_right
+                            else None
+                        )
+                    else:
+                        conn_color = (
+                            cfg.connector_color_nonsig_left
+                            if ox < 0 and cfg.connector_color_nonsig_left
+                            else cfg.connector_color_nonsig_right
+                            if ox >= 0 and cfg.connector_color_nonsig_right
+                            else None
+                        )
+                    # side override
+                    if not conn_color:
+                        conn_color = (
+                            cfg.connector_color_left if ox < 0 else cfg.connector_color_right
+                        )
+                    # sign-only override
+                    if not conn_color:
+                        conn_color = (
+                            cfg.connector_color_sig if was_sig and cfg.connector_color_sig else None
+                        )
+                    if not conn_color:
+                        conn_color = (
+                            cfg.connector_color_nonsig
+                            if (not was_sig) and cfg.connector_color_nonsig
+                            else None
+                        )
+                    if not conn_color:
+                        conn_color = cfg.connector_color
+                except Exception:
+                    conn_color = cfg.connector_color
+                ax.plot(
+                    [attach_x, tx],
+                    [attach_y, ty],
+                    color=conn_color,
+                    linewidth=cfg.connector_width,
+                    alpha=0.8,
                     zorder=3.5,
                 )
                 continue
@@ -746,19 +918,45 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
             except Exception:
                 attach_marker_x, attach_marker_y = ox, oy
 
-            ax.annotate(
-                "",
-                xy=(attach_marker_x, attach_marker_y),
-                xytext=(attach_data[0], attach_data[1]),
-                arrowprops={
-                    "arrowstyle": "-",
-                    "color": cfg.connector_color,
-                    "lw": cfg.connector_width,
-                    "alpha": 0.8,
-                    "shrinkA": 0,
-                    "shrinkB": 0,
-                    "connectionstyle": "arc3,rad=0",
-                },
+            try:
+                if was_sig:
+                    conn_color = (
+                        cfg.connector_color_sig_left
+                        if ox < 0 and cfg.connector_color_sig_left
+                        else cfg.connector_color_sig_right
+                        if ox >= 0 and cfg.connector_color_sig_right
+                        else None
+                    )
+                else:
+                    conn_color = (
+                        cfg.connector_color_nonsig_left
+                        if ox < 0 and cfg.connector_color_nonsig_left
+                        else cfg.connector_color_nonsig_right
+                        if ox >= 0 and cfg.connector_color_nonsig_right
+                        else None
+                    )
+                if not conn_color:
+                    conn_color = cfg.connector_color_left if ox < 0 else cfg.connector_color_right
+                if not conn_color:
+                    conn_color = (
+                        cfg.connector_color_sig if was_sig and cfg.connector_color_sig else None
+                    )
+                if not conn_color:
+                    conn_color = (
+                        cfg.connector_color_nonsig
+                        if (not was_sig) and cfg.connector_color_nonsig
+                        else None
+                    )
+                if not conn_color:
+                    conn_color = cfg.connector_color
+            except Exception:
+                conn_color = cfg.connector_color
+            ax.plot(
+                [attach_marker_x, attach_data[0]],
+                [attach_marker_y, attach_data[1]],
+                color=conn_color,
+                linewidth=cfg.connector_width,
+                alpha=0.8,
                 zorder=3.5,
             )
         except Exception:
