@@ -26,5 +26,8 @@ cfg = VolcanoConfig(
     label_col="gene", explicit_label_positions=explicit_positions, explicit_label_replace=True
 )
 fig, ax = plot_volcano(cfg, df)
+from pathlib import Path
+
+Path("examples").mkdir(parents=True, exist_ok=True)
 fig.savefig("examples/explicit_with_labelcol.png")
 print("Wrote examples/explicit_with_labelcol.png")

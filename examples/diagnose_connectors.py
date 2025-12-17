@@ -44,5 +44,7 @@ for ln in hlines:
     print("  y =", float(ln.get_ydata()[0]))
 
 fig.canvas.draw()
+from pathlib import Path
+Path("examples").mkdir(parents=True, exist_ok=True)
 fig.savefig("examples/diagnose_connectors_out.png")
 print("Wrote examples/diagnose_connectors_out.png")

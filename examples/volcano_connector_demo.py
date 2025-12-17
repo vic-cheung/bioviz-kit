@@ -21,6 +21,10 @@ df = pd.DataFrame(
 
 def write_demo(cfg, fname):
     fig, ax = plot_volcano(cfg, df)
+    # Ensure target directory exists
+    from pathlib import Path
+
+    Path(fname).parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(fname)
     print("Wrote", fname)
 
