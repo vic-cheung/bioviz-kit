@@ -4,33 +4,67 @@ Attributes are loaded lazily to avoid importing optional heavy
 dependencies (e.g. `statsmodels`) when the parent package is imported.
 """
 
-__all__ = ["plot_grouped_boxplots", "plot_waterfall", "plot_volcano", "waterfall_with_distribution", "resolve_labels"]
+__all__ = [
+    "grouped",
+    "waterfall",
+    "volcano",
+    "oncoplot",
+    "lineplot",
+    "table",
+    # convenience functions / classes
+    "plot_volcano",
+    "resolve_labels",
+    "plot_waterfall",
+    "waterfall_with_distribution",
+    "plot_grouped_boxplots",
+    "plot_oncoplot",
+    "OncoplotPlotter",
+    "generate_lineplot",
+    "generate_styled_table",
+]
+
+from importlib import import_module
+from typing import List
+
+# Map convenience/exported names -> (module_path, attribute_name)
+_PUBLIC_FUNCS = {
+    "plot_volcano": ("bioviz.plots.volcano", "plot_volcano"),
+    "resolve_labels": ("bioviz.plots.volcano", "resolve_labels"),
+    "plot_waterfall": ("bioviz.plots.waterfall", "plot_waterfall"),
+    "waterfall_with_distribution": (
+        "bioviz.plots.waterfall",
+        "waterfall_with_distribution",
+    ),
+    "plot_grouped_boxplots": ("bioviz.plots.grouped", "plot_grouped_boxplots"),
+    # oncoplot exports
+    "plot_oncoplot": ("bioviz.plots.oncoplot", "plot_oncoplot"),
+    "OncoplotPlotter": ("bioviz.plots.oncoplot", "OncoplotPlotter"),
+    # lineplot / table helpers
+    "generate_lineplot": ("bioviz.plots.lineplot", "generate_lineplot"),
+    "generate_styled_table": ("bioviz.plots.table", "generate_styled_table"),
+}
 
 
 def __getattr__(name: str):
-    if name == "plot_grouped_boxplots":
-        from .grouped import plot_grouped_boxplots as _obj
+    # Resolve convenience callables first
+    if name in _PUBLIC_FUNCS:
+        mod_name, attr_name = _PUBLIC_FUNCS[name]
+        mod = import_module(mod_name)
+        val = getattr(mod, attr_name)
+        globals()[name] = val
+        return val
 
-        globals()[name] = _obj
-        return _obj
-    if name == "plot_waterfall":
-        from .waterfall import plot_waterfall as _obj
+    # Then resolve submodules lazily
+    if name in __all__:
+        mod = import_module(f"bioviz.plots.{name}")
+        globals()[name] = mod
+        return mod
 
-        globals()[name] = _obj
-        return _obj
-    if name == "plot_volcano":
-        from .volcano import plot_volcano as _obj
-
-        globals()[name] = _obj
-        return _obj
-    if name == "resolve_labels":
-        from .volcano import resolve_labels as _obj
-
-        globals()[name] = _obj
-        return _obj
-    if name == "waterfall_with_distribution":
-        from .waterfall import waterfall_with_distribution as _obj
-
-        globals()[name] = _obj
-        return _obj
     raise AttributeError(f"module {__name__} has no attribute {name}")
+
+
+def __dir__() -> List[str]:
+    names = set(globals().keys())
+    names.update(_PUBLIC_FUNCS.keys())
+    names.update(__all__)
+    return sorted(names)

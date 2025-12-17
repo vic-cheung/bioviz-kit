@@ -14,7 +14,7 @@ from bioviz.configs import (
     HeatmapAnnotationConfig,
     TopAnnotationConfig,
 )
-from bioviz.plots.oncoplot import OncoplotPlotter
+from bioviz.plots import OncoplotPlotter
 
 
 # %%

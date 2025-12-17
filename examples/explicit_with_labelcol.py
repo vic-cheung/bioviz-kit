@@ -1,7 +1,7 @@
 # %%
 from pathlib import Path
 from bioviz.configs.volcano_cfg import VolcanoConfig
-from bioviz.plots.volcano import plot_volcano
+from bioviz.plots import plot_volcano
 import pandas as pd
 import numpy as np
 

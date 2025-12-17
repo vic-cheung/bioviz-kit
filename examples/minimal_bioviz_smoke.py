@@ -25,12 +25,9 @@ from bioviz.configs import (
     StyledTableConfig,
     TopAnnotationConfig,
 )
-from bioviz.plots.lineplot import (
-    generate_lineplot,
-    generate_lineplot_twinx,
-)
-from bioviz.plots.oncoplot import OncoplotPlotter
-from bioviz.plots.table import generate_styled_table
+from bioviz.plots import generate_lineplot, generate_lineplot_twinx
+from bioviz.plots import OncoplotPlotter
+from bioviz.plots import generate_styled_table
 
 # %%
 # 1) Line plot minimal data
