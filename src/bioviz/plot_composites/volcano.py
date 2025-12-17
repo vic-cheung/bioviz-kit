@@ -80,16 +80,7 @@ def _internal_resolve_values(df: pd.DataFrame, cfg: VolcanoConfig) -> List[str]:
     try:
         y_thresh = getattr(cfg, "y_col_thresh", None)
         if y_thresh is not None and cfg.y_col and cfg.y_col in df.columns:
-            y_mask = df[cfg.y_col].astype(float).fillna(1.0) <= y_thresh
-            if getattr(cfg, "sig_requires_x_thresh", True):
-                eff_x = (
-                    df[cfg.x_col].abs() >= cfg.abs_x_thresh
-                    if cfg.x_col in df.columns
-                    else pd.Series(False, index=df.index)
-                )
-                sig_mask = y_mask & eff_x
-            else:
-                sig_mask = y_mask
+            sig_mask = df[cfg.y_col].astype(float).fillna(1.0) <= y_thresh
     except Exception:
         sig_mask = pd.Series(False, index=df.index)
 
@@ -109,17 +100,12 @@ def _internal_resolve_values(df: pd.DataFrame, cfg: VolcanoConfig) -> List[str]:
         base = labels_series.loc[eff_m].tolist()
     elif mode == "sig_and_thresh":
         base = labels_series.loc[sig_mask & eff_m].tolist()
-    else:
-        # auto: choose labels that are both significant and beyond the
-        # x-axis threshold (intersection). Use `label_mode` to select
-        # other behaviors explicitly (e.g., 'sig' or 'sig_and_thresh').
-        # Respect the configuration option that controls whether significance
-        # requires passing the x-axis magnitude threshold as well.
-        if getattr(cfg, "sig_requires_x_thresh", True):
-            mask = sig_mask & eff_m
         else:
-            mask = sig_mask
-        base = labels_series.loc[mask].tolist()
+            # auto: choose labels that are both significant and beyond the
+            # x-axis threshold (intersection). Use `label_mode` to select
+            # other behaviors explicitly (e.g., 'sig' or 'sig_and_thresh').
+            mask = sig_mask & eff_m
+            base = labels_series.loc[mask].tolist()
 
     if cfg.additional_values_to_label:
         available = set(labels_series.tolist())
@@ -375,16 +361,9 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
             else:
                 y_mask = df[cfg.y_col].fillna(1.0) <= y_col_thresh
 
-            # optionally require the x magnitude threshold as well
-            if getattr(cfg, "sig_requires_x_thresh", True):
-                eff_x = (
-                    df[cfg.x_col].abs() >= cfg.abs_x_thresh
-                    if cfg.x_col in df.columns
-                    else pd.Series(False, index=df.index)
-                )
-                sig_mask = y_mask & eff_x
-            else:
-                sig_mask = y_mask
+            # Build y-based significance mask (x-threshold is applied later
+            # when label_mode or color_mode requests intersection semantics).
+            sig_mask = y_mask
     except Exception:
         sig_mask = pd.Series(False, index=df.index)
 
@@ -405,6 +384,17 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
     # separates selection logic from label selection so callers can choose
     # independent behaviors for coloring vs labeling.
     color_mode = getattr(cfg, "color_mode", "sig")
+    # If the user requested 'sig' coloring but no thresholds are available
+    # (neither y_col_thresh nor a positive abs_x_thresh present in the
+    # dataframe), interpret that as a request to color all points so the
+    # plot isn't entirely nonsignificant by default.
+    try:
+        has_y_thresh = getattr(cfg, "y_col_thresh", None) is not None and cfg.y_col in df.columns
+        has_x_thresh = getattr(cfg, "abs_x_thresh", None) is not None and cfg.abs_x_thresh > 0 and cfg.x_col in df.columns
+        if (color_mode == "sig") and (not has_y_thresh) and (not has_x_thresh):
+            color_mode = "all"
+    except Exception:
+        pass
     if color_mode == "all":
         color_mask = pd.Series(True, index=df.index)
     elif color_mode == "sig":
