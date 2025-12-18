@@ -2,7 +2,7 @@
 import numpy as np
 import pandas as pd
 import matplotlib.colors as mcolors
-from bioviz.oncoplot import OncoplotPlotter
+from bioviz.plots import OncoplotPlotter
 from bioviz.configs import HeatmapAnnotationConfig, OncoplotConfig
 
 

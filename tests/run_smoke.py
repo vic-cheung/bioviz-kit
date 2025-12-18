@@ -1,5 +1,5 @@
 import sys
-from bioviz.oncoplot import OncoplotPlotter
+from bioviz.plots import OncoplotPlotter
 from bioviz.configs import OncoplotConfig
 from bioviz.configs import HeatmapAnnotationConfig
 import pandas as pd
