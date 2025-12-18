@@ -152,33 +152,3 @@ class HeatmapAnnotationConfig(BaseModel):
             return [str(x) for x in list(v)]
         except Exception:
             return v
-
-
-def make_annotation_config(
-    values: pd.Series | dict[Any, Any],
-    colors: dict,
-    display_name: str,
-    legend_title: str,
-    **kwargs: Any,
-) -> TopAnnotationConfig:
-    """
-    Convenience factory to create a `TopAnnotationConfig` from common inputs.
-
-    Args:
-       values: Series or mapping of patient->value (or a column name string).
-       colors: Mapping of category->color used for the annotation track.
-       display_name: Short name shown above the annotation.
-       legend_title: Title used in any legend for this annotation.
-       **kwargs: Additional `TopAnnotationConfig` keyword arguments.
-
-    Returns:
-       A populated `TopAnnotationConfig` instance.
-    """
-
-    return TopAnnotationConfig(
-        values=values,
-        colors=colors,
-        display_name=display_name,
-        legend_title=legend_title,
-        **kwargs,
-    )

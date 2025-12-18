@@ -9,6 +9,7 @@ from .line_cfg import LinePlotConfig
 from .table_cfg import StyledTableConfig
 from .oncoplot_cfg import OncoplotConfig, TopAnnotationConfig, HeatmapAnnotationConfig
 from .oncoplot_annotations_cfg import make_annotation_config
+from .distribution_cfg import DistributionConfig
 
 __all__ = [
     "BasePlotConfig",
@@ -17,5 +18,5 @@ __all__ = [
     "OncoplotConfig",
     "TopAnnotationConfig",
     "HeatmapAnnotationConfig",
-    "make_annotation_config",
+    "DistributionConfig",
 ]
