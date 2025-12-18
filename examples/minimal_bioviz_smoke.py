@@ -1,17 +1,5 @@
-# ---
-# jupytext:
-#   formats: ipynb,py:percent
-#   text_representation:
-#     extension: .py
-#     format_name: percent
-# ---
 """
 Minimal smoke examples demonstrating bioviz line/line+annotation/oncoplot/table.
-
-This file is authored as a Jupytext `py:percent` script and pairs with
-`examples/minimal_bioviz_smoke.ipynb`. If you prefer an IDE workflow (e.g.
-VSCode), run the `.py` directly; it's designed to be lintable and editable.
-
 Run inside your project venv where `bioviz` deps are installed.
 """
 
@@ -27,7 +15,7 @@ from bioviz.configs import (
 )
 from bioviz.plots import LinePlotter
 from bioviz.plots import OncoplotPlotter
-from bioviz.plots import generate_styled_table
+from bioviz.plots import TablePlotter
 
 # %%
 # 1) Line plot minimal data
@@ -195,7 +183,8 @@ table_cfg = StyledTableConfig(
     shrink_row_threshold=1,
     max_total_height=4.0,
 )
-fig_table = generate_styled_table(table_df, table_cfg)
+tp = TablePlotter(table_df, table_cfg)
+fig_table, ax_table = tp.plot()
 if fig_table:
     # fig_table.savefig("table_smoke.pdf", bbox_inches="tight", pad_inches=0.05)
     print("table_smoke.pdf")
@@ -218,7 +207,8 @@ multi_table_cfg = StyledTableConfig(
     shrink_row_threshold=1,
     max_total_height=3,
 )
-fig_table_multi = generate_styled_table(multi_table_df, multi_table_cfg)
+tp2 = TablePlotter(multi_table_df, multi_table_cfg)
+fig_table_multi, ax_table_multi = tp2.plot()
 if fig_table_multi:
     print("table_multiline_smoke.pdf")
 

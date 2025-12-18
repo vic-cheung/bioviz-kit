@@ -19,8 +19,7 @@ __all__ = [
     "plot_grouped_boxplots",
     "plot_oncoplot",
     "OncoplotPlotter",
-    "generate_lineplot",
-    "generate_styled_table",
+    "TablePlotter",
 ]
 
 from importlib import import_module
@@ -42,8 +41,8 @@ _PUBLIC_FUNCS = {
     # volcano class wrapper
     "VolcanoPlotter": ("bioviz.plots.volcano", "VolcanoPlotter"),
     # lineplot / table helpers
-    "generate_lineplot": ("bioviz.plots.lineplot", "generate_lineplot"),
-    "generate_styled_table": ("bioviz.plots.table", "generate_styled_table"),
+    "LinePlotter": ("bioviz.plots.lineplot", "LinePlotter"),
+    "TablePlotter": ("bioviz.plots.table", "TablePlotter"),
 }
 
 

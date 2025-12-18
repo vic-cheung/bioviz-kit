@@ -10,7 +10,7 @@ import pandas as pd
 from bioviz.configs import StyledTableConfig
 from bioviz.utils.plotting import resolve_font_family
 
-__all__ = ["generate_styled_table"]
+__all__ = ["TablePlotter"]
 
 
 def generate_styled_table(
@@ -154,3 +154,59 @@ def generate_styled_table(
         created_fig.tight_layout()
 
     return created_fig or fig
+
+
+class TablePlotter:
+    """Stateful wrapper for styled tables.
+
+    Construct with `(df, config)` where `config` is `StyledTableConfig` or
+    a dict acceptable to it. Delegates rendering to `generate_styled_table`.
+    """
+
+    def __init__(self, df: pd.DataFrame, config: StyledTableConfig | dict):
+        if isinstance(config, dict):
+            config = StyledTableConfig(**config)
+        self.df = df.copy()
+        self.config = config
+        self.fig: plt.Figure | None = None
+        self.ax: plt.Axes | None = None
+
+    def set_data(self, df: pd.DataFrame) -> "TablePlotter":
+        self.df = df.copy()
+        return self
+
+    def update_config(self, **kwargs) -> "TablePlotter":
+        for k, v in kwargs.items():
+            try:
+                setattr(self.config, k, v)
+            except Exception:
+                continue
+        return self
+
+    def plot(self, ax: plt.Axes | None = None) -> tuple[plt.Figure | None, plt.Axes | None]:
+        """Render the styled table and store `fig, ax` on the instance."""
+        self.fig = generate_styled_table(self.df, self.config, ax=ax)
+        if self.fig is None:
+            self.ax = None
+        else:
+            try:
+                self.ax = self.fig.axes[0] if self.fig.axes else None
+            except Exception:
+                self.ax = None
+        return self.fig, self.ax
+
+    def save(self, path: str, **save_kwargs) -> None:
+        from pathlib import Path
+
+        if self.fig is None:
+            raise RuntimeError("No figure available; call .plot() first")
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
+        self.fig.savefig(path, **save_kwargs)
+
+    def close(self) -> None:
+        try:
+            if self.fig is not None:
+                plt.close(self.fig)
+        finally:
+            self.fig = None
+            self.ax = None
