@@ -1274,7 +1274,7 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
 class VolcanoPlotter:
     """Stateful, interactive wrapper around the functional API.
 
-    Mirrors the interaction pattern of `OncoplotPlotter`: the instance
+    Mirrors the interaction pattern of `OncoPlotter`: the instance
     exposes `.df` and `.config` attributes, and the constructor accepts
     either `(df, config)` or `(config, df)` for backwards compatibility.
     Rendering delegates to `plot_volcano` so the pure function remains
@@ -1282,7 +1282,7 @@ class VolcanoPlotter:
     """
 
     def __init__(self, df: pd.DataFrame, config: VolcanoConfig | dict):
-        """Construct with `(df, config)` matching `OncoplotPlotter`.
+        """Construct with `(df, config)` matching `OncoPlotter`.
 
         `config` may be a `VolcanoConfig` or a dict understood by it.
         """

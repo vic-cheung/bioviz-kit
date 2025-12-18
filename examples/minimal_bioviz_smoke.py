@@ -14,7 +14,7 @@ from bioviz.configs import (
     TopAnnotationConfig,
 )
 from bioviz.plots import LinePlotter
-from bioviz.plots import OncoplotPlotter
+from bioviz.plots import OncoPlotter
 from bioviz.plots import TablePlotter
 
 # %%
@@ -300,7 +300,7 @@ onc_cfg = OncoplotConfig(
     legend_category_order=["Dose", "Cohort", "Mutation Type"],
 )
 
-plotter = OncoplotPlotter(
+plotter = OncoPlotter(
     mut_df,
     onc_cfg,
     row_groups=row_groups,

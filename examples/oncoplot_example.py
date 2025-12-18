@@ -14,7 +14,7 @@ from bioviz.configs import (
     HeatmapAnnotationConfig,
     TopAnnotationConfig,
 )
-from bioviz.plots import OncoplotPlotter
+from bioviz.plots import OncoPlotter
 
 
 # %%
@@ -224,7 +224,7 @@ with PdfPages("oncoplot_aspects.pdf") as pdf:
             aspect=aspect,
             legend_category_order=["Age", "Sex", "Popularity"],
         )
-        plotter = OncoplotPlotter(
+        plotter = OncoPlotter(
             df,
             onc_cfg,
             row_groups=row_groups,

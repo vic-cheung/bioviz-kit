@@ -2,7 +2,7 @@
 import numpy as np
 import pandas as pd
 import matplotlib.colors as mcolors
-from bioviz.plots import OncoplotPlotter
+from bioviz.plots import OncoPlotter
 from bioviz.configs import HeatmapAnnotationConfig, OncoplotConfig
 
 
@@ -20,7 +20,7 @@ def test_oncoplot_shapes_centered():
         values="mut_type", colors={"SNV": "#EC745C", "CNV": "#44A9CC", "Fusion": "#FFB600"}
     )
     config = OncoplotConfig(heatmap_annotation=heat, x_col="patient_id", y_col="gene")
-    plotter = OncoplotPlotter(pdf, config=config)
+    plotter = OncoPlotter(pdf, config=config)
     fig = plotter.plot()
     ax = fig.axes[0]
 
@@ -61,7 +61,7 @@ def test_oncoplot_cell_alignment(tmp_path):
         values="mut_type", colors={"SNV": "#ff0000", "CNV": "#00ff00", "SV": "#0000ff"}
     )
     config = OncoplotConfig(heatmap_annotation=heat, x_col="patient_id", y_col="gene")
-    plotter = OncoplotPlotter(pdf, config=config)
+    plotter = OncoPlotter(pdf, config=config)
     fig = plotter.plot()
     ax = fig.axes[0]
 
@@ -107,7 +107,7 @@ def test_oncoplot_transparent_figure_patch():
         figure_facecolor="#123456",
         figure_transparent=True,
     )
-    fig = OncoplotPlotter(pdf, config=cfg).plot()
+    fig = OncoPlotter(pdf, config=cfg).plot()
 
     assert fig.patch.get_alpha() == 0.0
     face = fig.patch.get_facecolor()
@@ -129,7 +129,7 @@ def test_oncoplot_forces_opaque_cell_colors():
         values="mut_type", colors={"SNV": (1, 0, 0, 0), "CNV": (0, 1, 0, 0)}
     )
     cfg = OncoplotConfig(heatmap_annotation=heat, x_col="patient_id", y_col="gene")
-    fig = OncoplotPlotter(pdf, config=cfg).plot()
+    fig = OncoPlotter(pdf, config=cfg).plot()
     ax = fig.axes[0]
 
     alphas = []

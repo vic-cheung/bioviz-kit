@@ -1,5 +1,5 @@
 import sys
-from bioviz.plots import OncoplotPlotter
+from bioviz.plots import OncoPlotter
 from bioviz.configs import OncoplotConfig
 from bioviz.configs import HeatmapAnnotationConfig
 import pandas as pd
@@ -18,7 +18,7 @@ def run():
         values="mut_type", colors={"SNV": "#EC745C", "CNV": "#44A9CC", "Fusion": "#FFB600"}
     )
     config = OncoplotConfig(heatmap_annotation=heat, x_col="patient_id", y_col="gene")
-    plotter = OncoplotPlotter(pdf, config=config)
+    plotter = OncoPlotter(pdf, config=config)
     fig = plotter.plot()
     ax = fig.axes[0]
 

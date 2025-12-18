@@ -57,7 +57,7 @@ class OncoplotConfig(BaseModel):
     heatmap_annotation: Annotated[HeatmapAnnotationConfig | None, Field(default=None)]
     value_col: Annotated[str, Field(default_factory=str)]
     top_annotation_order: Annotated[list[str] | None, Field(default=None)]
-    # Additional layout and annotation defaults to make OncoplotPlotter usable
+    # Additional layout and annotation defaults to make OncoPlotter usable
     # tuned defaults for bioviz: tighter top-annotation spacing and margins
     cell_aspect: Annotated[float, Field(default=1.0)]
     # Target rendered cell size (inches) used when auto-computing `figsize`.

@@ -18,7 +18,7 @@ __all__ = [
     "waterfall_with_distribution",
     "plot_grouped_boxplots",
     "plot_oncoplot",
-    "OncoplotPlotter",
+    "OncoPlotter",
     "TablePlotter",
 ]
 
@@ -37,7 +37,7 @@ _PUBLIC_FUNCS = {
     "plot_grouped_boxplots": ("bioviz.plots.grouped", "plot_grouped_boxplots"),
     # oncoplot exports
     "plot_oncoplot": ("bioviz.plots.oncoplot", "plot_oncoplot"),
-    "OncoplotPlotter": ("bioviz.plots.oncoplot", "OncoplotPlotter"),
+    "OncoPlotter": ("bioviz.plots.oncoplot", "OncoPlotter"),
     # volcano class wrapper
     "VolcanoPlotter": ("bioviz.plots.volcano", "VolcanoPlotter"),
     # lineplot / table helpers

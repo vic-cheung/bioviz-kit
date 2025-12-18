@@ -2,7 +2,7 @@
 Oncoplot utilities adapted from tm_toolbox, ported into bioviz.
 
 This module implements oncoprint drawing helpers and the
-`OncoplotPlotter` class. It accepts a `style` object implementing
+`OncoPlotter` class. It accepts a `style` object implementing
 the `StyleBase` protocol and calls `style.apply_theme()` when plotting.
 """
 
@@ -31,7 +31,7 @@ __all__ = [
     "label_block",
     "create_custom_legend_patch",
     "is_white_color",
-    "OncoplotPlotter",
+    "OncoPlotter",
 ]
 
 
@@ -494,7 +494,7 @@ def create_custom_legend_patch(
     return mpatches.Rectangle((0, 0), 1, 1, color=color, **border_args)
 
 
-class OncoplotPlotter:
+class OncoPlotter:
     """
     High-level oncoplot drawing helper.
 
@@ -796,7 +796,7 @@ class OncoplotPlotter:
         style: StyleBase | None = None,
     ) -> None:
         """
-        Initialize an OncoplotPlotter.
+        Initialize an OncoPlotter.
 
         Args:
            df: DataFrame containing mutation/event records with columns matching

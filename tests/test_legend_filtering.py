@@ -1,5 +1,5 @@
 import pandas as pd
-from bioviz.plots import OncoplotPlotter
+from bioviz.plots import OncoPlotter
 from bioviz.configs import HeatmapAnnotationConfig, TopAnnotationConfig, OncoplotConfig
 
 # %%
@@ -47,7 +47,7 @@ df_plot = pd.DataFrame(
     }
 )
 
-plotter = OncoplotPlotter(df_plot, cfg)
+plotter = OncoPlotter(df_plot, cfg)
 # Call internal legend assembly by invoking plot() then inspect legend_categories
 fig = plotter.plot()
 
