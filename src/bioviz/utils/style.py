@@ -38,6 +38,11 @@ class DefaultStyle:
         self.base_fontsize = 12
         # a small, neutral palette; consumers can override fully
         self.palette = {
+            # Volcano-style keys for common semantics
+            "sig_up": "#009E73",
+            "sig_down": "#D55E00",
+            "nonsig": "gainsboro",
+            # legacy/minimal additional keys
             "SNV": "#EC745C",
             "CNV": "#44A9CC",
             "Fusion": "#FFB600",

@@ -38,6 +38,11 @@ def plot_waterfall(
     created_fig = False
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize)
+        try:
+            fig.patch.set_facecolor('white')
+            fig.patch.set_alpha(0.0)
+        except Exception:
+            pass
         created_fig = True
     else:
         fig = ax.figure
@@ -84,6 +89,11 @@ def plot_waterfall(
         ncols = min(3, n)
         nrows = int(np.ceil(n / ncols))
         fig, axes = plt.subplots(nrows, ncols, figsize=figsize, squeeze=False)
+        try:
+            fig.patch.set_facecolor('white')
+            fig.patch.set_alpha(0.0)
+        except Exception:
+            pass
         axes = axes.flatten()
         for i, fv in enumerate(facet_vals):
             sub = df[df[facet_by] == fv].sort_values(by=value_col, ascending=False)
@@ -151,6 +161,11 @@ def waterfall_with_distribution(
     fig, (ax_top, ax_bot) = plt.subplots(
         2, 1, figsize=figsize, gridspec_kw={"height_ratios": [3, 1]}
     )
+    try:
+        fig.patch.set_facecolor('white')
+        fig.patch.set_alpha(0.0)
+    except Exception:
+        pass
     plot_waterfall(df, value_col, id_col=id_col, color_col=color_col, ax=ax_top, show=False)
     from .grouped import plot_grouped_boxplots
 

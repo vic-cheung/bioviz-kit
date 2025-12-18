@@ -35,6 +35,8 @@ _PUBLIC_FUNCS = {
         "waterfall_with_distribution",
     ),
     "plot_grouped_boxplots": ("bioviz.plots.grouped", "plot_grouped_boxplots"),
+    "plot_distribution": ("bioviz.plots.distribution", "plot_distribution"),
+    "DistributionPlotter": ("bioviz.plots.distribution", "DistributionPlotter"),
     # oncoplot exports
     "plot_oncoplot": ("bioviz.plots.oncoplot", "plot_oncoplot"),
     "OncoPlotter": ("bioviz.plots.oncoplot", "OncoPlotter"),

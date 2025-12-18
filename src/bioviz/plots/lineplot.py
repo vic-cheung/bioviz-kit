@@ -164,10 +164,26 @@ def generate_lineplot(
         fig, *_ = generate_styled_multigroup_lineplot(
             df=df, config=config, ax=ax, draw_legend=draw_legend
         )
+        try:
+            face = getattr(config, 'figure_facecolor', None) or 'white'
+            transparent = getattr(config, 'figure_transparent', False)
+            fig.patch.set_facecolor(face)
+            fig.patch.set_alpha(0.0 if transparent else 1.0)
+        except Exception:
+            pass
         return fig
 
     if has_label:
-        return generate_styled_lineplot(df=df, config=config, ax=ax)
+        fig = generate_styled_lineplot(df=df, config=config, ax=ax)
+        try:
+            face = getattr(config, 'figure_facecolor', None) or 'white'
+            transparent = getattr(config, 'figure_transparent', False)
+            if fig is not None:
+                fig.patch.set_facecolor(face)
+                fig.patch.set_alpha(0.0 if transparent else 1.0)
+        except Exception:
+            pass
+        return fig
 
     raise ValueError("LinePlotConfig must set either group_col or label_col for line plotting.")
 
@@ -265,6 +281,13 @@ def generate_styled_lineplot(
     # Create figure
     if ax is None:
         fig, ax = plt.subplots(figsize=config.figsize)
+        try:
+            face = getattr(config, 'figure_facecolor', None) or 'white'
+            transparent = getattr(config, 'figure_transparent', False)
+            fig.patch.set_facecolor(face)
+            fig.patch.set_alpha(0.0 if transparent else 1.0)
+        except Exception:
+            pass
     else:
         fig = ax.figure
 

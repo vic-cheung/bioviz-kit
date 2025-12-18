@@ -47,6 +47,12 @@ def plot_grouped_boxplots(
     created_fig = False
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize)
+        try:
+            # default to white face with transparent background
+            fig.patch.set_facecolor('white')
+            fig.patch.set_alpha(0.0)
+        except Exception:
+            pass
         created_fig = True
     else:
         fig = ax.figure

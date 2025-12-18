@@ -41,6 +41,11 @@ def generate_styled_table(
     if ax is None:
         # Use a consistent base figure size; avoid implicit scaling surprises
         created_fig, ax = plt.subplots()
+        try:
+            created_fig.patch.set_facecolor('white')
+            created_fig.patch.set_alpha(0.0)
+        except Exception:
+            pass
     fig = ax.figure
 
     ax.axis("off")

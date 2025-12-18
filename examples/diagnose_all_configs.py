@@ -15,11 +15,23 @@ df = pd.DataFrame(
 )
 
 configs = []
-configs.append(("default", VolcanoConfig(values_to_label=idx[:6], label_col="label")))
+configs.append(
+    (
+        "default",
+        VolcanoConfig(
+            x_col="log2_or",
+            y_col="p_adj",
+            values_to_label=idx[:6],
+            label_col="label",
+        ),
+    )
+)
 configs.append(
     (
         "custom",
         VolcanoConfig(
+            x_col="log2_or",
+            y_col="p_adj",
             values_to_label=idx[:6],
             connector_color="#ff00aa",
             connector_width=1.4,
@@ -32,6 +44,8 @@ configs.append(
     (
         "center",
         VolcanoConfig(
+            x_col="log2_or",
+            y_col="p_adj",
             values_to_label=idx[:6],
             attach_to_marker_edge=False,
             connector_color="#0077cc",
@@ -44,6 +58,8 @@ configs.append(
     (
         "hier",
         VolcanoConfig(
+            x_col="log2_or",
+            y_col="p_adj",
             values_to_label=idx[:6],
             connector_color_sig_left="#880000",
             connector_color_sig_right="#008800",
@@ -61,6 +77,8 @@ configs.append(
     (
         "explicit_replace",
         VolcanoConfig(
+            x_col="log2_or",
+            y_col="p_adj",
             explicit_label_positions={"g1": (-0.5, 1.0), "g2": (2.5, 0.5)},
             explicit_label_replace=True,
             label_col="label",
@@ -71,6 +89,8 @@ configs.append(
     (
         "explicit_add",
         VolcanoConfig(
+            x_col="log2_or",
+            y_col="p_adj",
             values_to_label=idx[:6],
             explicit_label_positions=[("g1", (-0.5, 1.0)), ("g2", (2.5, 0.5))],
             explicit_label_replace=False,
