@@ -675,7 +675,7 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
 
             # choose annotation color
             if is_sig:
-                ann_color = point_color or cfg.annotation_sig_color or cfg.palette.get("sig_up")
+                ann_color = cfg.annotation_sig_color or point_color or cfg.palette.get("sig_up")
                 weight = getattr(cfg, "annotation_fontweight_sig", "bold")
                 fontsize = cfg.fontsize_sig
             else:
@@ -832,9 +832,9 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
             is_sig = bool(stacked and stacked[0][2])
             if is_sig:
                 color_final = (
-                    ann_color
+                    cfg.annotation_sig_color
+                    or ann_color
                     or point_color
-                    or cfg.annotation_sig_color
                     or cfg.palette.get("sig_up")
                 )
                 weight = getattr(cfg, "annotation_fontweight_sig", "bold")
@@ -912,9 +912,9 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
             # adjustable placement (subject to adjust_text)
             if stacked and stacked[0][2]:
                 color_final = (
-                    ann_color
+                    cfg.annotation_sig_color
+                    or ann_color
                     or point_color
-                    or cfg.annotation_sig_color
                     or cfg.palette.get("sig_up")
                 )
                 # place significant labels slightly offset so connectors can be drawn
