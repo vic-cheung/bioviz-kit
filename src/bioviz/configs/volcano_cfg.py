@@ -177,6 +177,12 @@ class VolcanoConfig(BaseModel):
 
     annotation_sig_color: Optional[str] = None
     annotation_nonsig_color: str = "#7f7f7f"
+    # Optional per-direction annotation colors. If provided these will be used
+    # for significant annotations that have a direction/group value (e.g. 'Early'/'Durable')
+    # and take precedence over `annotation_sig_color` when the direction maps to
+    # 'sig_up' or 'sig_down' semantics.
+    annotation_sig_up_color: Optional[str] = None
+    annotation_sig_down_color: Optional[str] = None
 
     horiz_offset_range: Tuple[float, float] = (0.02, 0.06)
     vert_jitter_range: Tuple[float, float] = (-0.03, 0.03)

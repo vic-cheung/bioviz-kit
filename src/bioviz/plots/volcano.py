@@ -675,7 +675,20 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
 
             # choose annotation color
             if is_sig:
-                ann_color = cfg.annotation_sig_color or point_color or cfg.palette.get("sig_up")
+                # Prefer direction-specific annotation colors based on x-value sign
+                dir_ann = None
+                if matched_idx is not None:
+                    try:
+                        x_val = float(df.loc[matched_idx, cfg.x_col])
+                        if x_val < 0:
+                            dir_ann = getattr(cfg, "annotation_sig_down_color", None)
+                        else:
+                            dir_ann = getattr(cfg, "annotation_sig_up_color", None)
+                    except Exception:
+                        dir_ann = None
+                ann_color = (
+                    dir_ann or cfg.annotation_sig_color or point_color or cfg.palette.get("sig_up")
+                )
                 weight = getattr(cfg, "annotation_fontweight_sig", "bold")
                 fontsize = cfg.fontsize_sig
             else:
@@ -831,8 +844,15 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
             ty = y
             is_sig = bool(stacked and stacked[0][2])
             if is_sig:
+                # Use direction-specific annotation color based on x-value sign
+                dir_ann_local = None
+                if x < 0:
+                    dir_ann_local = getattr(cfg, "annotation_sig_down_color", None)
+                else:
+                    dir_ann_local = getattr(cfg, "annotation_sig_up_color", None)
                 color_final = (
-                    cfg.annotation_sig_color
+                    dir_ann_local
+                    or cfg.annotation_sig_color
                     or ann_color
                     or point_color
                     or cfg.palette.get("sig_up")
@@ -911,6 +931,13 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
         else:
             # adjustable placement (subject to adjust_text)
             if stacked and stacked[0][2]:
+                # for stacked annotations prefer direction-specific color when possible
+                try:
+                    dir_val_stack = None
+                    if hasattr(stacked[0][1], "get_text"):
+                        dir_val_stack = None
+                except Exception:
+                    dir_val_stack = None
                 color_final = (
                     cfg.annotation_sig_color
                     or ann_color

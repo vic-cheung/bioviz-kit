@@ -91,6 +91,24 @@ cfg_hier = VolcanoConfig(
 )
 write_demo(cfg_hier, "examples/volcano_connector_demo.hier.png")
 
+# --- Annotation color example: force significant annotation text to black while keeping
+# point fill and connectors colored by the palette/direction. This uses the
+# `annotation_sig_color` (and optionally `annotation_nonsig_color`) config values.
+cfg_annotation_black = VolcanoConfig(
+    x_col="log2_or",
+    y_col="p_adj",
+    values_to_label=idx[:6],
+    label_col="label",
+    log_transform_ycol=True,
+    label_mode="auto",
+    color_mode="sig_or_thresh",
+    # Force annotation text to black for significant labels
+    annotation_sig_color="black",
+    # Keep non-significant annotation color a muted gray (optional)
+    annotation_nonsig_color="#6c6c6c",
+)
+write_demo(cfg_annotation_black, "examples/volcano_connector_demo.annotation_black.png")
+
 # Explicit label placements: dict-style (replace defaults)
 cfg_explicit_replace = VolcanoConfig(
     x_col="log2_or",
