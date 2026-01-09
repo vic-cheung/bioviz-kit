@@ -9,6 +9,7 @@ from .line_cfg import LinePlotConfig
 from .table_cfg import StyledTableConfig
 from .oncoplot_cfg import OncoplotConfig, TopAnnotationConfig, HeatmapAnnotationConfig
 from .distribution_cfg import DistributionConfig
+from .volcano_cfg import VolcanoConfig
 
 __all__ = [
     "BasePlotConfig",
@@ -18,4 +19,5 @@ __all__ = [
     "TopAnnotationConfig",
     "HeatmapAnnotationConfig",
     "DistributionConfig",
+    "VolcanoConfig",
 ]
