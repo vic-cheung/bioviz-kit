@@ -202,9 +202,7 @@ def draw_top_annotation(
             continue
         x = col_positions[j]
         value = values.get(x_value)
-        if pd.isna(value) or (
-            isinstance(value, str) and value.strip().lower() == "nan"
-        ):
+        if pd.isna(value) or (isinstance(value, str) and value.strip().lower() == "nan"):
             color = ann_config.na_color
             value_str = "NA"
         else:
@@ -344,9 +342,7 @@ def draw_top_annotation(
         for value, positions in value_to_positions.items():
             if positions:
                 x_center = (min(positions) + max(positions) + cell_aspect) / 2
-                text_color = (ann_config.label_text_colors or {}).get(
-                    str(value), "black"
-                )
+                text_color = (ann_config.label_text_colors or {}).get(str(value), "black")
                 ax.text(
                     x_center,
                     annotation_y + height / 2,
@@ -492,13 +488,9 @@ def create_custom_legend_patch(
     if draw_border or is_white_color(color):
         border_args = {"edgecolor": border_color, "linewidth": border_width}
     if shape == "upper_right":
-        return mpatches.Polygon(
-            [(0, 0), (1, 0), (1, 1)], color=color, closed=True, **border_args
-        )
+        return mpatches.Polygon([(0, 0), (1, 0), (1, 1)], color=color, closed=True, **border_args)
     if shape == "bottom_left":
-        return mpatches.Polygon(
-            [(0, 0), (0, 1), (1, 0)], color=color, closed=True, **border_args
-        )
+        return mpatches.Polygon([(0, 0), (0, 1), (1, 0)], color=color, closed=True, **border_args)
     return mpatches.Rectangle((0, 0), 1, 1, color=color, **border_args)
 
 
@@ -568,11 +560,7 @@ class OncoPlotter:
         if bar_width is not None or bar_width_points is not None:
             try:
                 # Prefer explicit points arg; otherwise interpret `bar_width` as points.
-                bw_pts = (
-                    bar_width_points
-                    if bar_width_points is not None
-                    else float(bar_width)
-                )
+                bw_pts = bar_width_points if bar_width_points is not None else float(bar_width)
                 bar_width_data = bw_pts / pts_per_data_unit_x
             except Exception:
                 bar_width_data = None
@@ -614,9 +602,7 @@ class OncoPlotter:
             for txt in ax.texts:
                 if hasattr(txt, "_is_row_group_label") and txt._is_row_group_label:
                     try:
-                        bbox = txt.get_window_extent().transformed(
-                            ax.transData.inverted()
-                        )
+                        bbox = txt.get_window_extent().transformed(ax.transData.inverted())
                         if bbox.x0 < leftmost_x:
                             leftmost_x = bbox.x0
                     except Exception:
@@ -672,9 +658,7 @@ class OncoPlotter:
             for txt in ax.texts:
                 if hasattr(txt, "_is_row_group_label") and txt._is_row_group_label:
                     try:
-                        bbox = txt.get_window_extent().transformed(
-                            ax.transData.inverted()
-                        )
+                        bbox = txt.get_window_extent().transformed(ax.transData.inverted())
                         if bbox.x0 < leftmost_text_x:
                             leftmost_text_x = bbox.x0
                     except Exception:
@@ -736,12 +720,8 @@ class OncoPlotter:
                     if False
                     else row_groups[row_groups[row_group_col] == pathway].index.tolist()
                 )
-                genes_in_group = row_groups[
-                    row_groups[row_group_col] == pathway
-                ].index.tolist()
-                y_positions = [
-                    gene_to_idx[g] for g in genes_in_group if g in gene_to_idx
-                ]
+                genes_in_group = row_groups[row_groups[row_group_col] == pathway].index.tolist()
+                y_positions = [gene_to_idx[g] for g in genes_in_group if g in gene_to_idx]
                 if not y_positions:
                     continue
                 y_start, y_end = min(y_positions), max(y_positions)
@@ -842,8 +822,7 @@ class OncoPlotter:
         if missing_fields:
             raise ValueError(
                 "OncoplotConfig must set x_col (patient/sample ID), y_col (feature/gene), "
-                "and value_col (mutation/value type). Missing: "
-                + ", ".join(missing_fields)
+                "and value_col (mutation/value type). Missing: " + ", ".join(missing_fields)
             )
 
         # Normalize `row_group_col`: treat empty string/falsey as None so callers
@@ -876,9 +855,7 @@ class OncoPlotter:
         self.top_annotations = config.top_annotations
         self.top_annotation_inter_spacer = config.top_annotation_inter_spacer
         self.top_annotation_intra_spacer = config.top_annotation_intra_spacer
-        self.top_annotation_label_offset = getattr(
-            config, "top_annotation_label_offset", 0.3
-        )
+        self.top_annotation_label_offset = getattr(config, "top_annotation_label_offset", 0.3)
         self.top_annotation_label_offset_points = getattr(
             config, "top_annotation_label_offset_points", 12.0
         )
@@ -911,15 +888,9 @@ class OncoPlotter:
         self.legend_bbox_to_anchor = config.legend_bbox_to_anchor
         self.legend_offset = config.legend_offset
         self.legend_offset_points = getattr(config, "legend_offset_points", 18.0)
-        self.legend_offset_use_points = getattr(
-            config, "legend_offset_use_points", True
-        )
-        self.row_group_post_bar_shift = getattr(
-            config, "row_group_post_bar_shift", -5.5
-        )
-        self.row_group_post_label_shift = getattr(
-            config, "row_group_post_label_shift", -5.0
-        )
+        self.legend_offset_use_points = getattr(config, "legend_offset_use_points", True)
+        self.row_group_post_bar_shift = getattr(config, "row_group_post_bar_shift", -5.5)
+        self.row_group_post_label_shift = getattr(config, "row_group_post_label_shift", -5.0)
         self.row_group_post_bar_shift_points = getattr(
             config, "row_group_post_bar_shift_points", -240.0
         )
@@ -960,9 +931,7 @@ class OncoPlotter:
                 values=config.value_col,
                 colors=config.row_values_color_dict,
                 legend_title=(
-                    config.value_legend_title
-                    if config.value_legend_title
-                    else config.value_col
+                    config.value_legend_title if config.value_legend_title else config.value_col
                 ),
                 bottom_left_triangle_values=getattr(
                     config, "heatmap_bottom_left_triangle_values", ["SNV"]
@@ -1038,28 +1007,20 @@ class OncoPlotter:
                     df[[x_col] + split_cols]
                     .drop_duplicates()
                     .groupby(x_col)
-                    .agg(
-                        lambda s: s.dropna().iloc[0] if not s.dropna().empty else pd.NA
-                    )
+                    .agg(lambda s: s.dropna().iloc[0] if not s.dropna().empty else pd.NA)
                 )
                 for col in split_cols:
                     df[col] = df[x_col].map(split_map[col])
 
-        x_values = self._get_split_x_values(
-            df, col_split_by, col_split_order, x_col, col_sort_by
-        )
+        x_values = self._get_split_x_values(df, col_split_by, col_split_order, x_col, col_sort_by)
 
         col_positions = []
         pos = 0.0
         last_split_vals = None
         for x_val in x_values:
-            split_vals = tuple(
-                df.loc[df[x_col] == x_val, col].iloc[0] for col in col_split_by
-            )
+            split_vals = tuple(df.loc[df[x_col] == x_val, col].iloc[0] for col in col_split_by)
             if last_split_vals is not None:
-                for _, (prev, curr) in enumerate(
-                    zip(last_split_vals, split_vals, strict=True)
-                ):
+                for _, (prev, curr) in enumerate(zip(last_split_vals, split_vals, strict=True)):
                     if prev != curr:
                         # Scale split gaps with cell width so the gap-to-cell ratio stays consistent across aspects.
                         pos += col_split_gap * cell_aspect
@@ -1101,9 +1062,7 @@ class OncoPlotter:
                 group_values = ordered + remaining
 
             for pathway in group_values:
-                genes_in_group = row_groups[
-                    row_groups[row_group_col] == pathway
-                ].index.tolist()
+                genes_in_group = row_groups[row_groups[row_group_col] == pathway].index.tolist()
                 if last_pathway is not None:
                     pos += row_split_gap
                 for gene in genes_in_group:
@@ -1114,9 +1073,7 @@ class OncoPlotter:
                 last_pathway = pathway
             # Append any genes present in the dataframe but missing from row_groups
             missing_genes = [
-                g
-                for g in df[y_col].drop_duplicates().tolist()
-                if g not in genes_ordered
+                g for g in df[y_col].drop_duplicates().tolist() if g not in genes_ordered
             ]
             if missing_genes and genes_ordered:
                 pos += row_split_gap
@@ -1133,9 +1090,7 @@ class OncoPlotter:
                 pos += 1.0
         nrows = int(np.ceil(pos))
         gene_to_idx = {g: i for g, i in zip(genes_ordered, row_positions, strict=True)}
-        x_value_to_idx = {
-            x_val: i for x_val, i in zip(x_values, col_positions, strict=True)
-        }
+        x_value_to_idx = {x_val: i for x_val, i in zip(x_values, col_positions, strict=True)}
 
         auto_adjust = getattr(config, "auto_adjust_cell_size", False)
 
@@ -1161,18 +1116,14 @@ class OncoPlotter:
             bar_padding = max(0.0, abs(bar_offset) * 0.2) + bar_buffer
             post_shift_padding = 0.0
             if getattr(config, "apply_post_row_group_shift", False):
-                post_shift_padding = (
-                    abs(getattr(config, "row_group_post_label_shift", 0.0)) * 0.1
-                )
+                post_shift_padding = abs(getattr(config, "row_group_post_label_shift", 0.0)) * 0.1
             left_padding_in = 0.6 + label_block_in + bar_padding + post_shift_padding
             right_padding_in = 0.8  # leave room for the legend gutter
 
             # Account for stacked top annotations, their spacers, and an optional title.
             top_annotations = top_annotations or {}
             num_top = len(top_annotations)
-            top_blocks_in = sum(
-                getattr(cfg, "height", 0.45) for cfg in top_annotations.values()
-            )
+            top_blocks_in = sum(getattr(cfg, "height", 0.45) for cfg in top_annotations.values())
             top_spacers_in = 0.0
             if num_top:
                 top_spacers_in += (num_top - 1) * top_annotation_intra_spacer
@@ -1208,12 +1159,8 @@ class OncoPlotter:
             if "xtick_aspect_scale" not in fields_set:
                 xtick_aspect_scale = 0.0
             # Pure aspect scaling; users can turn it off via *_aspect_scale
-            spacing_scale = (
-                (cell_aspect**spacing_aspect_scale) if spacing_aspect_scale else 1.0
-            )
-            xtick_scale = (
-                (cell_aspect**xtick_aspect_scale) if xtick_aspect_scale else 1.0
-            )
+            spacing_scale = (cell_aspect**spacing_aspect_scale) if spacing_aspect_scale else 1.0
+            xtick_scale = (cell_aspect**xtick_aspect_scale) if xtick_aspect_scale else 1.0
             if "xticklabel_yoffset" not in fields_set and not getattr(
                 config, "xticklabel_use_points", False
             ):
@@ -1280,12 +1227,8 @@ class OncoPlotter:
         else:
             fig.patch.set_alpha(1.0)
 
-        bottom_left_values = getattr(
-            heatmap_annotation, "bottom_left_triangle_values", ["SNV"]
-        )
-        upper_right_values = getattr(
-            heatmap_annotation, "upper_right_triangle_values", ["CNV"]
-        )
+        bottom_left_values = getattr(heatmap_annotation, "bottom_left_triangle_values", ["SNV"])
+        upper_right_values = getattr(heatmap_annotation, "upper_right_triangle_values", ["CNV"])
 
         # Precompute row-label transform so top-annotation labels can align with row labels.
         rowlabel_use_points = bool(self.rowlabel_use_points)
@@ -1376,15 +1319,11 @@ class OncoPlotter:
                         which_half="upper_right",
                     )
                     break
-            if not any(
-                val in values for val in bottom_left_values + upper_right_values
-            ):
+            if not any(val in values for val in bottom_left_values + upper_right_values):
                 for value in values:
                     color = heatmap_annotation.colors.get(value, "white")
                     face = _ensure_opaque_color(color, default="white")
-                    rect = mpatches.Rectangle(
-                        (x, y), cell_aspect, 1, color=face, linewidth=0
-                    )
+                    rect = mpatches.Rectangle((x, y), cell_aspect, 1, color=face, linewidth=0)
                     ax.add_patch(rect)
 
         for y in row_positions:
@@ -1401,9 +1340,7 @@ class OncoPlotter:
                     )
                 )
 
-        ax.tick_params(
-            axis="both", which="both", length=0, labelleft=False, labelbottom=False
-        )
+        ax.tick_params(axis="both", which="both", length=0, labelleft=False, labelbottom=False)
         for spine in ax.spines.values():
             spine.set_visible(False)
         ax.grid(False)
@@ -1422,9 +1359,7 @@ class OncoPlotter:
             annotation_y = top_annotation_inter_spacer * -1
             if config.top_annotation_order:
                 annotation_order = [
-                    name
-                    for name in config.top_annotation_order
-                    if name in top_annotations
+                    name for name in config.top_annotation_order if name in top_annotations
                 ][::-1]
                 for name in top_annotations:
                     if name not in annotation_order:
@@ -1474,16 +1409,12 @@ class OncoPlotter:
             present_values = set(str(v) for v in series.dropna().unique())
             # Filter mutation_value_order to only include observed values (string compare)
             if mutation_value_order:
-                mutation_value_order = [
-                    v for v in mutation_value_order if str(v) in present_values
-                ]
+                mutation_value_order = [v for v in mutation_value_order if str(v) in present_values]
         else:
             present_values = set(heatmap_annotation.colors.keys())
 
         heatmap_draw_border = getattr(heatmap_annotation, "draw_border", False)
-        heatmap_border_categories = getattr(
-            heatmap_annotation, "border_categories", None
-        )
+        heatmap_border_categories = getattr(heatmap_annotation, "border_categories", None)
         heatmap_border_color = getattr(heatmap_annotation, "border_color", "black")
         heatmap_border_width = getattr(heatmap_annotation, "border_width", 0.5)
 
@@ -1540,9 +1471,7 @@ class OncoPlotter:
                 legend_title = ann_config.legend_title or ann_name
                 # annotation handles: do not include a title patch here, assembly will add it
                 annotation_handles = []
-                value_order = ann_config.legend_value_order or sorted(
-                    ann_config.colors.keys()
-                )
+                value_order = ann_config.legend_value_order or sorted(ann_config.colors.keys())
 
                 ann_draw_border = getattr(ann_config, "draw_border", False)
                 ann_border_categories = getattr(ann_config, "border_categories", None)
@@ -1586,9 +1515,7 @@ class OncoPlotter:
 
                     present_ann_values = set(str(v) for v in observed)
                     # Filter value_order to only include observed values (string compare)
-                    value_order = [
-                        v for v in value_order if str(v) in present_ann_values
-                    ]
+                    value_order = [v for v in value_order if str(v) in present_ann_values]
                 else:
                     present_ann_values = set(ann_config.colors.keys())
 
@@ -1615,22 +1542,13 @@ class OncoPlotter:
                                 )
                             )
                         else:
-                            annotation_handles.append(
-                                Patch(facecolor=face, label=str(value))
-                            )
+                            annotation_handles.append(Patch(facecolor=face, label=str(value)))
                 if remove_unused_keys:
                     if any(pd.isna(v) for v in observed):
-                        annotation_handles.append(
-                            Patch(color=ann_config.na_color, label="NA")
-                        )
+                        annotation_handles.append(Patch(color=ann_config.na_color, label="NA"))
                 else:
-                    if (
-                        hasattr(ann_config, "na_color")
-                        and ann_config.na_color is not None
-                    ):
-                        annotation_handles.append(
-                            Patch(color=ann_config.na_color, label="NA")
-                        )
+                    if hasattr(ann_config, "na_color") and ann_config.na_color is not None:
+                        annotation_handles.append(Patch(color=ann_config.na_color, label="NA"))
                 legend_categories[legend_title] = annotation_handles
         legend_handles = []
 
@@ -1719,9 +1637,7 @@ class OncoPlotter:
             # Point-based offset: interpret xticklabel_yoffset directly as points.
             offset_pts = offset_val
             base_transform = ax.get_xaxis_transform()
-            translate = mtransforms.ScaledTranslation(
-                0, -offset_pts / 72.0, fig.dpi_scale_trans
-            )
+            translate = mtransforms.ScaledTranslation(0, -offset_pts / 72.0, fig.dpi_scale_trans)
             xtick_transform = base_transform + translate
             for x, p in zip(col_positions, x_values, strict=True):
                 ax.text(
@@ -1761,24 +1677,19 @@ class OncoPlotter:
             frameon=False,
             handlelength=1,
             handleheight=1,
-            prop=font_manager.FontProperties(
-                family=legend_family, size=legend_fontsize
-            ),
+            prop=font_manager.FontProperties(family=legend_family, size=legend_fontsize),
             ncol=1,
             title_fontsize=legend_title_fontsize,
             **legend_kwargs,
         )
         if legend_family:
             lgd.get_title().set_fontproperties(
-                font_manager.FontProperties(
-                    family=legend_family, size=legend_title_fontsize
-                )
+                font_manager.FontProperties(family=legend_family, size=legend_title_fontsize)
             )
         # Bold the injected header labels (heatmap header + annotation headers)
         bold_labels = {heatmap_legend_label}
         bold_labels.update(
-            (ann_config.legend_title or n)
-            for n, ann_config in (top_annotations or {}).items()
+            (ann_config.legend_title or n) for n, ann_config in (top_annotations or {}).items()
         )
         for text in lgd.get_texts():
             if text.get_text() in bold_labels:
@@ -1819,12 +1730,8 @@ class OncoPlotter:
                     if row_groups_color_dict
                     else "black"
                 )
-                genes_in_group = row_groups[
-                    row_groups[row_group_col] == pathway
-                ].index.tolist()
-                y_positions = [
-                    gene_to_idx[g] for g in genes_in_group if g in gene_to_idx
-                ]
+                genes_in_group = row_groups[row_groups[row_group_col] == pathway].index.tolist()
+                y_positions = [gene_to_idx[g] for g in genes_in_group if g in gene_to_idx]
                 if not y_positions:
                     continue
                 y_start, y_end = min(y_positions), max(y_positions)

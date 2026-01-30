@@ -233,9 +233,7 @@ class GroupedBarConfig(BaseModel):
     ]
     annot_offset: Annotated[
         float,
-        Field(
-            default=0.8, description="Offset for annotations from bar end (data units)."
-        ),
+        Field(default=0.8, description="Offset for annotations from bar end (data units)."),
     ]
     annot_padding: Annotated[
         float,
@@ -316,9 +314,7 @@ class GroupedBarConfig(BaseModel):
     ]
     value_padding_pct: Annotated[
         float,
-        Field(
-            default=0.15, description="Padding as fraction of max value for auto limit."
-        ),
+        Field(default=0.15, description="Padding as fraction of max value for auto limit."),
     ]
     xlim: Annotated[
         tuple[float, float] | None,
@@ -336,27 +332,19 @@ class GroupedBarConfig(BaseModel):
     ]
     xticks: Annotated[
         list[float] | None,
-        Field(
-            default=None, description="Custom x-tick positions. None uses auto ticks."
-        ),
+        Field(default=None, description="Custom x-tick positions. None uses auto ticks."),
     ]
     yticks: Annotated[
         list[float] | None,
-        Field(
-            default=None, description="Custom y-tick positions. None uses auto ticks."
-        ),
+        Field(default=None, description="Custom y-tick positions. None uses auto ticks."),
     ]
     xtick_labels: Annotated[
         list[str] | None,
-        Field(
-            default=None, description="Custom x-tick labels. Must match xticks length."
-        ),
+        Field(default=None, description="Custom x-tick labels. Must match xticks length."),
     ]
     ytick_labels: Annotated[
         list[str] | None,
-        Field(
-            default=None, description="Custom y-tick labels. Must match yticks length."
-        ),
+        Field(default=None, description="Custom y-tick labels. Must match yticks length."),
     ]
 
     # ==========================================================================

@@ -127,14 +127,12 @@ class VolcanoConfig(BaseModel):
         }
     )
 
-    color_mode: Literal["sig", "thresh", "sig_and_thresh", "sig_or_thresh", "all"] = (
-        Field(
-            "sig",
-            description=(
-                "Controls how point colors are assigned relative to thresholds/significance. "
-                "Options: 'sig', 'thresh', 'sig_and_thresh', 'sig_or_thresh', 'all'."
-            ),
-        )
+    color_mode: Literal["sig", "thresh", "sig_and_thresh", "sig_or_thresh", "all"] = Field(
+        "sig",
+        description=(
+            "Controls how point colors are assigned relative to thresholds/significance. "
+            "Options: 'sig', 'thresh', 'sig_and_thresh', 'sig_or_thresh', 'all'."
+        ),
     )
 
     # ------ Labeling & Annotation ------
@@ -202,9 +200,7 @@ class VolcanoConfig(BaseModel):
     # Whether to transform the y-column using -log10 (e.g., p-values -> -log10(p))
     log_transform_ycol: bool = Field(
         False,
-        description=(
-            "When True, the y column will be transformed with -log10 before plotting."
-        ),
+        description=("When True, the y column will be transformed with -log10 before plotting."),
     )
 
     # Nudging / label layout knobs used by the plotting code but optional
@@ -217,9 +213,7 @@ class VolcanoConfig(BaseModel):
 
     horiz_offset_range: tuple[float, float] = Field(
         (0.02, 0.06),
-        description=(
-            "Range (lo,hi) for horizontal offset fractions used when placing labels."
-        ),
+        description=("Range (lo,hi) for horizontal offset fractions used when placing labels."),
     )
 
     vert_jitter_range: tuple[float, float] = Field(

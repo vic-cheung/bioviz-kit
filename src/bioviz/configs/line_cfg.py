@@ -13,9 +13,7 @@ class LinePlotConfig(BasePlotConfig):
     # Identity / grouping
     entity_id: Annotated[str | int | None, Field(default=None, alias="patient_id")]
     group_col: Annotated[str | None, Field(default=None)]
-    label_col: Annotated[
-        str | None, Field(default=None)
-    ]  # preferred hue column for single-series
+    label_col: Annotated[str | None, Field(default=None)]  # preferred hue column for single-series
     secondary_group_col: Annotated[str | None, Field(default=None)]
     subgroup_name: Annotated[str | None, Field(default=None)]
 
@@ -77,18 +75,10 @@ class LinePlotConfig(BasePlotConfig):
 
     # Twin/annotations
     twin_alpha: Annotated[float, Field(default=0.5)]  # opacity for twin series
-    overlay_col: Annotated[
-        str | None, Field(default=None)
-    ]  # annotation text column on twin axis
-    overlay_palette: Annotated[
-        dict | str | None, Field(default=None)
-    ]  # colors for overlay labels
-    overlay_fontweight: Annotated[
-        str, Field(default="bold")
-    ]  # weight for overlay labels
-    overlay_fontsize: Annotated[
-        float | None, Field(default=None)
-    ]  # size for overlay labels
+    overlay_col: Annotated[str | None, Field(default=None)]  # annotation text column on twin axis
+    overlay_palette: Annotated[dict | str | None, Field(default=None)]  # colors for overlay labels
+    overlay_fontweight: Annotated[str, Field(default="bold")]  # weight for overlay labels
+    overlay_fontsize: Annotated[float | None, Field(default=None)]  # size for overlay labels
     overlay_in_axes_coords: Annotated[
         bool, Field(default=True)
     ]  # place overlay text in axes coords (fixed visual offset)

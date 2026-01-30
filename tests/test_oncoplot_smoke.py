@@ -123,9 +123,7 @@ def test_oncoplot_transparent_figure_patch():
     face = fig.patch.get_facecolor()
     # Face color should retain the provided RGB even when fully transparent
     expected_rgb = mcolors.to_rgba("#123456")[:3]
-    assert tuple(round(v, 3) for v in face[:3]) == tuple(
-        round(v, 3) for v in expected_rgb
-    )
+    assert tuple(round(v, 3) for v in face[:3]) == tuple(round(v, 3) for v in expected_rgb)
 
 
 def test_oncoplot_forces_opaque_cell_colors():

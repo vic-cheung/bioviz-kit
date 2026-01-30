@@ -16,9 +16,7 @@ class BasePlotConfig(BaseModel):
         list[Any] | dict[Any, Any] | None,
         Field(default=None, description="Color palette to use for the plot."),
     ]
-    lw: Annotated[
-        float, Field(default=4.0, description="Line width for plotted lines.")
-    ]
+    lw: Annotated[float, Field(default=4.0, description="Line width for plotted lines.")]
     markersize: Annotated[
         float | None,
         Field(
@@ -26,12 +24,8 @@ class BasePlotConfig(BaseModel):
             description="Size of markers; defaults to twice the line width.",
         ),
     ]
-    figsize: Annotated[
-        tuple[int, int], Field(default=(9, 6), description="Figure size.")
-    ]
-    legend_loc: Annotated[
-        str, Field(default="upper left", description="Legend location.")
-    ]
+    figsize: Annotated[tuple[int, int], Field(default=(9, 6), description="Figure size.")]
+    legend_loc: Annotated[str, Field(default="upper left", description="Legend location.")]
 
     xlabel_fontsize: Annotated[
         float | int | None,
@@ -67,9 +61,7 @@ class BasePlotConfig(BaseModel):
         ),
     ]
 
-    title: Annotated[
-        str | None, Field(default=None, description="Custom title for the plot.")
-    ]
+    title: Annotated[str | None, Field(default=None, description="Custom title for the plot.")]
 
     rhs_pdf_padding: Annotated[
         float,

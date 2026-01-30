@@ -114,9 +114,7 @@ class ForestPlotConfig(BaseModel):
     ]
     stats_fontsize: Annotated[
         int | None,
-        Field(
-            default=None, ge=1, description="Stats table font size. None uses rcParams."
-        ),
+        Field(default=None, ge=1, description="Stats table font size. None uses rcParams."),
     ]
 
     # ==========================================================================
@@ -144,9 +142,7 @@ class ForestPlotConfig(BaseModel):
     # ==========================================================================
     color_significant: Annotated[
         str,
-        Field(
-            default="#2E7D32", description="Color for significant results (p < alpha)"
-        ),
+        Field(default="#2E7D32", description="Color for significant results (p < alpha)"),
     ]
     color_nonsignificant: Annotated[
         str,
@@ -218,9 +214,7 @@ class ForestPlotConfig(BaseModel):
     ]
     section_separator_alpha: Annotated[
         float,
-        Field(
-            default=0.25, ge=0.0, le=1.0, description="Transparency of separator lines"
-        ),
+        Field(default=0.25, ge=0.0, le=1.0, description="Transparency of separator lines"),
     ]
     section_gap: Annotated[
         float,
@@ -228,9 +222,7 @@ class ForestPlotConfig(BaseModel):
     ]
     section_label_x_position: Annotated[
         float,
-        Field(
-            default=-0.35, description="X-position for section labels (negative = left)"
-        ),
+        Field(default=-0.35, description="X-position for section labels (negative = left)"),
     ]
 
     # ==========================================================================

@@ -78,15 +78,11 @@ class KMPlotConfig(BaseModel):
     # Aliases for backwards compatibility with tm-modeling
     xlab: Annotated[
         str | None,
-        Field(
-            default=None, description="Alias for xlabel (for tm-modeling compatibility)"
-        ),
+        Field(default=None, description="Alias for xlabel (for tm-modeling compatibility)"),
     ]
     ylab: Annotated[
         str | None,
-        Field(
-            default=None, description="Alias for ylabel (for tm-modeling compatibility)"
-        ),
+        Field(default=None, description="Alias for ylabel (for tm-modeling compatibility)"),
     ]
 
     def get_xlabel(self) -> str:
@@ -182,9 +178,7 @@ class KMPlotConfig(BaseModel):
     ]
     legend_label_overrides: Annotated[
         dict[Any, str] | None,
-        Field(
-            default=None, description="Override labels: {group_value: 'Display Label'}"
-        ),
+        Field(default=None, description="Override labels: {group_value: 'Display Label'}"),
     ]
     auto_expand_for_legend: Annotated[
         bool,
@@ -314,9 +308,7 @@ class KMPlotConfig(BaseModel):
     ]
     risktable_min_rows: Annotated[
         int,
-        Field(
-            default=4, ge=1, description="Minimum risk table rows to reserve for layout"
-        ),
+        Field(default=4, ge=1, description="Minimum risk table rows to reserve for layout"),
     ]
     color_risktable_counts: Annotated[
         bool,
@@ -324,15 +316,11 @@ class KMPlotConfig(BaseModel):
     ]
     risktable_label_wrap_chars: Annotated[
         int | None,
-        Field(
-            default=None, description="Wrap risk table labels at this many characters"
-        ),
+        Field(default=None, description="Wrap risk table labels at this many characters"),
     ]
     risktable_label_max_lines: Annotated[
         int,
-        Field(
-            default=2, ge=1, description="Maximum lines for wrapped risk table labels"
-        ),
+        Field(default=2, ge=1, description="Maximum lines for wrapped risk table labels"),
     ]
     risktable_label_overrides: Annotated[
         dict[Any, str] | None,
@@ -432,9 +420,7 @@ class KMPlotConfig(BaseModel):
 
     @field_validator("color_dict")
     @classmethod
-    def _check_color_values(
-        cls, v: dict[Any, str] | None
-    ) -> dict[Any, str] | None:
+    def _check_color_values(cls, v: dict[Any, str] | None) -> dict[Any, str] | None:
         if v is None:
             return v
         for _, color in v.items():

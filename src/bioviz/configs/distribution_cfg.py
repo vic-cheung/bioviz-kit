@@ -9,21 +9,15 @@ class DistributionConfig(BasePlotConfig):
     bins: int = Field(20, description="Number of bins for histogram")
     show_hist: bool = Field(True, description="Render histogram panel")
     show_box: bool = Field(True, description="Render box+swarm panel")
-    xlabel: str | None = Field(
-        None, description="X-axis label (defaults to variable name)"
-    )
-    ylabel: str | None = Field(
-        None, description="Y-axis label for histogram/boxplot"
-    )
+    xlabel: str | None = Field(None, description="X-axis label (defaults to variable name)")
+    ylabel: str | None = Field(None, description="Y-axis label for histogram/boxplot")
     y_ticks: list[float] | None = Field(
         default_factory=lambda: [1], description="Y ticks for boxplot"
     )
     y_ticklabels: list[str] | None = Field(
         default_factory=lambda: [""], description="Y tick labels for boxplot"
     )
-    ylim: tuple[float, float] | None = Field(
-        (0.5, 1.5), description="Y-limits for boxplot"
-    )
+    ylim: tuple[float, float] | None = Field((0.5, 1.5), description="Y-limits for boxplot")
     title_template: str | None = Field(None, description="Default title template")
     title_prefix: str | None = Field(None, description="Optional title prefix")
     alpha: float = Field(1.0, description="Alpha for plot elements")
@@ -39,9 +33,7 @@ class DistributionConfig(BasePlotConfig):
     box_grid: bool = Field(False, description="Whether to show grid on boxplot panel")
 
     # ------ Histogram appearance ------
-    hist_color: str | None = Field(
-        None, description="Explicit histogram color (overrides style)"
-    )
+    hist_color: str | None = Field(None, description="Explicit histogram color (overrides style)")
     hist_edgecolor: str = Field("black", description="Histogram bar edge color")
     median_color: str = Field("black", description="Color for median line/label")
     median_linestyle: str = Field("--", description="Median line style")
@@ -50,14 +42,10 @@ class DistributionConfig(BasePlotConfig):
     median_label_fmt: str = Field(
         "Median = {median:.2f}", description="Format for median annotation"
     )
-    show_median_label: bool = Field(
-        True, description="Whether to show median annotation"
-    )
+    show_median_label: bool = Field(True, description="Whether to show median annotation")
 
     # ------ Box + swarm appearance ------
-    box_color: str | None = Field(
-        None, description="Box face color (overrides style)"
-    )
+    box_color: str | None = Field(None, description="Box face color (overrides style)")
     swarm_facecolor: str = Field("white", description="Swarm face color")
     swarm_edgecolor: str = Field("black", description="Swarm edge color")
     swarm_linewidth: float = Field(0.5, description="Swarm marker edge linewidth")
@@ -67,9 +55,7 @@ class DistributionConfig(BasePlotConfig):
     random_seed: int = Field(42, description="Random seed for swarm jitter")
 
     # ------ Plot-level controls ------
-    return_fig: bool = Field(
-        False, description="Whether to return the figure from plot()"
-    )
+    return_fig: bool = Field(False, description="Whether to return the figure from plot()")
 
     # ------ Font sizes ------
     title_fontsize: int = Field(14, description="Font size for plot titles")
@@ -79,9 +65,7 @@ class DistributionConfig(BasePlotConfig):
     ytick_fontsize: int = Field(10, description="Font size for y tick labels")
 
     # ------ Median label controls ------
-    median_label_fontsize: int = Field(
-        10, description="Font size for median annotation"
-    )
+    median_label_fontsize: int = Field(10, description="Font size for median annotation")
     median_label_location: Literal["auto", "upper_right", "off_right"] = Field(
         "upper_right", description="Where to place the median label on the histogram"
     )
@@ -93,25 +77,19 @@ class DistributionConfig(BasePlotConfig):
     )
 
     # ------ Grouping / hue support ------
-    hue: str | None = Field(
-        None, description="Column name to color/group by (DataFrame input)"
-    )
+    hue: str | None = Field(None, description="Column name to color/group by (DataFrame input)")
     value_col: str | None = Field(
         None,
         description="Column name containing numeric values when passing a DataFrame",
     )
-    hue_palette: Any | None = Field(
-        None, description="Optional mapping of hue category -> color"
-    )
+    hue_palette: Any | None = Field(None, description="Optional mapping of hue category -> color")
     hist_mode: Literal["bar", "kde", "both"] = Field(
         "bar", description="Histogram rendering mode when hue is present"
     )
     hist_hue_overlap: bool = Field(
         True, description="When True, group histograms overlap instead of stacking"
     )
-    hue_alpha: float | None = Field(
-        None, description="Per-group alpha for overlapped histograms"
-    )
+    hue_alpha: float | None = Field(None, description="Per-group alpha for overlapped histograms")
     hue_swarm_legend: bool = Field(
         True, description="Whether to show a legend for swarm hue colors"
     )
@@ -126,9 +104,7 @@ class DistributionConfig(BasePlotConfig):
     group_median_fmt: str = Field(
         "{group}: {median:.2f}", description="Label format for group medians"
     )
-    group_median_marker: str = Field(
-        "v", description="Marker for group median on boxplot/hist"
-    )
+    group_median_marker: str = Field("v", description="Marker for group median on boxplot/hist")
     group_median_markersize: int = Field(8, description="Marker size for group median")
 
     # optional explicit group order (top-to-bottom in the plot)

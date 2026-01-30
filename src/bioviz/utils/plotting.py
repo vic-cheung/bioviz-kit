@@ -136,9 +136,7 @@ def get_oncoplot_dimensions_fixed_cell(
             adjusted_cell_width = max(min_cell_width, target_cell_width * scale_factor)
         if nrows > gene_threshold:
             scale_factor = min(1.0, 0.95 * (gene_threshold / nrows) ** 0.3)
-            adjusted_cell_height = max(
-                min_cell_height, target_cell_height * scale_factor
-            )
+            adjusted_cell_height = max(min_cell_height, target_cell_height * scale_factor)
     width = ncols * adjusted_cell_width
     height = nrows * adjusted_cell_height
     if num_top_annotations > 0:

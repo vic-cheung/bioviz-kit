@@ -103,12 +103,8 @@ class OncoplotConfig(BaseModel):
     # Defaults for rendering triangles in heatmap cells. These are passed
     # through to the constructed `HeatmapAnnotationConfig` when the
     # caller doesn't provide one explicitly.
-    heatmap_bottom_left_triangle_values: Annotated[
-        list[str], Field(default_factory=list)
-    ]
-    heatmap_upper_right_triangle_values: Annotated[
-        list[str], Field(default_factory=list)
-    ]
+    heatmap_bottom_left_triangle_values: Annotated[list[str], Field(default_factory=list)]
+    heatmap_upper_right_triangle_values: Annotated[list[str], Field(default_factory=list)]
 
     @model_validator(mode="before")
     @classmethod

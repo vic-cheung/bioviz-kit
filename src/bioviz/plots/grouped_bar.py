@@ -359,9 +359,7 @@ def plot_grouped_bars(
     else:
         default_colors = plt.cm.tab10.colors
         group_colors = {
-            g: default_colors[i % len(default_colors)]
-            if g is not None
-            else config.default_color
+            g: default_colors[i % len(default_colors)] if g is not None else config.default_color
             for i, g in enumerate(groups)
         }
 
@@ -437,11 +435,7 @@ def plot_grouped_bars(
                 max_val = 0
                 for data in group_data.values():
                     vals = data["values"]
-                    errs = (
-                        data["err_high"]
-                        if data["err_high"] is not None
-                        else np.zeros_like(vals)
-                    )
+                    errs = data["err_high"] if data["err_high"] is not None else np.zeros_like(vals)
                     max_val = max(max_val, (vals + errs).max())
                 # Add annotation padding if annotations enabled
                 annot_extra = config.annot_padding if config.show_annotations else 0
@@ -476,11 +470,7 @@ def plot_grouped_bars(
                 max_val = 0
                 for data in group_data.values():
                     vals = data["values"]
-                    errs = (
-                        data["err_high"]
-                        if data["err_high"] is not None
-                        else np.zeros_like(vals)
-                    )
+                    errs = data["err_high"] if data["err_high"] is not None else np.zeros_like(vals)
                     max_val = max(max_val, (vals + errs).max())
                 # Add annotation padding if annotations enabled
                 annot_extra = config.annot_padding if config.show_annotations else 0
@@ -506,9 +496,7 @@ def plot_grouped_bars(
 
     # Title
     if config.title:
-        ax.set_title(
-            config.title, fontsize=title_fontsize, fontweight=config.title_fontweight
-        )
+        ax.set_title(config.title, fontsize=title_fontsize, fontweight=config.title_fontweight)
 
     # Legend (only if grouped and show_legend is True)
     if is_grouped and config.show_legend and n_groups > 1:
@@ -671,9 +659,7 @@ class GroupedBarPlotter:
             config = GroupedBarConfig()
 
         # Determine CI method
-        ci_method = (
-            config.ci_method if config.ci_method != "none" else "clopper-pearson"
-        )
+        ci_method = config.ci_method if config.ci_method != "none" else "clopper-pearson"
 
         summary_df = compute_proportion_summary(
             category_list=category_list,

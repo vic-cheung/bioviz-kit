@@ -194,16 +194,12 @@ def _wrap_label(label: str, wrap_chars: int | None, max_lines: int = 2) -> str:
     return "\n".join(lines)
 
 
-def _wrap_labels(
-    labels: list[str], wrap_chars: int | None, max_lines: int = 2
-) -> list[str]:
+def _wrap_labels(labels: list[str], wrap_chars: int | None, max_lines: int = 2) -> list[str]:
     """Apply label wrapping to a list."""
     return [_wrap_label(lbl, wrap_chars, max_lines) for lbl in labels]
 
 
-def format_pvalue(
-    p_value: float, significance_cutoffs: dict[float, str] | None = None
-) -> str:
+def format_pvalue(p_value: float, significance_cutoffs: dict[float, str] | None = None) -> str:
     """Format p-value with appropriate precision and notation.
 
     Parameters
@@ -505,9 +501,7 @@ class KMPlotter:
                     if np.any(mask):
                         cens_times = et.index.values[mask]
                         surv = kmf.predict(cens_times)
-                        surv_vals = (
-                            surv.values if hasattr(surv, "values") else np.asarray(surv)
-                        )
+                        surv_vals = surv.values if hasattr(surv, "values") else np.asarray(surv)
                         ax.scatter(
                             cens_times,
                             surv_vals,
@@ -554,9 +548,7 @@ class KMPlotter:
         cfg = self.config
         handles, labels = ax.get_legend_handles_labels()
         if cfg.legend_label_wrap_chars:
-            labels = _wrap_labels(
-                labels, cfg.legend_label_wrap_chars, cfg.legend_label_max_lines
-            )
+            labels = _wrap_labels(labels, cfg.legend_label_wrap_chars, cfg.legend_label_max_lines)
         if not handles:
             return None
         loc = cfg.legend_loc
@@ -572,9 +564,7 @@ class KMPlotter:
         if loc == "bottom":
             kwargs.update(loc="upper center", bbox_to_anchor=(0.5, -0.3))
         elif loc == "right":
-            kwargs.update(
-                loc="center left", bbox_to_anchor=(1.05, 0.5), borderaxespad=0.0
-            )
+            kwargs.update(loc="center left", bbox_to_anchor=(1.05, 0.5), borderaxespad=0.0)
         else:
             kwargs.update(loc=loc)
         legend = ax.legend(handles, labels, **kwargs)
@@ -602,9 +592,7 @@ class KMPlotter:
         cfg = self.config
         fontsize = _resolve_fontsize(cfg.risktable_fontsize, "font.size")
         title_fontsize = (
-            cfg.risktable_title_fontsize
-            if cfg.risktable_title_fontsize
-            else int(fontsize) + 2
+            cfg.risktable_title_fontsize if cfg.risktable_title_fontsize else int(fontsize) + 2
         )
 
         # Clear table axes
@@ -618,9 +606,7 @@ class KMPlotter:
             time_points = np.array(xticks, dtype=float)
         else:
             ticks = ax.get_xticks()
-            time_points = np.array(
-                [t for t in ticks if xmin - 1e-9 <= t <= xmax + 1e-9]
-            )
+            time_points = np.array([t for t in ticks if xmin - 1e-9 <= t <= xmax + 1e-9])
 
         n_groups = len(kmfs)
         spacing = cfg.risktable_row_spacing
@@ -742,9 +728,7 @@ class KMPlotter:
         n_groups = max(1, len(groups))
         risktable_min = max(cfg.risktable_min_rows, n_groups)
         per_row_in = max(0.26, (risktable_fs / 72.0) * cfg.risktable_row_spacing)
-        title_pad_in = max(
-            0.25, (risktable_fs / 72.0) * cfg.risktable_title_gap_factor * 0.7
-        )
+        title_pad_in = max(0.25, (risktable_fs / 72.0) * cfg.risktable_title_gap_factor * 0.7)
 
         table_ax = None
         if ax is None or fig is None:
@@ -800,9 +784,7 @@ class KMPlotter:
             durations = data.loc[mask, cfg.time_col].tolist()
             events = data.loc[mask, cfg.event_col].tolist()
             raw_label = str(g)
-            legend_label = (
-                f"{raw_label} (n={mask.sum()})" if cfg.legend_show_n else raw_label
-            )
+            legend_label = f"{raw_label} (n={mask.sum()})" if cfg.legend_show_n else raw_label
             for cand in (g, raw_label):
                 if cand in legend_overrides:
                     legend_label = legend_overrides[cand]
@@ -860,9 +842,7 @@ class KMPlotter:
         elif cfg.timeline is not None:
             max_t = max(cfg.timeline)
             if cfg.xtick_interval_months:
-                snapped = cfg.xtick_interval_months * np.ceil(
-                    max_t / cfg.xtick_interval_months
-                )
+                snapped = cfg.xtick_interval_months * np.ceil(max_t / cfg.xtick_interval_months)
                 ax.set_xlim(0.0, snapped)
             else:
                 ax.set_xlim(0.0, max_t)

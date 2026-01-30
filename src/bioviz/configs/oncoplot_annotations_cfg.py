@@ -19,9 +19,7 @@ class TopAnnotationConfig(BaseModel):
     if ConfigDict is not None:
         model_config = ConfigDict(arbitrary_types_allowed=True)
     else:
-        model_config = (
-            BaseModel.model_config if hasattr(BaseModel, "model_config") else {}
-        )
+        model_config = BaseModel.model_config if hasattr(BaseModel, "model_config") else {}
 
     values: Annotated[pd.Series | dict[Any, Any] | Sequence[Any] | str, Any]
     colors: Annotated[dict, Any]
@@ -100,9 +98,7 @@ class HeatmapAnnotationConfig(BaseModel):
     if ConfigDict is not None:
         model_config = ConfigDict(arbitrary_types_allowed=True)
     else:
-        model_config = (
-            BaseModel.model_config if hasattr(BaseModel, "model_config") else {}
-        )
+        model_config = BaseModel.model_config if hasattr(BaseModel, "model_config") else {}
 
     values: Annotated[str | pd.Series | Sequence[Any], Any]
     # Allow constructing a HeatmapAnnotationConfig without explicitly providing `colors`.

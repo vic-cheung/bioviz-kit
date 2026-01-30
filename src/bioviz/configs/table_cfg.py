@@ -35,9 +35,7 @@ class StyledTableConfig(BaseModel):
     header_font_weight: Annotated[str, Field(default="bold")]
     cell_font_size: Annotated[
         float | int | None,
-        Field(
-            default=None, description="Cell font size. None uses rcParams['font.size']."
-        ),
+        Field(default=None, description="Cell font size. None uses rcParams['font.size']."),
     ]
     max_chars: Annotated[int, Field(default=18)]
     shrink_by: Annotated[float | int, Field(default=2)]
