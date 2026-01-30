@@ -49,6 +49,8 @@ ruff:
 	else \
 		echo "✅ Ruff check passed! No issues."; \
 		rm -f $$RUFF_OUTPUT; \
+		@echo "Running ruff format..."; \
+		uv run ruff format .; \
 	fi
 
 
