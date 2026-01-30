@@ -327,7 +327,4 @@ class GroupedBarConfig(BaseModel):
         ),
     ]
 
-    class Config:
-        """Pydantic config."""
-
-        extra = "forbid"
+    model_config = {"extra": "forbid"}

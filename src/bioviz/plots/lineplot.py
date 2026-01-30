@@ -19,6 +19,7 @@ from matplotlib.lines import Line2D
 
 from bioviz.configs import LinePlotConfig
 from bioviz.utils.plotting import adjust_legend, resolve_font_family
+from bioviz.utils.plot_utils import is_categorical
 
 
 # Expose public function
@@ -165,8 +166,8 @@ def generate_lineplot(
             df=df, config=config, ax=ax, draw_legend=draw_legend
         )
         try:
-            face = getattr(config, 'figure_facecolor', None) or 'white'
-            transparent = getattr(config, 'figure_transparent', False)
+            face = getattr(config, "figure_facecolor", None) or "white"
+            transparent = getattr(config, "figure_transparent", False)
             fig.patch.set_facecolor(face)
             fig.patch.set_alpha(0.0 if transparent else 1.0)
         except Exception:
@@ -176,8 +177,8 @@ def generate_lineplot(
     if has_label:
         fig = generate_styled_lineplot(df=df, config=config, ax=ax)
         try:
-            face = getattr(config, 'figure_facecolor', None) or 'white'
-            transparent = getattr(config, 'figure_transparent', False)
+            face = getattr(config, "figure_facecolor", None) or "white"
+            transparent = getattr(config, "figure_transparent", False)
             if fig is not None:
                 fig.patch.set_facecolor(face)
                 fig.patch.set_alpha(0.0 if transparent else 1.0)
@@ -235,7 +236,7 @@ def generate_styled_lineplot(
     df = df.dropna(subset=[config.y]).copy()
 
     # Ensure x is categorical; if not, coerce using appearance order to keep caller intent.
-    if config.x in df and not pd.api.types.is_categorical_dtype(df[config.x]):
+    if config.x in df and not is_categorical(df[config.x]):
         x_dtype = CategoricalDtype(categories=list(pd.unique(df[config.x])), ordered=True)
         df[config.x] = df[config.x].astype(x_dtype)
     elif config.x in df and hasattr(df[config.x].dtype, "categories"):
@@ -282,8 +283,8 @@ def generate_styled_lineplot(
     if ax is None:
         fig, ax = plt.subplots(figsize=config.figsize)
         try:
-            face = getattr(config, 'figure_facecolor', None) or 'white'
-            transparent = getattr(config, 'figure_transparent', False)
+            face = getattr(config, "figure_facecolor", None) or "white"
+            transparent = getattr(config, "figure_transparent", False)
             fig.patch.set_facecolor(face)
             fig.patch.set_alpha(0.0 if transparent else 1.0)
         except Exception:
@@ -619,7 +620,7 @@ def generate_styled_multigroup_lineplot(
     else:
         fig = ax.figure
 
-    if config.x in df and not pd.api.types.is_categorical_dtype(df[config.x]):
+    if config.x in df and not is_categorical(df[config.x]):
         x_dtype = CategoricalDtype(categories=list(pd.unique(df[config.x])), ordered=True)
         df[config.x] = df[config.x].astype(x_dtype)
     elif config.x in df and hasattr(df[config.x].dtype, "categories"):
@@ -967,7 +968,7 @@ def generate_lineplot_twinx(
         """
         Return category ordering for a series, preserving categorical dtype order when present.
         """
-        if pd.api.types.is_categorical_dtype(series):
+        if is_categorical(series):
             return list(series.cat.categories)
         return list(pd.unique(series))
 
@@ -1007,7 +1008,7 @@ def generate_lineplot_twinx(
     all_x_levels: list = []
     if has_df:
         x_col = primary_config.x
-        if not pd.api.types.is_categorical_dtype(df[x_col]):
+        if not is_categorical(df[x_col]):
             x_dtype = CategoricalDtype(categories=list(pd.unique(df[x_col])), ordered=True)
             df[x_col] = df[x_col].astype(x_dtype)
         else:
@@ -1019,7 +1020,7 @@ def generate_lineplot_twinx(
         all_x_levels = _combine_categories(all_x_levels, df_cats)
     if has_twinx:
         twinx_x_col = ann_cfg.x
-        if not pd.api.types.is_categorical_dtype(twinx_data[twinx_x_col]):
+        if not is_categorical(twinx_data[twinx_x_col]):
             twinx_dtype = CategoricalDtype(
                 categories=list(pd.unique(twinx_data[twinx_x_col])), ordered=True
             )
@@ -1042,9 +1043,7 @@ def generate_lineplot_twinx(
     ax.set_xlim(x_start, x_end + xpad)
 
     if has_df:
-        if not pd.api.types.is_categorical_dtype(df[x_col]) or list(
-            df[x_col].cat.categories
-        ) != list(all_x_levels):
+        if not is_categorical(df[x_col]) or list(df[x_col].cat.categories) != list(all_x_levels):
             all_tp_dtype = CategoricalDtype(categories=all_x_levels, ordered=True)
             df[x_col] = df[x_col].astype(all_tp_dtype)
         if not primary_config.title:
@@ -1055,7 +1054,7 @@ def generate_lineplot_twinx(
             )
 
     if has_twinx:
-        if not pd.api.types.is_categorical_dtype(twinx_data[twinx_x_col]) or list(
+        if not is_categorical(twinx_data[twinx_x_col]) or list(
             twinx_data[twinx_x_col].cat.categories
         ) != list(all_x_levels):
             all_tp_dtype = CategoricalDtype(categories=all_x_levels, ordered=True)

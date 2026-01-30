@@ -5,16 +5,31 @@ Helper functions for processing and annotating plotting data.
 # %%
 import matplotlib as mpl
 import numpy as np
+import pandas as pd
+from pandas.api.types import CategoricalDtype
 from matplotlib.axes import Axes
 
 # Expose all public functions
 __all__ = [
+    "is_categorical",
     "resolve_font_family",
     "adjust_legend",
     "get_oncoplot_fig_top_margin",
     "get_scaled_oncoplot_dimensions",
     "get_oncoplot_dimensions_fixed_cell",
 ]
+
+
+def is_categorical(series: pd.Series) -> bool:
+    """Check if a pandas Series is categorical (pandas 2.x compatible).
+
+    Args:
+        series: A pandas Series to check.
+
+    Returns:
+        True if the series has a CategoricalDtype, False otherwise.
+    """
+    return isinstance(series.dtype, CategoricalDtype)
 
 
 # %%

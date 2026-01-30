@@ -26,9 +26,22 @@ __all__ = [
     "configs",
     "plots",
     "utils",
+    # Convenience aliases for direct submodule access
+    "oncoplot",
+    "lineplot",
+    "table",
+    "plot_configs",
 ]
 
 __version__ = "0.3.4"
+
+# Mapping of convenience aliases to their actual module paths
+_ALIAS_MAP = {
+    "oncoplot": "bioviz.plots.oncoplot",
+    "lineplot": "bioviz.plots.lineplot",
+    "table": "bioviz.plots.table",
+    "plot_configs": "bioviz.configs",
+}
 
 
 def __getattr__(name: str):
@@ -43,11 +56,16 @@ def __getattr__(name: str):
     Raises:
         AttributeError: If `name` is not a recognized submodule.
     """
-    if name in __all__:
+    # Handle aliased submodules
+    if name in _ALIAS_MAP:
+        module = __import__(_ALIAS_MAP[name], fromlist=[name.split(".")[-1]])
+        globals()[name] = module
+        return module
+
+    # Handle direct submodules
+    if name in ("configs", "plots", "utils"):
         module = __import__(f"bioviz.{name}", fromlist=[name])
         globals()[name] = module
         return module
 
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-
-    raise AttributeError(f"module {__name__} has no attribute {name}")

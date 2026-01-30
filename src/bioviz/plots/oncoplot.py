@@ -20,8 +20,7 @@ from matplotlib.patches import Patch  # type: ignore
 from bioviz.configs import HeatmapAnnotationConfig, OncoplotConfig
 from bioviz.utils.style import DefaultStyle, StyleBase
 from bioviz.utils.plotting import resolve_font_family
-
-# Do not apply a global style at import time; callers should pass a style.
+from bioviz.utils.plot_utils import is_categorical
 
 __all__ = [
     "diagonal_fill",
@@ -1404,7 +1403,7 @@ class OncoPlotter:
                 series = df[heatmap_annotation.values]
             else:
                 series = pd.Series(heatmap_annotation.values)
-            if pd.api.types.is_categorical_dtype(series):
+            if is_categorical(series):
                 series = series.cat.remove_unused_categories()
             # Use stringified values for comparisons to avoid mismatches between
             # numeric and string representations (e.g., 100 vs '100 mg') coming

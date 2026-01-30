@@ -266,10 +266,7 @@ class ForestPlotConfig(BaseModel):
         ),
     ]
 
-    class Config:
-        """Pydantic config."""
-
-        extra = "forbid"
+    model_config = {"extra": "forbid"}
 
 
 __all__ = ["ForestPlotConfig"]

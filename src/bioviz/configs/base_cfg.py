@@ -100,13 +100,9 @@ class BasePlotConfig(BaseModel):
         return v
 
     @model_validator(mode="after")
-    def set_default_markersize(cls, values: "BasePlotConfig") -> "BasePlotConfig":
+    def set_default_markersize(self) -> "BasePlotConfig":
         """
         Set a default markersize after model validation when not provided.
-
-        Args:
-            cls: The model class (validator method).
-            values: The validated `BasePlotConfig` instance under construction.
 
         Behavior:
             If `markersize` is not supplied, it will be set to twice the configured
@@ -116,6 +112,6 @@ class BasePlotConfig(BaseModel):
             The `BasePlotConfig` instance with `markersize` possibly populated.
         """
 
-        if values.markersize is None:
-            values.markersize = values.lw * 2
-        return values
+        if self.markersize is None:
+            self.markersize = self.lw * 2
+        return self

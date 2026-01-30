@@ -14,6 +14,7 @@ from bioviz.utils.style import StyleBase
 from typing import Any
 from bioviz.configs.distribution_cfg import DistributionConfig
 import pandas as pd
+from bioviz.utils.plot_utils import is_categorical
 
 
 def _default_color(style: Optional[StyleBase] = None) -> str:
@@ -531,7 +532,7 @@ def generate_grouped_boxplots(
         group_names = list(group_order)
     else:
         # if hue column is categorical with ordered categories, respect that
-        if hue in plot_data.columns and pd.api.types.is_categorical_dtype(plot_data[hue]):
+        if hue in plot_data.columns and is_categorical(plot_data[hue]):
             group_names = list(plot_data[hue].cat.categories)
         else:
             groups = plot_data.groupby(hue, observed=False)

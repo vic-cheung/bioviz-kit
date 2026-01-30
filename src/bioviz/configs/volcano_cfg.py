@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Optional, Iterable, List, Dict, Tuple, Any, Literal
 
 import matplotlib.pyplot as plt
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 
 class VolcanoConfig(BaseModel):
@@ -354,7 +354,8 @@ class VolcanoConfig(BaseModel):
 
     model_config = {"arbitrary_types_allowed": True}
 
-    @validator("palette")
+    @field_validator("palette", mode="before")
+    @classmethod
     def _ensure_palette_keys(cls, v):
         # Ensure minimal palette keys exist
         v = dict(v)

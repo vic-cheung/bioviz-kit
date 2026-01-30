@@ -406,10 +406,7 @@ class KMPlotConfig(BaseModel):
                 raise ValueError("color_dict values must be strings (e.g., hex colors)")
         return v
 
-    class Config:
-        """Pydantic config."""
-
-        extra = "forbid"
+    model_config = {"extra": "forbid"}
 
 
 __all__ = ["KMPlotConfig"]

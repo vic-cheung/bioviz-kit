@@ -159,10 +159,21 @@ def expand_figure_to_fit_artists(
 # Helpers
 # =============================================================================
 def _resolve_fontsize(config_value: int | None, rcparam_key: str) -> int | float:
-    """Return config value if set, else fall back to rcParams."""
+    """Return config value if set, else fall back to rcParams.
+    
+    Handles string font sizes like 'medium', 'large' by converting to points.
+    """
     if config_value is not None:
         return config_value
-    return plt.rcParams.get(rcparam_key, 12)
+    val = plt.rcParams.get(rcparam_key, 12)
+    # rcParams can return strings like 'medium', 'large', etc.
+    if isinstance(val, str):
+        from matplotlib.font_manager import font_scalings
+        base_size = plt.rcParams.get("font.size", 10)
+        if isinstance(base_size, str):
+            base_size = 10
+        return font_scalings.get(val, 1.0) * base_size
+    return val
 
 
 def _wrap_label(label: str, wrap_chars: int | None, max_lines: int = 2) -> str:
