@@ -56,6 +56,7 @@ GroupedBarConfig
    :members:
    :undoc-members:
    :show-inheritance:
+   :no-index:
 
 
 Plotter Classes
@@ -106,6 +107,7 @@ GroupedBarPlotter
    :members:
    :undoc-members:
    :show-inheritance:
+   :no-index:
 
 
 TablePlotter
@@ -119,11 +121,6 @@ TablePlotter
 
 Utility Functions
 -----------------
-
-.. automodule:: bioviz.plots.grouped_bar
-   :members: clopper_pearson_ci, compute_proportion_summary
-   :undoc-members:
-
 
 .. automodule:: bioviz.plots.km
    :members: format_pvalue, add_pvalue_annotation

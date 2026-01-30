@@ -40,4 +40,5 @@ Rprof.out
 *.DS_Store
 .ty_checks/
 .ruff_checks/
+docs/_build/
 
