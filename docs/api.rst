@@ -8,12 +8,9 @@ Configuration Classes
 ---------------------
 
 All configuration classes are Pydantic models that validate inputs and provide
-sensible defaults for publication-ready output.
-
-.. automodule:: bioviz.configs
-   :members:
-   :undoc-members:
-   :show-inheritance:
+sensible defaults for publication-ready output. Individual config classes are
+documented below; the package-level module re-exports are intentionally
+omitted to avoid duplicated entries in the API reference.
 
 
 KMPlotConfig
