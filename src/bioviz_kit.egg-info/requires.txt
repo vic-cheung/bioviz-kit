@@ -6,6 +6,8 @@ loguru>=0.7
 pydantic<3,>=1.10
 ipykernel>=7.1.0
 statsmodels>=0.14.6
+lifelines>=0.29
+numpy>=1.24
 
 [testing]
 pytest

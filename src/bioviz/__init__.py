@@ -1,44 +1,38 @@
 """bioviz package initializer.
 
-Submodules and a small set of convenience plotting callables are imported
-lazily to avoid importing heavy plotting dependencies at package import time.
+Submodules and convenience plotting classes/functions are imported lazily to
+avoid importing heavy dependencies (matplotlib, lifelines) at package import.
 
-Available convenience callables (resolved on first access):
-- ``oncoplot`` -> :mod:`bioviz.plots.oncoplot`.oncoplot
-- ``lineplot`` -> :mod:`bioviz.plots.lineplot`.lineplot
-- ``waterfall`` -> :mod:`bioviz.plots.waterfall`.waterfall
-- ``table`` -> :mod:`bioviz.plots.table`.table
-- ``volcano`` -> :mod:`bioviz.plots.volcano`.volcano
+Main entry points:
+- ``bioviz.plots`` - All plotters (KMPlotter, OncoPlotter, VolcanoPlotter, etc.)
+- ``bioviz.configs`` - All configuration classes (KMPlotConfig, OncoplotConfig, etc.)
 
-Advanced users can still import submodules directly from
-``bioviz.plots.*`` if they need finer-grained control.
+Example usage::
+
+    from bioviz.plots import KMPlotter
+    from bioviz.configs import KMPlotConfig
+
+    config = KMPlotConfig(time_col="time", event_col="event", group_col="arm")
+    plotter = KMPlotter(df, config)
+    fig, ax, pval = plotter.plot()
+
+Advanced users can import submodules directly:
+- ``bioviz.plots.km`` - KM plot module
+- ``bioviz.plots.volcano`` - Volcano plot module
+- etc.
 """
 
 __all__ = [
-    "lineplot",
-    "oncoplot",
-    "table",
-    "style",
-    "utils",
+    "configs",
     "plots",
+    "utils",
 ]
 
-__all__ = [
-    "lineplot",
-    "oncoplot",
-    "table",
-    "style",
-    "plot_configs",
-    "utils",
-    "plots",
-]
-
-__version__ = "0.1.0"
+__version__ = "0.3.4"
 
 
 def __getattr__(name: str):
-    """
-    Lazy import submodules on attribute access.
+    """Lazy import submodules on attribute access.
 
     Args:
         name: Submodule name to import (one of the names exposed in `__all__`).
@@ -49,13 +43,11 @@ def __getattr__(name: str):
     Raises:
         AttributeError: If `name` is not a recognized submodule.
     """
-
-    # Lazily import submodules listed in __all__ on first access. We do not
-    # provide legacy convenience callables at the package root to keep the
-    # initializer lightweight and avoid exposing symbols unexpectedly.
     if name in __all__:
         module = __import__(f"bioviz.{name}", fromlist=[name])
         globals()[name] = module
         return module
+
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
     raise AttributeError(f"module {__name__} has no attribute {name}")
