@@ -31,7 +31,18 @@ def _resolve_fontsize(config_value: float | int | None, rcparam_key: str) -> flo
     """
     if config_value is not None:
         return float(config_value)
-    return float(plt.rcParams.get(rcparam_key, 12))
+    rc_val = plt.rcParams.get(rcparam_key, 12)
+    try:
+        return float(rc_val)
+    except (TypeError, ValueError):
+        # rcVal might be a named size like 'large' — convert via FontProperties
+        try:
+            from matplotlib.font_manager import FontProperties
+
+            fp = FontProperties(size=rc_val)
+            return float(fp.get_size_in_points())
+        except Exception:
+            return 12.0
 
 
 def generate_styled_table(
@@ -77,7 +88,9 @@ def generate_styled_table(
     ax.axis("off")
 
     header_height = (
-        config.header_row_height if config.header_row_height is not None else config.row_height
+        config.header_row_height
+        if config.header_row_height is not None
+        else config.row_height
     )
 
     # Reduce margins so saved output is tight around the table
@@ -142,7 +155,9 @@ def generate_styled_table(
         family = header_family if is_header else body_family
         if family:
             text_obj.set_fontname(family)
-        text_obj.set_fontweight(config.header_font_weight if is_header else config.body_font_weight)
+        text_obj.set_fontweight(
+            config.header_font_weight if is_header else config.body_font_weight
+        )
         text_obj.set_color(config.header_text_color if is_header else "black")
         text_obj.set_ha("center")
         text_obj.set_va("center")
@@ -210,7 +225,9 @@ class TablePlotter:
                 continue
         return self
 
-    def plot(self, ax: plt.Axes | None = None) -> tuple[plt.Figure | None, plt.Axes | None]:
+    def plot(
+        self, ax: plt.Axes | None = None
+    ) -> tuple[plt.Figure | None, plt.Axes | None]:
         """Render the styled table and store `fig, ax` on the instance."""
         self.fig = generate_styled_table(self.df, self.config, ax=ax)
         if self.fig is None:
