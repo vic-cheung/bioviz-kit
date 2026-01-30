@@ -103,7 +103,7 @@ def generate_styled_table(
         table.auto_set_font_size(False)
 
     row_heights = {}
-    for (row, col), cell in table.get_celld().items():
+    for (row, _), cell in table.get_celld().items():
         text = cell.get_text().get_text()
         # Optionally ignore embedded newlines to keep uniform row heights
         num_lines = text.count("\n") + 1 if config.respect_newlines else 1
@@ -133,7 +133,7 @@ def generate_styled_table(
     body_family = config.body_font_family or resolve_font_family()
     title_family = header_family or body_family or resolve_font_family()
 
-    for (row, col), cell in table.get_celld().items():
+    for (row, _), cell in table.get_celld().items():
         text_obj = cell.get_text()
         is_header = row == 0
         cell.set_edgecolor(config.edge_color)

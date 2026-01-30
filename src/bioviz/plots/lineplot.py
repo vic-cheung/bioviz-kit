@@ -5,6 +5,7 @@ Ported and adapted from tm_toolbox. Uses neutral `DefaultStyle`.
 """
 
 # %%
+import contextlib
 import math
 
 import matplotlib.pyplot as plt
@@ -254,10 +255,8 @@ def generate_styled_lineplot(
         )
         df[config.x] = df[config.x].astype(x_dtype)
     elif config.x in df and hasattr(df[config.x].dtype, "categories"):
-        try:
+        with contextlib.suppress(Exception):
             df[config.x] = df[config.x].cat.remove_unused_categories()
-        except Exception:
-            pass
 
     # Map categorical Timepoint to numeric position for x-axis plotting
     cat_to_pos = (
@@ -296,7 +295,7 @@ def generate_styled_lineplot(
             raise ValueError(
                 "Palette has fewer colors than the number of unique labels."
             )
-        color_dict = dict(zip(labels, palette))
+        color_dict = dict(zip(labels, palette, strict=True))
 
     # Create figure
     if ax is None:
@@ -502,7 +501,7 @@ def generate_styled_lineplot(
             ax=ax,
             force_text=(1, 3),
             force_points=(0.5, 1),
-            points=list(zip(x_pos_, y_pos_)),
+            points=list(zip(x_pos_, y_pos_, strict=True)),
             expand_text=(1.2, 1.2),
             verbose=0,
         )
@@ -649,10 +648,8 @@ def generate_styled_multigroup_lineplot(
         )
         df[config.x] = df[config.x].astype(x_dtype)
     elif config.x in df and hasattr(df[config.x].dtype, "categories"):
-        try:
+        with contextlib.suppress(Exception):
             df[config.x] = df[config.x].cat.remove_unused_categories()
-        except Exception:
-            pass
 
     required_cols = [config.group_col, config.x, config.y]
     missing = [c for c in required_cols if c not in df.columns]
@@ -675,13 +672,13 @@ def generate_styled_multigroup_lineplot(
 
     if config.palette is None:
         palette = sns.color_palette("Dark2", n_colors=num_labels)
-        color_dict = dict(zip(labels, palette))
+        color_dict = dict(zip(labels, palette, strict=True))
     elif isinstance(config.palette, dict):
         color_dict = config.palette
     else:
         if len(config.palette) < num_labels:
             raise ValueError("Palette list has fewer colors than required.")
-        color_dict = dict(zip(labels, config.palette))
+        color_dict = dict(zip(labels, config.palette, strict=True))
 
     for label in labels:
         subset = df[df[config.group_col] == label].dropna(subset=[config.x, config.y])
@@ -956,14 +953,16 @@ def generate_lineplot_twinx(
 
     # Allow using the same DataFrame for twin-axis secondary by reusing df when no separate
     # twinx_data is provided but twin fields exist on the secondary_config.
-    if not has_twinx and has_df and secondary_config is not None:
-        if (
-            secondary_config.x
-            and secondary_config.y
-            and (secondary_config.label_col or secondary_config.group_col)
-        ):
-            twinx_data = df
-            has_twinx = True
+    if (
+        not has_twinx
+        and has_df
+        and secondary_config is not None
+        and secondary_config.x
+        and secondary_config.y
+        and (secondary_config.label_col or secondary_config.group_col)
+    ):
+        twinx_data = df
+        has_twinx = True
     if not has_df and not has_twinx:
         raise ValueError(
             "At least one of df or twinx_data must be provided and non-empty."
@@ -975,11 +974,10 @@ def generate_lineplot_twinx(
         raise ValueError(
             "Provide a LinePlotConfig with overlay fields when twinx_data is provided."
         )
-    if has_twinx:
-        if not ann_cfg.x or not secondary_y or not secondary_hue:
-            raise ValueError(
-                "Secondary config must define x, y, and a hue (label_col or group_col)."
-            )
+    if has_twinx and (not ann_cfg.x or not secondary_y or not secondary_hue):
+        raise ValueError(
+            "Secondary config must define x, y, and a hue (label_col or group_col)."
+        )
 
     fig, ax = plt.subplots(
         figsize=(
@@ -1042,7 +1040,7 @@ def generate_lineplot_twinx(
         # palette_cfg is a list-like
         if len(palette_cfg) < len(labels):
             palette_cfg = sns.color_palette("Dark2", n_colors=len(labels))
-        return {label: color for label, color in zip(labels, palette_cfg)}
+        return {label: color for label, color in zip(labels, palette_cfg, strict=True)}
 
     all_x_levels: list = []
     if has_df:
@@ -1053,10 +1051,8 @@ def generate_lineplot_twinx(
             )
             df[x_col] = df[x_col].astype(x_dtype)
         else:
-            try:
+            with contextlib.suppress(Exception):
                 df[x_col] = df[x_col].cat.remove_unused_categories()
-            except Exception:
-                pass
         df_cats = _categories_in_order(df[x_col])
         all_x_levels = _combine_categories(all_x_levels, df_cats)
     if has_twinx:
@@ -1067,12 +1063,10 @@ def generate_lineplot_twinx(
             )
             twinx_data[twinx_x_col] = twinx_data[twinx_x_col].astype(twinx_dtype)
         else:
-            try:
+            with contextlib.suppress(Exception):
                 twinx_data[twinx_x_col] = twinx_data[
                     twinx_x_col
                 ].cat.remove_unused_categories()
-            except Exception:
-                pass
         twinx_cats = _categories_in_order(twinx_data[twinx_x_col])
         all_x_levels = _combine_categories(all_x_levels, twinx_cats)
 
@@ -1100,12 +1094,12 @@ def generate_lineplot_twinx(
                 for val in ref_row.to_dict().values()
             )
 
-    if has_twinx:
-        if not is_categorical(twinx_data[twinx_x_col]) or list(
-            twinx_data[twinx_x_col].cat.categories
-        ) != list(all_x_levels):
-            all_tp_dtype = CategoricalDtype(categories=all_x_levels, ordered=True)
-            twinx_data[twinx_x_col] = twinx_data[twinx_x_col].astype(all_tp_dtype)
+    if has_twinx and (
+        not is_categorical(twinx_data[twinx_x_col])
+        or list(twinx_data[twinx_x_col].cat.categories) != list(all_x_levels)
+    ):
+        all_tp_dtype = CategoricalDtype(categories=all_x_levels, ordered=True)
+        twinx_data[twinx_x_col] = twinx_data[twinx_x_col].astype(all_tp_dtype)
 
     overlay_color_dict: dict[str, str] = {}
     if has_twinx:
@@ -1259,7 +1253,7 @@ def generate_lineplot_twinx(
         overlay_vline_dashes = getattr(ann_cfg, "overlay_vline_dashes", (5, 5))
         for _, row in annotations.iterrows():
             x = cat_to_pos[row[twinx_x_col]]
-            text = row[annotation_field] if annotation_field in row else None
+            text = row.get(annotation_field, None)
             if text is None:
                 continue
             if overlay_use_axes:
@@ -1359,7 +1353,7 @@ def generate_lineplot_twinx(
             ax=ax,
             force_text=(1, 3),
             force_points=(0.5, 1),
-            points=list(zip(x_pos_, y_pos_)),
+            points=list(zip(x_pos_, y_pos_, strict=True)),
             expand_text=(1.2, 1.2),
             verbose=0,
         )
@@ -1500,7 +1494,7 @@ def generate_lineplot_twinx(
     overlay_vline_alpha = getattr(ann_cfg, "overlay_vline_alpha", 1.0)
     for _, row in annotations.iterrows():
         x = cat_to_pos[row[twinx_x_col]]
-        text = row[annotation_field] if annotation_field in row else None
+        text = row.get(annotation_field, None)
         if text is None:
             continue
         if overlay_use_axes:
@@ -1649,7 +1643,7 @@ def generate_lineplot_twinx(
         ax=ax2,
         force_text=(1, 3),
         force_points=(0.5, 1),
-        points=list(zip(x_pos_, y_pos_)),
+        points=list(zip(x_pos_, y_pos_, strict=True)),
         expand_text=(1.2, 1.2),
         verbose=0,
     )

@@ -413,7 +413,7 @@ class ForestPlotter:
                 f"{lbl} (vs {row[cfg.reference_col]})"
                 if pd.notna(row[cfg.reference_col])
                 else lbl
-                for lbl, (_, row) in zip(labels, df.iterrows())
+                for lbl, (_, row) in zip(labels, df.iterrows(), strict=True)
             ]
         ax.set_yticklabels(labels, fontsize=ytick_fs)
         if not cfg.show_yticks:

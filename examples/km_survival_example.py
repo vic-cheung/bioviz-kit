@@ -37,7 +37,7 @@ def generate_survival_data(n: int, arms: list, hazard_ratios: dict) -> pd.DataFr
         times = np.random.exponential(12 / hr, n_arm)
         # Random censoring (~30%)
         events = np.random.choice([0, 1], n_arm, p=[0.3, 0.7])
-        for i, (t, e) in enumerate(zip(times, events)):
+        for i, (t, e) in enumerate(zip(times, events, strict=True)):
             records.append(
                 {
                     "USUBJID": f"{arm[:3].upper()}-{i + 1:03d}",

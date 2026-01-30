@@ -114,9 +114,8 @@ class OncoplotConfig(BaseModel):
     @classmethod
     def _map_bar_width_to_points(cls, values: dict) -> dict:
         """Map bar_width to bar_width_points for alias compatibility."""
-        if isinstance(values, dict):
-            if "bar_width" in values and "bar_width_points" not in values:
-                values["bar_width_points"] = values["bar_width"]
+        if isinstance(values, dict) and "bar_width" in values and "bar_width_points" not in values:
+            values["bar_width_points"] = values["bar_width"]
         return values
 
     def model_post_init(self, __context: dict | None = None) -> None:

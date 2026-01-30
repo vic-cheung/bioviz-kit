@@ -6,7 +6,6 @@ to use optional dependencies when available (`statannotations`) but falls
 back to conservative implementations otherwise.
 """
 
-
 import numpy as np
 import pandas as pd
 import scipy.stats as stats
@@ -106,7 +105,7 @@ def apply_statannotations(
             mask = [
                 not (p is None or (isinstance(p, float) and np.isnan(p))) for p in pvals
             ]
-            valid_pvals = [p for p, m in zip(pvals, mask) if m]
+            valid_pvals = [p for p, m in zip(pvals, mask, strict=True) if m]
             if valid_pvals:
                 rej, p_adj, _, _ = multipletests(valid_pvals, method="fdr_bh")
                 # map back
@@ -131,7 +130,9 @@ def apply_statannotations(
     offset = y_std * 0.1
     # Stack multiple annotations to avoid overlap
     stack_counts = {}
-    for idx, ((a, b), raw_p, adj_p) in enumerate(zip(pairs_only, pvals, p_adj_full)):
+    for _, ((a, b), raw_p, adj_p) in enumerate(
+        zip(pairs_only, pvals, p_adj_full, strict=True)
+    ):
         xa = x_positions.get(a, 0)
         xb = x_positions.get(b, 0)
         left = min(xa, xb)

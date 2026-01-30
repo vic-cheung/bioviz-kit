@@ -83,7 +83,7 @@ def apply_statannotations(ax, data, x, y, pairs, test="Mann-Whitney", **kwargs):
     # Determine x positions: prefer axis tick positions, else assign by category order
     xticks = [t.get_text() for t in ax.get_xticklabels()]
     if len(xticks) and all(t != "" for t in xticks):
-        tick_positions = dict(zip(xticks, ax.get_xticks()))
+        tick_positions = dict(zip(xticks, ax.get_xticks(), strict=True))
     else:
         cats = list(pd.Categorical(data[x]).categories)
         tick_positions = {str(cat): i for i, cat in enumerate(cats)}

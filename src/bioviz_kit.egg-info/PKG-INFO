@@ -52,37 +52,28 @@ Provides-Extra: testing
 Requires-Dist: pytest; extra == "testing"
 Dynamic: license-file
 
-bioviz-kit
-==========
+# bioviz-kit
 
 Framework-agnostic visualization library for publication-ready clinical and biological data plots.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![Documentation](https://readthedocs.org/projects/bioviz-kit/badge/?version=latest)](https://bioviz-kit.readthedocs.io/)
 
 ## Features
 
 - **Publication-ready styling** – Clean, professional visualizations out of the box
 - **Framework-agnostic** – Works with any data pipeline or analysis framework
-- **Customizable configurations** – Extensive theming and layout options
-- **Clinical & bioinformatics focused** – Specialized plot types for common analyses
-
-## Installation
-
-bioviz-kit
-==========
-
-Framework-agnostic visualization library for publication-ready clinical and biological data plots.
-
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-
-## Features
-
-- **Publication-ready styling** – Clean, professional visualizations out of the box
-- **Framework-agnostic** – Works with any data pipeline or analysis framework
-- **Customizable configurations** – Extensive theming and layout options
-- **Clinical & bioinformatics focused** – Specialized plot types for common analyses
+- **Pydantic configurations** – Type-safe, validated configuration objects
+- **Clinical & bioinformatics focused** – Specialized plot types for common analyses:
+  - Kaplan-Meier survival curves with risk tables
+  - Volcano plots for differential expression/enrichment
+  - Oncoplots (mutation landscapes)
+  - Forest plots for hazard ratios
+  - Waterfall plots for tumor response
+  - Grouped bar charts with confidence intervals
+  - Distribution plots (histogram + boxplot)
+  - Styled tables
 
 ## Installation
 
@@ -95,6 +86,8 @@ pip install bioviz-kit
 Or install in development mode:
 
 ```bash
+git clone https://github.com/yourusername/bioviz-kit.git
+cd bioviz-kit
 pip install -e .
 ```
 
@@ -103,49 +96,222 @@ pip install -e .
 - Python 3.11+
 - pandas
 - matplotlib
-- seaborn
-- adjustText
+- pydantic
+- lifelines (for KM plots)
+- adjustText (for label placement)
+- seaborn (optional, for some plot types)
 
-## Usage
+## Quick Start
+
+### Kaplan-Meier Survival Plots
 
 ```python
-from bioviz import lineplot, oncoplot
+import pandas as pd
+from bioviz.configs import KMPlotConfig
+from bioviz.plots import KMPlotter
 
-# Generate styled plots with minimal configuration
-fig = lineplot.generate_styled_lineplot(df, config)
-fig = oncoplot.generate_styled_oncoplot(df, config)
+# Your survival data
+df = pd.DataFrame({
+    "time": [5, 10, 15, 8, 12, 20, 6, 14],
+    "event": [1, 0, 1, 1, 0, 1, 1, 0],
+    "arm": ["Treatment", "Treatment", "Treatment", "Treatment",
+            "Control", "Control", "Control", "Control"],
+})
+
+# Configure the plot
+config = KMPlotConfig(
+    time_col="time",
+    event_col="event",
+    group_col="arm",
+    title="Overall Survival by Treatment Arm",
+    xlabel="Time (months)",
+    ylabel="Survival Probability",
+    show_risktable=True,
+    show_pvalue=True,
+    color_dict={"Treatment": "#009E73", "Control": "#D55E00"},
+)
+
+# Generate the plot
+plotter = KMPlotter(df, config)
+fig, ax, pval = plotter.plot(output_path="km_plot.pdf")
+print(f"Log-rank p-value: {pval:.4f}")
 ```
 
-See [examples/](examples/) for complete usage examples.
+### Volcano Plots
+
+```python
+from bioviz.configs import VolcanoConfig
+from bioviz.plots import VolcanoPlotter
+
+# Differential expression results
+df = pd.DataFrame({
+    "gene": ["TP53", "KRAS", "EGFR", "BRCA1", "MYC"],
+    "log2fc": [2.5, -1.8, 0.3, 3.1, -2.2],
+    "pvalue": [0.001, 0.01, 0.5, 0.0001, 0.005],
+})
+
+config = VolcanoConfig(
+    x_col="log2fc",
+    y_col="pvalue",
+    label_col="gene",
+    title="Differential Expression Analysis",
+    y_col_thresh=0.05,
+    abs_x_thresh=1.5,
+)
+
+plotter = VolcanoPlotter(df, config)
+fig, ax = plotter.plot()
+fig.savefig("volcano.pdf", bbox_inches="tight")
+```
+
+### Oncoplots
+
+```python
+from bioviz.configs import OncoplotConfig
+from bioviz.plots import OncoPlotter
+
+# Mutation data (long format)
+df = pd.DataFrame({
+    "sample": ["S1", "S1", "S2", "S2", "S3"],
+    "gene": ["TP53", "KRAS", "TP53", "EGFR", "KRAS"],
+    "variant_class": ["Missense", "Missense", "Nonsense", "Amplification", "Missense"],
+})
+
+config = OncoplotConfig(
+    sample_col="sample",
+    gene_col="gene",
+    variant_col="variant_class",
+    title="Mutation Landscape",
+)
+
+plotter = OncoPlotter(df, config)
+fig, axes = plotter.plot()
+fig.savefig("oncoplot.pdf", bbox_inches="tight")
+```
+
+### Forest Plots
+
+```python
+from bioviz.configs import ForestPlotConfig
+from bioviz.plots import ForestPlotter
+
+# Hazard ratio data
+df = pd.DataFrame({
+    "comparator": ["Age >= 65", "Male", "Stage III-IV", "ECOG 1"],
+    "reference": ["Age < 65", "Female", "Stage I-II", "ECOG 0"],
+    "hr": [1.45, 0.92, 2.10, 1.68],
+    "ci_lower": [1.10, 0.72, 1.65, 1.25],
+    "ci_upper": [1.91, 1.18, 2.67, 2.26],
+    "p_value": [0.008, 0.52, 0.001, 0.001],
+})
+
+config = ForestPlotConfig(
+    title="Multivariate Cox Regression",
+    xlabel="Hazard Ratio (95% CI)",
+)
+
+plotter = ForestPlotter(df, config)
+fig, ax = plotter.plot()
+fig.savefig("forest.pdf", bbox_inches="tight")
+```
+
+### Grouped Bar Charts with CIs
+
+```python
+from bioviz.configs import GroupedBarConfig
+from bioviz.plots import GroupedBarPlotter
+
+# Create from proportions (computes Clopper-Pearson CIs automatically)
+config = GroupedBarConfig(
+    title="Response Rates by Treatment",
+    xlabel="Response Rate (%)",
+    orientation="horizontal",
+    ci_method="clopper-pearson",
+)
+
+plotter = GroupedBarPlotter.from_proportions(
+    category_list=["CR", "PR", "SD", "PD"],
+    group_configs=[
+        {"name": "Treatment", "k": {"CR": 15, "PR": 25, "SD": 30, "PD": 10}, "n": 80},
+        {"name": "Control", "k": {"CR": 5, "PR": 15, "SD": 35, "PD": 25}, "n": 80},
+    ],
+    config=config,
+)
+fig, ax = plotter.plot()
+```
+
+## Architecture
+
+bioviz-kit follows a consistent pattern across all plot types:
+
+```
+bioviz/
+├── configs/           # Pydantic configuration classes
+│   ├── km_cfg.py      # KMPlotConfig
+│   ├── volcano_cfg.py # VolcanoConfig
+│   └── ...
+├── plots/             # Plotter classes
+│   ├── km.py          # KMPlotter
+│   ├── volcano.py     # VolcanoPlotter
+│   └── ...
+└── utils/             # Shared utilities
+```
+
+Each plot type has:
+
+1. A **Config class** (e.g., `KMPlotConfig`) - Pydantic model with validated fields
+2. A **Plotter class** (e.g., `KMPlotter`) - Takes data + config, produces matplotlib figure
+
+## Configuration Philosophy
+
+All configurations use Pydantic models with:
+
+- **Type hints** for IDE autocompletion
+- **Validation** to catch errors early
+- **Defaults** that produce publication-ready output
+- **Documentation** via field descriptions
+
+Font sizes default to `None` to inherit from matplotlib's rcParams, making it easy
+to apply global themes:
+
+```python
+import matplotlib.pyplot as plt
+
+# Set global style
+plt.rcParams.update({
+    "font.size": 12,
+    "axes.labelsize": 14,
+    "axes.titlesize": 16,
+})
+
+# Now all bioviz plots will use these sizes by default
+```
 
 ## Examples
 
-- Example files live in the `examples/` directory. Recommended practices:
-    - Keep runnable `.py` scripts for quick CLI usage and reproducible examples.
-    - Provide companion `.ipynb` notebooks for narrative tutorials and figures. Convert with `jupytext` or `nbconvert` if needed:
+See the [`examples/`](examples/) directory for complete, runnable examples:
 
-```bash
-pip install jupytext
-jupytext --to notebook examples/my_example.py -o examples/my_example.ipynb
-```
+- `minimal_bioviz_smoke.py` - Line plots, oncoplots, tables
+- `oncoplot_example.py` - Detailed oncoplot customization
+- `volcano_smoke.py` - Volcano plot variations
+- `distribution_examples.py` - Histogram + boxplot combinations
+- `km_survival_example.py` - Kaplan-Meier survival analysis
 
-    - Name files with short, descriptive snake_case (optionally numeric prefixes for ordered tutorials, e.g. `01_quickstart.ipynb`).
-    - Add a short header comment or top-level README in `examples/` describing each example's purpose and required inputs.
+## Documentation
 
-## Documentation and ReadTheDocs
+Full documentation is available at [bioviz-kit.readthedocs.io](https://bioviz-kit.readthedocs.io/).
 
-TBD
+## Integration with tm-modeling
 
-## Design Philosophy
+bioviz-kit serves as the visualization backend for tm-modeling.
+Users of tm-modeling can continue using the existing API (`KMPlotConfig`, `generate_km_plot_and_risk_table`)
+while benefiting from bioviz-kit's improved rendering.
 
-- Lightweight `DefaultStyle` provided; easily extended with custom themes
+## License
 
+bioviz-kit is released under the MIT License (c) 2025 Victoria Cheung.
 
-## Licensing
+## Acknowledgments
 
-- `bioviz-kit` is released under the MIT License © 2025 Victoria Cheung.
-
-### Thanks
-
-This package was spun out of internal tooling I wrote at Revolution Medicines.
+This package was spun out of internal tooling developed at Revolution Medicines.
 Many thanks to the team there for allowing the code to be open sourced.

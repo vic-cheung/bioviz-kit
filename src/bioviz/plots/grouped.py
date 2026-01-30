@@ -4,6 +4,7 @@ This module provides `plot_grouped_boxplots` which mirrors the behaviour
 used in PRG requests, including Mann-Whitney tests and BH correction.
 """
 
+import contextlib
 from collections.abc import Iterable
 
 import matplotlib.pyplot as plt
@@ -78,7 +79,7 @@ def plot_grouped_boxplots(
         seen = set()
         new_handles = []
         new_labels = []
-        for h, lbl in zip(handles, labels):
+        for h, lbl in zip(handles, labels, strict=True):
             if lbl not in seen:
                 seen.add(lbl)
                 new_handles.append(h)
@@ -115,10 +116,8 @@ def plot_grouped_boxplots(
             apply_statannotations(ax, df, x, y, pairs)
         except Exception:
             # fallback: our helper will either use statannotations or draw simple annotations
-            try:
+            with contextlib.suppress(Exception):
                 apply_statannotations(ax, df, x, y, pairs)
-            except Exception:
-                pass
 
         # Optionally display adjusted p-values as text labels above the pair
         if show_pvalues:
@@ -128,7 +127,7 @@ def plot_grouped_boxplots(
             offset = (df[y].std(skipna=True) or 1.0) * 0.1
             # count stacked annotations to avoid overlap
             stack_counts = {}
-            for idx, ((a, b), pv) in enumerate(zip(pairs, p_adj_full)):
+            for _, ((a, b), pv) in enumerate(zip(pairs, p_adj_full, strict=True)):
                 try:
                     # compute y coordinate above the higher group
                     ya = df.loc[df[x] == a, y].dropna()

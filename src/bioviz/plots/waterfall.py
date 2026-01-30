@@ -198,16 +198,16 @@ class WaterfallPlotter:
         # Plot bars
         if cfg.edgecolor_col is not None:
             # Plot bars individually for different edge colors
-            for i, (idx, row) in enumerate(df_sorted.iterrows()):
+            for i, (_, row) in enumerate(df_sorted.iterrows()):
                 ax.bar(
                     row["_x_position"],
                     row[cfg.value_col],
-                    color=fill_colors[i]
-                    if isinstance(fill_colors, list)
-                    else fill_colors,
-                    edgecolor=edge_colors[i]
-                    if isinstance(edge_colors, list)
-                    else edge_colors,
+                    color=(
+                        fill_colors[i] if isinstance(fill_colors, list) else fill_colors
+                    ),
+                    edgecolor=(
+                        edge_colors[i] if isinstance(edge_colors, list) else edge_colors
+                    ),
                     linewidth=cfg.linewidth,
                     width=cfg.bar_width,
                     zorder=2,
@@ -225,7 +225,7 @@ class WaterfallPlotter:
 
         # Group separators
         if cfg.show_group_separators:
-            for i, boundary in enumerate(group_boundaries[:-1]):
+            for _, boundary in enumerate(group_boundaries[:-1]):
                 gap_center = boundary + cfg.group_gap / 2
                 ax.axvline(
                     x=gap_center,
@@ -323,7 +323,7 @@ class WaterfallPlotter:
         # Plot bars
         if cfg.edgecolor_col is not None or cfg.bar_annotation_col is not None:
             # Plot bars individually
-            for i, (idx, row) in enumerate(df_sorted.iterrows()):
+            for i, (_, row) in enumerate(df_sorted.iterrows()):
                 fc = fill_colors[i] if isinstance(fill_colors, list) else fill_colors
                 ec = edge_colors[i] if isinstance(edge_colors, list) else edge_colors
 

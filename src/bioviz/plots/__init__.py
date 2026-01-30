@@ -33,7 +33,6 @@ __all__ = [
 ]
 
 from importlib import import_module
-from typing import List
 
 # Map convenience/exported names -> (module_path, attribute_name)
 _PUBLIC_FUNCS = {

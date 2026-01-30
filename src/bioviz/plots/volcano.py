@@ -4,6 +4,7 @@ Generate a volcano-style plot with a pydantic `VolcanoConfig`.
 
 from __future__ import annotations
 
+import contextlib
 import math
 import warnings
 from collections.abc import Mapping
@@ -35,7 +36,9 @@ def _internal_resolve_values(df: pd.DataFrame, cfg: VolcanoConfig) -> list[str]:
             missing = [v for v in base if v not in available]
             if missing:
                 warnings.warn(
-                    f"Requested labels not found in DataFrame: {missing}", UserWarning
+                    f"Requested labels not found in DataFrame: {missing}",
+                    UserWarning,
+                    stacklevel=2,
                 )
             if cfg.additional_values_to_label:
                 # Warn about missing additions, but only append the valid ones
@@ -45,6 +48,7 @@ def _internal_resolve_values(df: pd.DataFrame, cfg: VolcanoConfig) -> list[str]:
                     warnings.warn(
                         f"Additional requested labels not found in DataFrame: {missing_add}",
                         UserWarning,
+                        stacklevel=2,
                     )
                 valid_add = [v for v in add if v in available]
                 base = list(dict.fromkeys(base + valid_add))
@@ -64,16 +68,15 @@ def _internal_resolve_values(df: pd.DataFrame, cfg: VolcanoConfig) -> list[str]:
     # provided — the plotting code will fall back to using the DataFrame
     # index as labels which is often unintentional.
     if not (cfg.label_col and cfg.label_col in df.columns) and not cfg.values_to_label:
-        try:
+        with contextlib.suppress(Exception):
             warnings.warn(
                 "No `label_col` found and no `values_to_label` provided; "
                 "labels will be taken from the DataFrame index. "
                 "If you intended to label using a column, set `cfg.label_col` or "
                 "provide `values_to_label`.",
                 UserWarning,
+                stacklevel=2,
             )
-        except Exception:
-            pass
 
     # Build a significance mask using the configured `y_col` and `y_col_thresh`.
     sig_mask = pd.Series(False, index=df.index)
@@ -213,14 +216,10 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> tuple[plt.Figure, plt.
     if cfg.ax is None:
         fig, ax = plt.subplots(figsize=cfg.figsize)
         # Make figure background transparent while keeping axes face white
-        try:
+        with contextlib.suppress(Exception):
             fig.patch.set_alpha(0.0)
-        except Exception:
-            pass
-        try:
+        with contextlib.suppress(Exception):
             ax.set_facecolor("white")
-        except Exception:
-            pass
     else:
         ax = cfg.ax
         fig = ax.figure
@@ -549,11 +548,9 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> tuple[plt.Figure, plt.
         s=cfg.marker_size,
         zorder=3,
     )
-    try:
+    with contextlib.suppress(Exception):
         # avoid clipping markers at the axes boundary
         sc.set_clip_on(False)
-    except Exception:
-        pass
 
     # build labels aggregated by coordinates
     all_texts = []
@@ -642,13 +639,12 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> tuple[plt.Figure, plt.
                 available_labels = set(df[cfg.label_col].astype(str).tolist())
             else:
                 available_labels = set(df.index.astype(str).tolist())
-            missing_explicit = [
-                k for k in explicit_map.keys() if k not in available_labels
-            ]
+            missing_explicit = [k for k in explicit_map if k not in available_labels]
             if missing_explicit:
                 warnings.warn(
                     f"Explicit label positions reference labels not in DataFrame: {missing_explicit}",
                     UserWarning,
+                    stacklevel=2,
                 )
     except Exception:
         pass
@@ -660,12 +656,10 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> tuple[plt.Figure, plt.
         # Optionally remove explicit labels from the auto-label set so they
         # aren't duplicated. Default behavior is to replace automatic labels.
         if getattr(cfg, "explicit_label_replace", True):
-            try:
+            with contextlib.suppress(Exception):
                 values_to_label_resolved = [
                     v for v in values_to_label_resolved if v not in explicit_map
                 ]
-            except Exception:
-                pass
         for lab, (lx, ly) in explicit_map.items():
             # skip if outside axes
             if not (x_min <= lx <= x_max and y_min <= ly <= y_max):
@@ -1089,7 +1083,7 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> tuple[plt.Figure, plt.
             # Render the original column name literally inside math text to avoid
             # interpreting underscores as subscripts (e.g. p_adj)
             safe_col = cfg.y_col.replace("_", r"\_")
-            ax.set_ylabel(r"$-\log_{10}(\text{%s})$" % safe_col)
+            ax.set_ylabel(rf"$-\log_{{10}}(\text{{{safe_col}}})$")
         else:
             ax.set_ylabel(cfg.y_col)
 
@@ -1199,7 +1193,7 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> tuple[plt.Figure, plt.
 
     # apply adjust_text only to adjustable labels
     if getattr(cfg, "use_adjust_text", True) and cfg.adjust and adjustable_texts:
-        try:
+        with contextlib.suppress(Exception):
             adjust_text(
                 adjustable_texts,
                 x=[p[0] for p in adjustable_points],
@@ -1213,8 +1207,6 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> tuple[plt.Figure, plt.
                 lim=30000,
                 ensure_inside_axes=True,
             )
-        except Exception:
-            pass
 
     # Draw connector lines from adjustable points to their text bboxes.
     # Forced texts already received straight connectors at placement time.
@@ -1225,7 +1217,7 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> tuple[plt.Figure, plt.
         renderer = None
 
     for txt, orig, was_sig in zip(
-        adjustable_texts, adjustable_points, adjustable_point_sigs
+        adjustable_texts, adjustable_points, adjustable_point_sigs, strict=True
     ):
         try:
             tx, ty = txt.get_position()
@@ -1351,20 +1343,16 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> tuple[plt.Figure, plt.
 
     # Respect explicit ticks from config if provided, otherwise keep existing logic
     if getattr(cfg, "xticks", None) is not None:
-        try:
+        with contextlib.suppress(Exception):
             ax.set_xticks(list(cfg.xticks))
-        except Exception:
-            pass
     elif cfg.xtick_step is not None:
         left = int(math.floor(ax.get_xlim()[0] / cfg.xtick_step) * cfg.xtick_step)
         right = int(math.ceil(ax.get_xlim()[1] / cfg.xtick_step) * cfg.xtick_step)
         ax.set_xticks(list(range(left, right + 1, int(cfg.xtick_step))))
 
     if getattr(cfg, "yticks", None) is not None:
-        try:
+        with contextlib.suppress(Exception):
             ax.set_yticks(list(cfg.yticks))
-        except Exception:
-            pass
 
     plt.tight_layout()
     return fig, ax
@@ -1455,7 +1443,9 @@ class VolcanoPlotter:
                 for k, v in explicit_positions.items()
             }
         except Exception:
-            raise ValueError("explicit_positions must be a mapping label->(x,y)")
+            raise ValueError(
+                "explicit_positions must be a mapping label->(x,y)"
+            ) from None
 
         # record
         self.annotation_history.append({"explicit": new_map, "replace": replace})

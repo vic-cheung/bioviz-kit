@@ -6,16 +6,17 @@ This module implements oncoprint drawing helpers and the
 the `StyleBase` protocol and calls `style.apply_theme()` when plotting.
 """
 
+import contextlib
 from typing import Any
 
-import matplotlib.colors as mcolors  # type: ignore
-import matplotlib.patches as mpatches  # type: ignore
-import matplotlib.pyplot as plt  # type: ignore
-import matplotlib.transforms as mtransforms  # type: ignore
-import numpy as np  # type: ignore
-import pandas as pd  # type: ignore
-from matplotlib import font_manager  # type: ignore
-from matplotlib.patches import Patch  # type: ignore
+import matplotlib.colors as mcolors
+import matplotlib.patches as mpatches
+import matplotlib.pyplot as plt
+import matplotlib.transforms as mtransforms
+import numpy as np
+import pandas as pd
+from matplotlib import font_manager
+from matplotlib.patches import Patch
 
 from bioviz.configs import HeatmapAnnotationConfig, OncoplotConfig
 from bioviz.utils.plot_utils import is_categorical
@@ -581,19 +582,15 @@ class OncoPlotter:
         for patch in referenced_bars:
             patch.set_x(patch.get_x() + bar_shift_data)
             if bar_width_data is not None:
-                try:
+                with contextlib.suppress(Exception):
                     patch.set_width(bar_width_data)
-                except Exception:
-                    pass
         if not referenced_bars:
             for patch in ax.patches:
                 if hasattr(patch, "_is_row_group_bar") and patch._is_row_group_bar:
                     patch.set_x(patch.get_x() + bar_shift_data)
                     if bar_width_data is not None:
-                        try:
+                        with contextlib.suppress(Exception):
                             patch.set_width(bar_width_data)
-                        except Exception:
-                            pass
         for txt in referenced_labels:
             txt.set_x(txt.get_position()[0] + label_shift_data)
         if not referenced_labels and row_groups is not None:
@@ -667,7 +664,7 @@ class OncoPlotter:
                     txt.set_x(new_bar_x)
         leftmost_text_x = float("inf")
         text_offset = -0.2
-        for txt in referenced_labels or []:
+        for _txt in referenced_labels or []:
             x_pos = new_bar_x + text_offset
             if x_pos < leftmost_text_x:
                 leftmost_text_x = x_pos
@@ -860,7 +857,12 @@ class OncoPlotter:
         # mapping, we will skip row-group assembly entirely (no dummy columns
         # injected) and avoid drawing bars/labels.
         self._has_row_groups = False
-        if self.row_group_col is not None and row_groups is not None or self.row_group_col is not None and self.row_group_col in self.df.columns:
+        if (
+            self.row_group_col is not None
+            and row_groups is not None
+            or self.row_group_col is not None
+            and self.row_group_col in self.df.columns
+        ):
             self._has_row_groups = True
 
         self.col_split_by = config.col_split_by
@@ -942,11 +944,8 @@ class OncoPlotter:
         # user provided it explicitly and did not provide `bar_width_points`.
         # This makes `bar_width` consistently behave as a point-based width.
         if "bar_width" in fields_set and "bar_width_points" not in fields_set:
-            try:
+            with contextlib.suppress(Exception):
                 self.bar_width_points = float(self.bar_width)
-            except Exception:
-                # Ignore invalid conversion; leave defaults in place
-                pass
 
         # Store provided style for reference (do NOT apply_theme - respect user's global rcParams)
         self.style = style or DefaultStyle()
@@ -1058,7 +1057,9 @@ class OncoPlotter:
                 df.loc[df[x_col] == x_val, col].iloc[0] for col in col_split_by
             )
             if last_split_vals is not None:
-                for i, (prev, curr) in enumerate(zip(last_split_vals, split_vals)):
+                for _, (prev, curr) in enumerate(
+                    zip(last_split_vals, split_vals, strict=True)
+                ):
                     if prev != curr:
                         # Scale split gaps with cell width so the gap-to-cell ratio stays consistent across aspects.
                         pos += col_split_gap * cell_aspect
@@ -1131,8 +1132,10 @@ class OncoPlotter:
                 row_positions.append(pos)
                 pos += 1.0
         nrows = int(np.ceil(pos))
-        gene_to_idx = {g: i for g, i in zip(genes_ordered, row_positions)}
-        x_value_to_idx = {x_val: i for x_val, i in zip(x_values, col_positions)}
+        gene_to_idx = {g: i for g, i in zip(genes_ordered, row_positions, strict=True)}
+        x_value_to_idx = {
+            x_val: i for x_val, i in zip(x_values, col_positions, strict=True)
+        }
 
         auto_adjust = getattr(config, "auto_adjust_cell_size", False)
 
@@ -1211,12 +1214,11 @@ class OncoPlotter:
             xtick_scale = (
                 (cell_aspect**xtick_aspect_scale) if xtick_aspect_scale else 1.0
             )
-            if "xticklabel_yoffset" not in fields_set:
-                # If xticks use points, leave the value as-is (already interpreted as points);
-                # otherwise scale the data-unit offset with cell height/aspect.
-                if not getattr(config, "xticklabel_use_points", False):
-                    scaled = self.xticklabel_yoffset * cell_height_ratio * xtick_scale
-                    self.xticklabel_yoffset = max(0.1, scaled)
+            if "xticklabel_yoffset" not in fields_set and not getattr(
+                config, "xticklabel_use_points", False
+            ):
+                scaled = self.xticklabel_yoffset * cell_height_ratio * xtick_scale
+                self.xticklabel_yoffset = max(0.1, scaled)
             if "bar_buffer" not in fields_set:
                 self.bar_buffer = self.bar_buffer * spacing_scale
             if "bar_offset" not in fields_set:
@@ -1429,7 +1431,7 @@ class OncoPlotter:
                         annotation_order.append(name)
             else:
                 annotation_order = list(top_annotations.keys())
-            for ann_idx, ann_name in enumerate(annotation_order):
+            for _, ann_name in enumerate(annotation_order):
                 ann_config = top_annotations[ann_name]
                 if ann_config.fontsize is None:
                     ann_config.fontsize = 12
@@ -1487,28 +1489,29 @@ class OncoPlotter:
 
         if mutation_value_order:
             for label in mutation_value_order:
-                if label in heatmap_annotation.colors:
-                    if not remove_unused_keys or label in present_values:
-                        color = heatmap_annotation.colors[label]
-                        if heatmap_border_categories is not None:
-                            needs_border = label in heatmap_border_categories
-                        elif heatmap_draw_border:
-                            needs_border = True
-                        else:
-                            needs_border = is_white_color(color)
+                if label in heatmap_annotation.colors and (
+                    not remove_unused_keys or label in present_values
+                ):
+                    color = heatmap_annotation.colors[label]
+                    if heatmap_border_categories is not None:
+                        needs_border = label in heatmap_border_categories
+                    elif heatmap_draw_border:
+                        needs_border = True
+                    else:
+                        needs_border = is_white_color(color)
 
-                        face = _ensure_opaque_color(color, default="white")
-                        if needs_border:
-                            mutation_handles.append(
-                                Patch(
-                                    facecolor=face,
-                                    edgecolor=heatmap_border_color,
-                                    linewidth=heatmap_border_width,
-                                    label=label,
-                                )
+                    face = _ensure_opaque_color(color, default="white")
+                    if needs_border:
+                        mutation_handles.append(
+                            Patch(
+                                facecolor=face,
+                                edgecolor=heatmap_border_color,
+                                linewidth=heatmap_border_width,
+                                label=label,
                             )
-                        else:
-                            mutation_handles.append(Patch(facecolor=face, label=label))
+                        )
+                    else:
+                        mutation_handles.append(Patch(facecolor=face, label=label))
         else:
             for label, color in heatmap_annotation.colors.items():
                 if not remove_unused_keys or label in present_values:
@@ -1576,10 +1579,8 @@ class OncoPlotter:
                     try:
                         dtype = getattr(series, "dtype", None)
                         if isinstance(dtype, pd.CategoricalDtype):
-                            try:
+                            with contextlib.suppress(Exception):
                                 series = series.cat.remove_unused_categories()
-                            except Exception:
-                                pass
                     except Exception:
                         pass
 
@@ -1592,30 +1593,31 @@ class OncoPlotter:
                     present_ann_values = set(ann_config.colors.keys())
 
                 for value in value_order:
-                    if str(value) in ann_config.colors:
-                        if not remove_unused_keys or str(value) in present_ann_values:
-                            color = ann_config.colors[str(value)]
-                            if ann_border_categories is not None:
-                                needs_border = str(value) in ann_border_categories
-                            elif ann_draw_border:
-                                needs_border = True
-                            else:
-                                needs_border = is_white_color(color)
+                    if str(value) in ann_config.colors and (
+                        not remove_unused_keys or str(value) in present_ann_values
+                    ):
+                        color = ann_config.colors[str(value)]
+                        if ann_border_categories is not None:
+                            needs_border = str(value) in ann_border_categories
+                        elif ann_draw_border:
+                            needs_border = True
+                        else:
+                            needs_border = is_white_color(color)
 
-                            face = _ensure_opaque_color(color, default="white")
-                            if needs_border:
-                                annotation_handles.append(
-                                    Patch(
-                                        facecolor=face,
-                                        edgecolor=ann_border_color,
-                                        linewidth=ann_border_width,
-                                        label=str(value),
-                                    )
+                        face = _ensure_opaque_color(color, default="white")
+                        if needs_border:
+                            annotation_handles.append(
+                                Patch(
+                                    facecolor=face,
+                                    edgecolor=ann_border_color,
+                                    linewidth=ann_border_width,
+                                    label=str(value),
                                 )
-                            else:
-                                annotation_handles.append(
-                                    Patch(facecolor=face, label=str(value))
-                                )
+                            )
+                        else:
+                            annotation_handles.append(
+                                Patch(facecolor=face, label=str(value))
+                            )
                 if remove_unused_keys:
                     if any(pd.isna(v) for v in observed):
                         annotation_handles.append(
@@ -1697,7 +1699,7 @@ class OncoPlotter:
         gene_labels = []
         text_transform = rowlabel_text_transform
         base_x = rowlabel_base_x
-        for y, g in zip(row_positions, genes_ordered):
+        for y, g in zip(row_positions, genes_ordered, strict=True):
             text = ax.text(
                 base_x,
                 y + 0.55,
@@ -1721,7 +1723,7 @@ class OncoPlotter:
                 0, -offset_pts / 72.0, fig.dpi_scale_trans
             )
             xtick_transform = base_transform + translate
-            for x, p in zip(col_positions, x_values):
+            for x, p in zip(col_positions, x_values, strict=True):
                 ax.text(
                     x + cell_aspect / 2,
                     0.0,
@@ -1736,7 +1738,7 @@ class OncoPlotter:
         else:
             # Data-unit offset: use raw offset.
             y_xtick = nrows + offset_val
-            for x, p in zip(col_positions, x_values):
+            for x, p in zip(col_positions, x_values, strict=True):
                 ax.text(
                     x + cell_aspect / 2,
                     y_xtick,
@@ -1886,7 +1888,7 @@ class OncoPlotter:
                     block_ends.append(col_positions[i - 1] + cell_aspect)
                     block_starts.append(col_positions[i])
             block_ends.append(col_positions[-1] + cell_aspect)
-            for x_start, x_end in zip(block_starts, block_ends):
+            for x_start, x_end in zip(block_starts, block_ends, strict=True):
                 ax.hlines(
                     bottom_y,
                     xmin=x_start,
@@ -1906,7 +1908,7 @@ class OncoPlotter:
                     block_ends.append(row_positions[i - 1] + 1.0)
                     block_starts.append(row_positions[i])
             block_ends.append(row_positions[-1] + 1.0)
-            for y_start, y_end in zip(block_starts, block_ends):
+            for y_start, y_end in zip(block_starts, block_ends, strict=True):
                 ax.vlines(
                     right_x,
                     ymin=y_start,

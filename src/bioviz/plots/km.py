@@ -14,6 +14,7 @@ Example
 
 from __future__ import annotations
 
+import contextlib
 import textwrap
 from collections.abc import Iterable
 from typing import Any
@@ -475,7 +476,7 @@ class KMPlotter:
             try:
                 pp_times = [
                     t
-                    for t, e in zip(kmf.original_durations, kmf.original_events)
+                    for t, e in zip(kmf.original_durations, kmf.original_events, strict=True)
                     if int(e) == 0
                 ]
             except Exception:
@@ -578,10 +579,8 @@ class KMPlotter:
             kwargs.update(loc=loc)
         legend = ax.legend(handles, labels, **kwargs)
         if legend and cfg.legend_title_fontweight:
-            try:
+            with contextlib.suppress(Exception):
                 legend.get_title().set_fontweight(cfg.legend_title_fontweight)
-            except Exception:
-                pass
         if legend and cfg.legend_linewidth_scale:
             try:
                 for ln in legend.get_lines():
@@ -656,7 +655,7 @@ class KMPlotter:
 
         for g_idx, kmf in enumerate(kmfs):
             counts = [self._get_count_at_time(kmf, t) for t in time_points]
-            for t, count in zip(time_points, counts):
+            for t, count in zip(time_points, counts, strict=True):
                 color = colors[g_idx] if cfg.color_risktable_counts else "black"
                 table_ax.text(
                     t,
@@ -951,10 +950,8 @@ class KMPlotter:
 
         # Save
         if output_path and fig:
-            try:
+            with contextlib.suppress(Exception):
                 fig.canvas.draw()
-            except Exception:
-                pass
             save_kwargs = {"dpi": 300}
             # Only use bbox_inches="tight" when NOT showing risk table
             # (tight layout can cause artifacts with subfigures)

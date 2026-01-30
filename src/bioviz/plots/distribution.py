@@ -5,6 +5,7 @@ Pure plotting helpers: functions accept Axes and data and draw the plot.
 These helpers do not perform DataFrame checks or file IO.
 """
 
+import contextlib
 from typing import Any
 
 import matplotlib.pyplot as plt
@@ -341,17 +342,19 @@ def generate_horizontal_boxplot_with_swarm(
 
     # If this is a single grouped boxplot (hue present and plot_data is DataFrame), use neutral white background
     if kwargs.get("hue") and isinstance(plot_data, pd.DataFrame):
-        try:
+        with contextlib.suppress(Exception):
             ax.set_facecolor("white")
-        except Exception:
-            pass
 
     # Determine numeric values to feed to boxplot (support DataFrame + value_col)
     if (
-        kwargs.get("hue")
+        (
+            kwargs.get("hue")
+            and kwargs.get("value_col")
+            and isinstance(plot_data, pd.DataFrame)
+        )
+        or isinstance(plot_data, pd.DataFrame)
         and kwargs.get("value_col")
-        and isinstance(plot_data, pd.DataFrame)
-    ) or isinstance(plot_data, pd.DataFrame) and kwargs.get("value_col"):
+    ):
         box_vals = plot_data[kwargs.get("value_col")].dropna()
     else:
         # attempt to coerce to numeric if needed
@@ -430,7 +433,7 @@ def generate_horizontal_boxplot_with_swarm(
         if kwargs.get("hue_swarm_legend", True):
             # labels with medians
             labels = []
-            for i, g in enumerate(group_names):
+            for _, g in enumerate(group_names):
                 grp = groups.get_group(g)
                 gvals = grp[kwargs.get("value_col")] if kwargs.get("value_col") else grp
                 gvals = gvals.dropna()
@@ -616,7 +619,7 @@ def generate_grouped_boxplots(
     )
 
     # color boxes
-    for box, c in zip(bp.get("boxes", []), colors):
+    for box, c in zip(bp.get("boxes", []), colors, strict=True):
         try:
             box.set_facecolor(c)
             # apply per-box alpha if provided else fall back to box_alpha or 1.0
@@ -632,7 +635,7 @@ def generate_grouped_boxplots(
     # style median lines from the boxplot artists so they align with box widths
     medians = bp.get("medians", [])
     if show_group_medians and medians:
-        for i, median_line in enumerate(medians):
+        for _, median_line in enumerate(medians):
             try:
                 median_line.set_color("black")
                 median_line.set_linewidth(1.5)
@@ -642,7 +645,7 @@ def generate_grouped_boxplots(
     else:
         # fallback: if medians not present, place small black markers at median values
         if show_group_medians:
-            for i, g in enumerate(group_names):
+            for i, _ in enumerate(group_names):
                 vals = data_list[i]
                 m = float(np.nanmedian(vals)) if len(vals) > 0 else float("nan")
                 ax.scatter(
@@ -678,10 +681,8 @@ def generate_grouped_boxplots(
     ax.set_yticks(positions)
     ax.set_yticklabels(group_names)
     # invert y-axis so the first group in `group_names` appears at the top visually
-    try:
+    with contextlib.suppress(Exception):
         ax.invert_yaxis()
-    except Exception:
-        pass
     for tick in ax.get_xticklabels():
         tick.set_fontsize(xtick_fontsize)
     for tick in ax.get_yticklabels():
@@ -913,10 +914,8 @@ class DistributionPlotter:
             # if hue provided, include a third panel for grouped boxplots
             if cfg.hue:
                 fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=cfg.figsize)
-                try:
+                with contextlib.suppress(Exception):
                     fig.subplots_adjust(right=0.78)
-                except Exception:
-                    pass
             else:
                 fig, (ax1, ax2) = plt.subplots(2, 1, figsize=cfg.figsize)
             # ensure consistent figure background and transparency
