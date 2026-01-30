@@ -66,7 +66,6 @@ def generate_histogram(
     hue = kwargs.get("hue", None)
     hue_palette = kwargs.get("hue_palette", None)
     hist_mode = kwargs.get("hist_mode", "bar")
-    hist_hue_overlap = kwargs.get("hist_hue_overlap", True)
     hue_alpha = kwargs.get("hue_alpha", None)
 
     if color is None:
@@ -159,7 +158,6 @@ def generate_histogram(
             if kwargs.get("hue_swarm_legend", True):
                 # add legend entries with group medians
                 # compute medians per group and format labels
-                group_median_fmt = kwargs.get("group_median_fmt", "{group} (median = {median:.2f})")
                 handles = []
                 labels = []
                 for g in group_names:
@@ -371,7 +369,6 @@ def generate_horizontal_boxplot_with_swarm(
         )
     else:
         df = plot_data
-        vals = df[kwargs.get("value_col")] if kwargs.get("value_col") else df
         groups = df.groupby(hue, observed=False)
         group_names = list(groups.groups.keys())
         hue_palette = kwargs.get("hue_palette")

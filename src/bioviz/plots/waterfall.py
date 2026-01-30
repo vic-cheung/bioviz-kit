@@ -433,10 +433,9 @@ class WaterfallPlotter:
 
         # Colors
         if cfg.color_col and cfg.color_col in plot_df.columns:
-            colors, legend_handles = self._get_colors(plot_df)
+            colors, _legend_handles = self._get_colors(plot_df)
         else:
             colors = cfg.default_color
-            legend_handles = []
 
         ax.bar(x, values, color=colors, width=cfg.bar_width)
         ax.set_xticks(x)

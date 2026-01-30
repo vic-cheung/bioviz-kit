@@ -1,8 +1,5 @@
-"""Volcano plotting with a pydantic `VolcanoConfig`.
-
-This file provides a single, explicit configuration object `VolcanoConfig`
-and a `plot_volcano(cfg)` function that uses it. No wrapper/shims for legacy
-APIs are provided — this is the canonical, hard refactor you requested.
+"""
+Generate a volcano-style plot with a pydantic `VolcanoConfig`.
 """
 
 from __future__ import annotations
