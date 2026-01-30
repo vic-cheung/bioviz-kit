@@ -928,13 +928,6 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
         else:
             # adjustable placement (subject to adjust_text)
             if stacked and stacked[0][2]:
-                # for stacked annotations prefer direction-specific color when possible
-                try:
-                    dir_val_stack = None
-                    if hasattr(stacked[0][1], "get_text"):
-                        dir_val_stack = None
-                except Exception:
-                    dir_val_stack = None
                 color_final = (
                     cfg.annotation_sig_color
                     or ann_color
