@@ -77,7 +77,9 @@ def generate_styled_table(
     ax.axis("off")
 
     header_height = (
-        config.header_row_height if config.header_row_height is not None else config.row_height
+        config.header_row_height
+        if config.header_row_height is not None
+        else config.row_height
     )
 
     # Reduce margins so saved output is tight around the table
@@ -142,7 +144,9 @@ def generate_styled_table(
         family = header_family if is_header else body_family
         if family:
             text_obj.set_fontname(family)
-        text_obj.set_fontweight(config.header_font_weight if is_header else config.body_font_weight)
+        text_obj.set_fontweight(
+            config.header_font_weight if is_header else config.body_font_weight
+        )
         text_obj.set_color(config.header_text_color if is_header else "black")
         text_obj.set_ha("center")
         text_obj.set_va("center")
@@ -210,7 +214,9 @@ class TablePlotter:
                 continue
         return self
 
-    def plot(self, ax: plt.Axes | None = None) -> tuple[plt.Figure | None, plt.Axes | None]:
+    def plot(
+        self, ax: plt.Axes | None = None
+    ) -> tuple[plt.Figure | None, plt.Axes | None]:
         """Render the styled table and store `fig, ax` on the instance."""
         self.fig = generate_styled_table(self.df, self.config, ax=ax)
         if self.fig is None:

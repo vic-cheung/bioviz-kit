@@ -71,11 +71,17 @@ class GroupedBarConfig(BaseModel):
     # ==========================================================================
     ci_low_col: Annotated[
         str | None,
-        Field(default=None, description="Column for lower CI bound. None to skip error bars."),
+        Field(
+            default=None,
+            description="Column for lower CI bound. None to skip error bars.",
+        ),
     ]
     ci_high_col: Annotated[
         str | None,
-        Field(default=None, description="Column for upper CI bound. None to skip error bars."),
+        Field(
+            default=None,
+            description="Column for upper CI bound. None to skip error bars.",
+        ),
     ]
 
     # ==========================================================================
@@ -83,15 +89,24 @@ class GroupedBarConfig(BaseModel):
     # ==========================================================================
     k_col: Annotated[
         str | None,
-        Field(default=None, description="Column for count (numerator) to compute proportion CI."),
+        Field(
+            default=None,
+            description="Column for count (numerator) to compute proportion CI.",
+        ),
     ]
     n_col: Annotated[
         str | None,
-        Field(default=None, description="Column for total (denominator) to compute proportion CI."),
+        Field(
+            default=None,
+            description="Column for total (denominator) to compute proportion CI.",
+        ),
     ]
     ci_method: Annotated[
         Literal["clopper-pearson", "bootstrap", "none"],
-        Field(default="none", description="CI method: 'clopper-pearson', 'bootstrap', or 'none'."),
+        Field(
+            default="none",
+            description="CI method: 'clopper-pearson', 'bootstrap', or 'none'.",
+        ),
     ]
     alpha: Annotated[
         float,
@@ -99,7 +114,10 @@ class GroupedBarConfig(BaseModel):
     ]
     n_boot: Annotated[
         int,
-        Field(default=10000, description="Number of bootstrap samples (if method='bootstrap')."),
+        Field(
+            default=10000,
+            description="Number of bootstrap samples (if method='bootstrap').",
+        ),
     ]
     random_state: Annotated[
         int | None,
@@ -119,7 +137,10 @@ class GroupedBarConfig(BaseModel):
     ]
     group_labels: Annotated[
         dict[str, str] | None,
-        Field(default=None, description="Mapping of group name to display label (e.g., with n=X)."),
+        Field(
+            default=None,
+            description="Mapping of group name to display label (e.g., with n=X).",
+        ),
     ]
 
     # ==========================================================================
@@ -127,7 +148,10 @@ class GroupedBarConfig(BaseModel):
     # ==========================================================================
     figsize: Annotated[
         tuple[float, float] | None,
-        Field(default=None, description="Figure size (width, height). Auto-computed if None."),
+        Field(
+            default=None,
+            description="Figure size (width, height). Auto-computed if None.",
+        ),
     ]
     bar_width: Annotated[
         float,
@@ -148,7 +172,8 @@ class GroupedBarConfig(BaseModel):
     title_fontweight: Annotated[
         str,
         Field(
-            default="normal", description="Font weight for title ('normal', 'bold', 'light', etc.)."
+            default="normal",
+            description="Font weight for title ('normal', 'bold', 'light', etc.).",
         ),
     ]
     xlabel: Annotated[
@@ -162,7 +187,8 @@ class GroupedBarConfig(BaseModel):
     title_fontsize: Annotated[
         float | None,
         Field(
-            default=None, description="Font size for title. None uses rcParams['axes.titlesize']."
+            default=None,
+            description="Font size for title. None uses rcParams['axes.titlesize'].",
         ),
     ]
     xlabel_fontsize: Annotated[
@@ -207,7 +233,9 @@ class GroupedBarConfig(BaseModel):
     ]
     annot_offset: Annotated[
         float,
-        Field(default=0.8, description="Offset for annotations from bar end (data units)."),
+        Field(
+            default=0.8, description="Offset for annotations from bar end (data units)."
+        ),
     ]
     annot_padding: Annotated[
         float,
@@ -235,7 +263,8 @@ class GroupedBarConfig(BaseModel):
     legend_fontsize: Annotated[
         float | None,
         Field(
-            default=None, description="Font size for legend. None uses rcParams['legend.fontsize']."
+            default=None,
+            description="Font size for legend. None uses rcParams['legend.fontsize'].",
         ),
     ]
     legend_title: Annotated[
@@ -248,7 +277,10 @@ class GroupedBarConfig(BaseModel):
     # ==========================================================================
     default_color: Annotated[
         str,
-        Field(default="#1f77b4", description="Default bar color when no group_colors specified."),
+        Field(
+            default="#1f77b4",
+            description="Default bar color when no group_colors specified.",
+        ),
     ]
     bar_edgecolor: Annotated[
         str,
@@ -284,7 +316,9 @@ class GroupedBarConfig(BaseModel):
     ]
     value_padding_pct: Annotated[
         float,
-        Field(default=0.15, description="Padding as fraction of max value for auto limit."),
+        Field(
+            default=0.15, description="Padding as fraction of max value for auto limit."
+        ),
     ]
     xlim: Annotated[
         tuple[float, float] | None,
@@ -302,19 +336,27 @@ class GroupedBarConfig(BaseModel):
     ]
     xticks: Annotated[
         list[float] | None,
-        Field(default=None, description="Custom x-tick positions. None uses auto ticks."),
+        Field(
+            default=None, description="Custom x-tick positions. None uses auto ticks."
+        ),
     ]
     yticks: Annotated[
         list[float] | None,
-        Field(default=None, description="Custom y-tick positions. None uses auto ticks."),
+        Field(
+            default=None, description="Custom y-tick positions. None uses auto ticks."
+        ),
     ]
     xtick_labels: Annotated[
         list[str] | None,
-        Field(default=None, description="Custom x-tick labels. Must match xticks length."),
+        Field(
+            default=None, description="Custom x-tick labels. Must match xticks length."
+        ),
     ]
     ytick_labels: Annotated[
         list[str] | None,
-        Field(default=None, description="Custom y-tick labels. Must match yticks length."),
+        Field(
+            default=None, description="Custom y-tick labels. Must match yticks length."
+        ),
     ]
 
     # ==========================================================================
@@ -323,7 +365,8 @@ class GroupedBarConfig(BaseModel):
     invert_categories: Annotated[
         bool,
         Field(
-            default=True, description="Invert category axis (first category at top for horizontal)."
+            default=True,
+            description="Invert category axis (first category at top for horizontal).",
         ),
     ]
 

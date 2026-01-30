@@ -16,7 +16,9 @@ class ThresholdLine(BaseModel):
 
     value: Annotated[float, Field(description="Y-value for the threshold line.")]
     color: Annotated[str, Field(default="red", description="Color of the line.")]
-    linestyle: Annotated[str, Field(default="--", description="Line style (e.g., '--', '-', ':').")]
+    linestyle: Annotated[
+        str, Field(default="--", description="Line style (e.g., '--', '-', ':').")
+    ]
     linewidth: Annotated[float, Field(default=1.0, description="Line width.")]
     label: Annotated[str | None, Field(default=None, description="Label for legend.")]
 
@@ -41,7 +43,9 @@ class WaterfallConfig(BaseModel):
     # ==========================================================================
     value_col: Annotated[
         str,
-        Field(..., description="Column containing values to plot (e.g., percent change)."),
+        Field(
+            ..., description="Column containing values to plot (e.g., percent change)."
+        ),
     ]
 
     # ==========================================================================
@@ -49,11 +53,15 @@ class WaterfallConfig(BaseModel):
     # ==========================================================================
     id_col: Annotated[
         str | None,
-        Field(default=None, description="Column for sample/patient IDs (x-axis labels)."),
+        Field(
+            default=None, description="Column for sample/patient IDs (x-axis labels)."
+        ),
     ]
     color_col: Annotated[
         str | None,
-        Field(default=None, description="Column for bar colors (categorical, e.g., BOR)."),
+        Field(
+            default=None, description="Column for bar colors (categorical, e.g., BOR)."
+        ),
     ]
     group_col: Annotated[
         str | None,
@@ -64,7 +72,10 @@ class WaterfallConfig(BaseModel):
     ]
     facet_col: Annotated[
         str | None,
-        Field(default=None, description="Column for creating faceted (small multiple) plots."),
+        Field(
+            default=None,
+            description="Column for creating faceted (small multiple) plots.",
+        ),
     ]
 
     # ==========================================================================
@@ -72,7 +83,10 @@ class WaterfallConfig(BaseModel):
     # ==========================================================================
     sort_ascending: Annotated[
         bool,
-        Field(default=False, description="Sort bars ascending (True) or descending (False)."),
+        Field(
+            default=False,
+            description="Sort bars ascending (True) or descending (False).",
+        ),
     ]
     aggregate: Annotated[
         str | None,
@@ -95,7 +109,8 @@ class WaterfallConfig(BaseModel):
     default_color: Annotated[
         str,
         Field(
-            default="steelblue", description="Default bar color when color_col is not specified."
+            default="steelblue",
+            description="Default bar color when color_col is not specified.",
         ),
     ]
 
@@ -139,7 +154,10 @@ class WaterfallConfig(BaseModel):
     ]
     title_fontweight: Annotated[
         str,
-        Field(default="normal", description="Font weight for title ('normal', 'bold', etc.)."),
+        Field(
+            default="normal",
+            description="Font weight for title ('normal', 'bold', etc.).",
+        ),
     ]
     xlabel: Annotated[
         str | None,
@@ -155,15 +173,21 @@ class WaterfallConfig(BaseModel):
     ]
     xlabel_fontsize: Annotated[
         float | None,
-        Field(default=None, description="Font size for x-axis label. None uses rcParams."),
+        Field(
+            default=None, description="Font size for x-axis label. None uses rcParams."
+        ),
     ]
     ylabel_fontsize: Annotated[
         float | None,
-        Field(default=None, description="Font size for y-axis label. None uses rcParams."),
+        Field(
+            default=None, description="Font size for y-axis label. None uses rcParams."
+        ),
     ]
     tick_fontsize: Annotated[
         float | None,
-        Field(default=None, description="Font size for tick labels. None uses rcParams."),
+        Field(
+            default=None, description="Font size for tick labels. None uses rcParams."
+        ),
     ]
 
     # ==========================================================================
@@ -191,7 +215,10 @@ class WaterfallConfig(BaseModel):
     # ==========================================================================
     show_xticks: Annotated[
         bool,
-        Field(default=False, description="Whether to show x-axis tick labels (sample IDs)."),
+        Field(
+            default=False,
+            description="Whether to show x-axis tick labels (sample IDs).",
+        ),
     ]
     xtick_rotation: Annotated[
         float,
@@ -219,11 +246,15 @@ class WaterfallConfig(BaseModel):
     ]
     show_group_counts: Annotated[
         bool,
-        Field(default=True, description="Whether to show (n=X) counts in group labels."),
+        Field(
+            default=True, description="Whether to show (n=X) counts in group labels."
+        ),
     ]
     show_group_separators: Annotated[
         bool,
-        Field(default=False, description="Whether to show vertical lines between groups."),
+        Field(
+            default=False, description="Whether to show vertical lines between groups."
+        ),
     ]
     group_separator_color: Annotated[
         str,
@@ -254,7 +285,10 @@ class WaterfallConfig(BaseModel):
     ]
     edgecolor_palette: Annotated[
         dict[str, str] | None,
-        Field(default=None, description="Palette for edge colors when edgecolor_col is used."),
+        Field(
+            default=None,
+            description="Palette for edge colors when edgecolor_col is used.",
+        ),
     ]
 
     # ==========================================================================
@@ -286,7 +320,9 @@ class WaterfallConfig(BaseModel):
     # ==========================================================================
     show_legend: Annotated[
         bool,
-        Field(default=True, description="Whether to show legend (when color_col is used)."),
+        Field(
+            default=True, description="Whether to show legend (when color_col is used)."
+        ),
     ]
     legend_loc: Annotated[
         str,
@@ -301,7 +337,10 @@ class WaterfallConfig(BaseModel):
     ]
     legend_title: Annotated[
         str | None,
-        Field(default=None, description="Legend title. Defaults to color_col if not specified."),
+        Field(
+            default=None,
+            description="Legend title. Defaults to color_col if not specified.",
+        ),
     ]
     legend_fontsize: Annotated[
         float | None,

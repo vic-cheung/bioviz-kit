@@ -9,15 +9,21 @@ class DistributionConfig(BasePlotConfig):
     bins: int = Field(20, description="Number of bins for histogram")
     show_hist: bool = Field(True, description="Render histogram panel")
     show_box: bool = Field(True, description="Render box+swarm panel")
-    xlabel: Optional[str] = Field(None, description="X-axis label (defaults to variable name)")
-    ylabel: Optional[str] = Field(None, description="Y-axis label for histogram/boxplot")
+    xlabel: Optional[str] = Field(
+        None, description="X-axis label (defaults to variable name)"
+    )
+    ylabel: Optional[str] = Field(
+        None, description="Y-axis label for histogram/boxplot"
+    )
     y_ticks: Optional[List[float]] = Field(
         default_factory=lambda: [1], description="Y ticks for boxplot"
     )
     y_ticklabels: Optional[List[str]] = Field(
         default_factory=lambda: [""], description="Y tick labels for boxplot"
     )
-    ylim: Optional[Tuple[float, float]] = Field((0.5, 1.5), description="Y-limits for boxplot")
+    ylim: Optional[Tuple[float, float]] = Field(
+        (0.5, 1.5), description="Y-limits for boxplot"
+    )
     title_template: Optional[str] = Field(None, description="Default title template")
     title_prefix: Optional[str] = Field(None, description="Optional title prefix")
     alpha: float = Field(1.0, description="Alpha for plot elements")
@@ -44,10 +50,14 @@ class DistributionConfig(BasePlotConfig):
     median_label_fmt: str = Field(
         "Median = {median:.2f}", description="Format for median annotation"
     )
-    show_median_label: bool = Field(True, description="Whether to show median annotation")
+    show_median_label: bool = Field(
+        True, description="Whether to show median annotation"
+    )
 
     # ------ Box + swarm appearance ------
-    box_color: Optional[str] = Field(None, description="Box face color (overrides style)")
+    box_color: Optional[str] = Field(
+        None, description="Box face color (overrides style)"
+    )
     swarm_facecolor: str = Field("white", description="Swarm face color")
     swarm_edgecolor: str = Field("black", description="Swarm edge color")
     swarm_linewidth: float = Field(0.5, description="Swarm marker edge linewidth")
@@ -57,7 +67,9 @@ class DistributionConfig(BasePlotConfig):
     random_seed: int = Field(42, description="Random seed for swarm jitter")
 
     # ------ Plot-level controls ------
-    return_fig: bool = Field(False, description="Whether to return the figure from plot()")
+    return_fig: bool = Field(
+        False, description="Whether to return the figure from plot()"
+    )
 
     # ------ Font sizes ------
     title_fontsize: int = Field(14, description="Font size for plot titles")
@@ -67,7 +79,9 @@ class DistributionConfig(BasePlotConfig):
     ytick_fontsize: int = Field(10, description="Font size for y tick labels")
 
     # ------ Median label controls ------
-    median_label_fontsize: int = Field(10, description="Font size for median annotation")
+    median_label_fontsize: int = Field(
+        10, description="Font size for median annotation"
+    )
     median_label_location: Literal["auto", "upper_right", "off_right"] = Field(
         "upper_right", description="Where to place the median label on the histogram"
     )
@@ -79,9 +93,12 @@ class DistributionConfig(BasePlotConfig):
     )
 
     # ------ Grouping / hue support ------
-    hue: Optional[str] = Field(None, description="Column name to color/group by (DataFrame input)")
+    hue: Optional[str] = Field(
+        None, description="Column name to color/group by (DataFrame input)"
+    )
     value_col: Optional[str] = Field(
-        None, description="Column name containing numeric values when passing a DataFrame"
+        None,
+        description="Column name containing numeric values when passing a DataFrame",
     )
     hue_palette: Optional[Any] = Field(
         None, description="Optional mapping of hue category -> color"
@@ -109,7 +126,9 @@ class DistributionConfig(BasePlotConfig):
     group_median_fmt: str = Field(
         "{group}: {median:.2f}", description="Label format for group medians"
     )
-    group_median_marker: str = Field("v", description="Marker for group median on boxplot/hist")
+    group_median_marker: str = Field(
+        "v", description="Marker for group median on boxplot/hist"
+    )
     group_median_markersize: int = Field(8, description="Marker size for group median")
 
     # optional explicit group order (top-to-bottom in the plot)
@@ -119,7 +138,8 @@ class DistributionConfig(BasePlotConfig):
 
     # convenience single color field: when set, applies to both hist_color and box_color
     color: Optional[str] = Field(
-        None, description="Convenience single color applied to both histogram and boxplot"
+        None,
+        description="Convenience single color applied to both histogram and boxplot",
     )
 
     @model_validator(mode="after")

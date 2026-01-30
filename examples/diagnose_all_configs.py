@@ -119,7 +119,9 @@ for name, cfg in configs:
     hlines = [ln for ln in lines if len(set(np.round(ln.get_ydata(), 6))) == 1]
     if hlines:
         thr_y = float(hlines[-1].get_ydata()[0])
-    print(f"{name}: total Line2D={len(lines)}, connector_like={len(connector_like)}, thr_y={thr_y}")
+    print(
+        f"{name}: total Line2D={len(lines)}, connector_like={len(connector_like)}, thr_y={thr_y}"
+    )
     fig.savefig(f"examples/diagnose_{name}.png")
     print(f"  wrote examples/diagnose_{name}.png")
 

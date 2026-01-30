@@ -107,9 +107,16 @@ def generate_histogram(
                 s = style or DefaultStyle()
                 palette_vals = list(getattr(s, "palette", {}).values())
                 # cycle palette if not enough
-                colors = {g: palette_vals[i % len(palette_vals)] for i, g in enumerate(group_names)}
+                colors = {
+                    g: palette_vals[i % len(palette_vals)]
+                    for i, g in enumerate(group_names)
+                }
             # shared bins
-            all_vals = plot_data[kwargs.get("value_col")] if kwargs.get("value_col") else plot_data
+            all_vals = (
+                plot_data[kwargs.get("value_col")]
+                if kwargs.get("value_col")
+                else plot_data
+            )
             bins_edges = np.histogram_bin_edges(all_vals.dropna(), bins=bins)
 
             for g in group_names:
@@ -153,7 +160,9 @@ def generate_histogram(
                         )
                         ys = np.zeros_like(xs)
                         for v in vals:
-                            ys += np.exp(-0.5 * ((xs - v) / bw) ** 2) / (bw * sqrt(2 * np.pi))
+                            ys += np.exp(-0.5 * ((xs - v) / bw) ** 2) / (
+                                bw * sqrt(2 * np.pi)
+                            )
                         ys = ys / len(vals)
                     ax.plot(xs, ys, color=c, linewidth=1.25, zorder=3)
             if kwargs.get("hue_swarm_legend", True):
@@ -171,7 +180,11 @@ def generate_histogram(
                     handles.append(plt.Line2D([0], [0], color=colors[g], lw=4))
                 # place legend outside the axes on the right centered vertically with no frame
                 ax.legend(
-                    handles, labels, loc="center left", bbox_to_anchor=(1.02, 0.5), frameon=False
+                    handles,
+                    labels,
+                    loc="center left",
+                    bbox_to_anchor=(1.02, 0.5),
+                    frameon=False,
                 )
 
     ax.axvline(
@@ -208,7 +221,9 @@ def generate_histogram(
                         xycoords="axes fraction",
                         xytext=(-4, -4),
                         textcoords="offset points",
-                        bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.8),
+                        bbox=dict(
+                            boxstyle="round,pad=0.3", facecolor="white", alpha=0.8
+                        ),
                         fontsize=median_label_fontsize,
                         color=median_color,
                         horizontalalignment="right",
@@ -221,7 +236,9 @@ def generate_histogram(
                         xycoords="axes fraction",
                         xytext=(6, 0),
                         textcoords="offset points",
-                        bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.8),
+                        bbox=dict(
+                            boxstyle="round,pad=0.3", facecolor="white", alpha=0.8
+                        ),
                         fontsize=median_label_fontsize,
                         color=median_color,
                         horizontalalignment="left",
@@ -233,7 +250,9 @@ def generate_histogram(
                         xy=(median_value, ax.get_ylim()[1] * 0.9),
                         xytext=(10, -10),
                         textcoords="offset points",
-                        bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.8),
+                        bbox=dict(
+                            boxstyle="round,pad=0.3", facecolor="white", alpha=0.8
+                        ),
                         fontsize=median_label_fontsize,
                         color=median_color,
                     )
@@ -251,7 +270,9 @@ def generate_histogram(
         final_title = title
     elif title_template is not None:
         try:
-            final_title = title_template.format(indication=indication, variable=variable_name)
+            final_title = title_template.format(
+                indication=indication, variable=variable_name
+            )
         except Exception:
             final_title = f"{indication}: {variable_name} Distribution"
     else:
@@ -327,7 +348,11 @@ def generate_horizontal_boxplot_with_swarm(
             pass
 
     # Determine numeric values to feed to boxplot (support DataFrame + value_col)
-    if kwargs.get("hue") and kwargs.get("value_col") and isinstance(plot_data, pd.DataFrame):
+    if (
+        kwargs.get("hue")
+        and kwargs.get("value_col")
+        and isinstance(plot_data, pd.DataFrame)
+    ):
         box_vals = plot_data[kwargs.get("value_col")].dropna()
     elif isinstance(plot_data, pd.DataFrame) and kwargs.get("value_col"):
         box_vals = plot_data[kwargs.get("value_col")].dropna()
@@ -346,14 +371,18 @@ def generate_horizontal_boxplot_with_swarm(
         box_vals,
         vert=False,
         patch_artist=True,
-        boxprops=dict(facecolor=box_color, alpha=box_alpha if box_alpha is not None else alpha),
+        boxprops=dict(
+            facecolor=box_color, alpha=box_alpha if box_alpha is not None else alpha
+        ),
         medianprops=dict(color=median_color, linewidth=median_linewidth),
         showfliers=False,
         zorder=1,
     )
 
     np.random.seed(random_seed)
-    y_positions = np.ones(len(box_vals)) + np.random.normal(0, jitter_std, len(box_vals))
+    y_positions = np.ones(len(box_vals)) + np.random.normal(
+        0, jitter_std, len(box_vals)
+    )
 
     # scatter colored by hue if provided
     hue = kwargs.get("hue", None)
@@ -376,7 +405,10 @@ def generate_horizontal_boxplot_with_swarm(
         if hue_palette is None:
             s = style or DefaultStyle()
             palette_vals = list(getattr(s, "palette", {}).values())
-            colors = {g: palette_vals[i % len(palette_vals)] for i, g in enumerate(group_names)}
+            colors = {
+                g: palette_vals[i % len(palette_vals)]
+                for i, g in enumerate(group_names)
+            }
         else:
             colors = {g: hue_palette.get(g, _default_color(style)) for g in group_names}
 
@@ -407,18 +439,30 @@ def generate_horizontal_boxplot_with_swarm(
                 gvals = gvals.dropna()
                 m = float(np.nanmedian(gvals)) if len(gvals) > 0 else float("nan")
                 labels.append(f"{g} (Median = {m:.2f})")
-            ax.legend(handles, labels, loc="center left", bbox_to_anchor=(1.02, 0.5), frameon=False)
+            ax.legend(
+                handles,
+                labels,
+                loc="center left",
+                bbox_to_anchor=(1.02, 0.5),
+                frameon=False,
+            )
 
         # draw per-group medians if requested
         if kwargs.get("show_group_medians", False):
             # compute medians explicitly to avoid pandas FutureWarning about apply
             try:
                 if kwargs.get("value_col"):
-                    medians = df.groupby(hue, observed=False)[kwargs.get("value_col")].median()
+                    medians = df.groupby(hue, observed=False)[
+                        kwargs.get("value_col")
+                    ].median()
                 else:
                     # if no value_col specified, attempt to compute median of numeric columns
                     # use numeric_only=True to avoid grouping columns being included
-                    medians = df.groupby(hue, observed=False).median(numeric_only=True).iloc[:, 0]
+                    medians = (
+                        df.groupby(hue, observed=False)
+                        .median(numeric_only=True)
+                        .iloc[:, 0]
+                    )
             except Exception:
                 # fallback to safer apply-on-selected column
                 medians = (
@@ -466,7 +510,9 @@ def generate_horizontal_boxplot_with_swarm(
         final_title = title
     elif title_template is not None:
         try:
-            final_title = title_template.format(indication=indication, variable=variable_name)
+            final_title = title_template.format(
+                indication=indication, variable=variable_name
+            )
         except Exception:
             final_title = f"{indication}: {variable_name} Boxplot with Swarm Overlay"
     else:
@@ -622,7 +668,13 @@ def generate_grouped_boxplots(
             c = colors[i]
             handles.append(plt.Line2D([0], [0], color=c, lw=4))
             labels.append(f"{g} (Median = {medians_for_legend[i]:.2f})")
-        ax.legend(handles, labels, loc="center left", bbox_to_anchor=(1.02, 0.5), frameon=False)
+        ax.legend(
+            handles,
+            labels,
+            loc="center left",
+            bbox_to_anchor=(1.02, 0.5),
+            frameon=False,
+        )
     except Exception:
         pass
 
@@ -743,7 +795,9 @@ def plot_distribution(
     # compute median robustly: if DataFrame with a provided value_col, use that column
     if isinstance(plot_data, pd.DataFrame) and kwargs.get("value_col"):
         median_series = plot_data[kwargs.get("value_col")].dropna()
-        median_value = float(np.nanmedian(median_series)) if len(median_series) > 0 else 0.0
+        median_value = (
+            float(np.nanmedian(median_series)) if len(median_series) > 0 else 0.0
+        )
     else:
         try:
             median_value = float(np.nanmedian(plot_data))
@@ -798,7 +852,9 @@ class DistributionPlotter:
         p.close()
     """
 
-    def __init__(self, data: Any = None, config: DistributionConfig | dict | None = None):
+    def __init__(
+        self, data: Any = None, config: DistributionConfig | dict | None = None
+    ):
         if isinstance(config, dict):
             config = DistributionConfig(**config)
         self.df = None
@@ -1022,7 +1078,9 @@ class DistributionPlotter:
                     pass
                 # if DataFrame with value_col provided, compute median of that column
                 if isinstance(plot_data, pd.DataFrame) and cfg.value_col:
-                    median_value = float(np.nanmedian(plot_data[cfg.value_col].dropna()))
+                    median_value = float(
+                        np.nanmedian(plot_data[cfg.value_col].dropna())
+                    )
                 else:
                     median_value = float(np.nanmedian(plot_data))
                 generate_histogram(

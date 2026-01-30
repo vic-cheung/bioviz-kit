@@ -26,7 +26,9 @@ from ..configs.forest_cfg import ForestPlotConfig
 __all__ = ["ForestPlotter"]
 
 
-def _resolve_fontsize(config_value: int | None, rcparam_key: str, default: float = 10) -> float:
+def _resolve_fontsize(
+    config_value: int | None, rcparam_key: str, default: float = 10
+) -> float:
     """Return config value if set, else fall back to rcParams or default."""
     if config_value is not None:
         return float(config_value)
@@ -73,7 +75,9 @@ class ForestPlotter:
         if cfg.category_order and cfg.variable_col and cfg.variable_col in df.columns:
             ordered_dfs = []
             ordered_vars = list(cfg.category_order.keys())[::-1]
-            remaining = [v for v in df[cfg.variable_col].unique() if v not in ordered_vars]
+            remaining = [
+                v for v in df[cfg.variable_col].unique() if v not in ordered_vars
+            ]
             for var in ordered_vars + remaining:
                 var_df = df[df[cfg.variable_col] == var].copy()
                 if var in cfg.category_order:
@@ -112,7 +116,11 @@ class ForestPlotter:
         n_rows = len(df)
         y_positions = np.arange(n_rows, dtype=float)
 
-        if cfg.variable_col and cfg.variable_col in df.columns and cfg.section_gap != 0.0:
+        if (
+            cfg.variable_col
+            and cfg.variable_col in df.columns
+            and cfg.section_gap != 0.0
+        ):
             current_var = None
             cumulative = 0.0
             for i, row in df.iterrows():
@@ -356,7 +364,10 @@ class ForestPlotter:
                 cap_h = cfg.capsize * 0.01
                 for x in [ci_lo, ci_hi]:
                     ax.plot(
-                        [x, x], [y - cap_h, y + cap_h], color=ci_colors[i], linewidth=cfg.linewidth
+                        [x, x],
+                        [y - cap_h, y + cap_h],
+                        color=ci_colors[i],
+                        linewidth=cfg.linewidth,
                     )
             # Marker
             ax.scatter(
@@ -399,7 +410,9 @@ class ForestPlotter:
         labels = df[cfg.label_col].astype(str).tolist()
         if cfg.reference_col and cfg.reference_col in df.columns:
             labels = [
-                f"{lbl} (vs {row[cfg.reference_col]})" if pd.notna(row[cfg.reference_col]) else lbl
+                f"{lbl} (vs {row[cfg.reference_col]})"
+                if pd.notna(row[cfg.reference_col])
+                else lbl
                 for lbl, (_, row) in zip(labels, df.iterrows())
             ]
         ax.set_yticklabels(labels, fontsize=ytick_fs)
@@ -408,7 +421,9 @@ class ForestPlotter:
 
         # Y-limits
         if len(y_positions) > 0:
-            ax.set_ylim(y_positions.min() - cfg.y_margin, y_positions.max() + cfg.y_margin)
+            ax.set_ylim(
+                y_positions.min() - cfg.y_margin, y_positions.max() + cfg.y_margin
+            )
 
         # Labels/title
         ax.set_xlabel(cfg.xlabel, fontsize=xlabel_fs, fontweight="bold")

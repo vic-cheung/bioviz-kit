@@ -49,7 +49,7 @@ def plot_grouped_boxplots(
         fig, ax = plt.subplots(figsize=figsize)
         try:
             # default to white face with transparent background
-            fig.patch.set_facecolor('white')
+            fig.patch.set_facecolor("white")
             fig.patch.set_alpha(0.0)
         except Exception:
             pass
@@ -133,7 +133,9 @@ def plot_grouped_boxplots(
                     # compute y coordinate above the higher group
                     ya = df.loc[df[x] == a, y].dropna()
                     yb = df.loc[df[x] == b, y].dropna()
-                    ytop = max(ya.max() if not ya.empty else 0, yb.max() if not yb.empty else 0)
+                    ytop = max(
+                        ya.max() if not ya.empty else 0, yb.max() if not yb.empty else 0
+                    )
                     key = (
                         min(x_positions.get(a, 0), x_positions.get(b, 0)),
                         max(x_positions.get(a, 0), x_positions.get(b, 0)),

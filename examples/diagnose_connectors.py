@@ -32,7 +32,13 @@ print("Total Line2D objects on axes:", len(lines))
 for i, ln in enumerate(lines):
     xdata = ln.get_xdata()
     ydata = ln.get_ydata()
-    print(i, "xdata len", len(xdata), "ydata unique", set([round(float(v), 3) for v in ydata]))
+    print(
+        i,
+        "xdata len",
+        len(xdata),
+        "ydata unique",
+        set([round(float(v), 3) for v in ydata]),
+    )
 
 # Count lines that look like connectors: short lines not spanning axis
 connector_like = []

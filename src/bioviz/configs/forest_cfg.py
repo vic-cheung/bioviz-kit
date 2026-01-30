@@ -52,7 +52,10 @@ class ForestPlotConfig(BaseModel):
     ]
     variable_col: Annotated[
         Optional[str],
-        Field(default="variable", description="Column for variable grouping (multi-section plots)"),
+        Field(
+            default="variable",
+            description="Column for variable grouping (multi-section plots)",
+        ),
     ]
 
     # ==========================================================================
@@ -100,7 +103,10 @@ class ForestPlotConfig(BaseModel):
     ]
     stats_table_x_position: Annotated[
         float,
-        Field(default=1.05, description="X-position for stats table (>1.0 = right of plot)"),
+        Field(
+            default=1.05,
+            description="X-position for stats table (>1.0 = right of plot)",
+        ),
     ]
     stats_table_col_spacing: Annotated[
         float,
@@ -108,7 +114,9 @@ class ForestPlotConfig(BaseModel):
     ]
     stats_fontsize: Annotated[
         Optional[int],
-        Field(default=None, ge=1, description="Stats table font size. None uses rcParams."),
+        Field(
+            default=None, ge=1, description="Stats table font size. None uses rcParams."
+        ),
     ]
 
     # ==========================================================================
@@ -136,7 +144,9 @@ class ForestPlotConfig(BaseModel):
     # ==========================================================================
     color_significant: Annotated[
         str,
-        Field(default="#2E7D32", description="Color for significant results (p < alpha)"),
+        Field(
+            default="#2E7D32", description="Color for significant results (p < alpha)"
+        ),
     ]
     color_nonsignificant: Annotated[
         str,
@@ -145,7 +155,8 @@ class ForestPlotConfig(BaseModel):
     marker_color_significant: Annotated[
         Optional[str],
         Field(
-            default=None, description="Marker color for significant. None uses color_significant."
+            default=None,
+            description="Marker color for significant. None uses color_significant.",
         ),
     ]
     marker_color_nonsignificant: Annotated[
@@ -169,7 +180,10 @@ class ForestPlotConfig(BaseModel):
     ]
     marker_style: Annotated[
         MarkerStyle,
-        Field(default="s", description="Marker style (s=square, o=circle, D=diamond, etc.)"),
+        Field(
+            default="s",
+            description="Marker style (s=square, o=circle, D=diamond, etc.)",
+        ),
     ]
     linewidth: Annotated[
         float,
@@ -189,7 +203,10 @@ class ForestPlotConfig(BaseModel):
     # ==========================================================================
     section_labels: Annotated[
         Optional[Dict[str, str]],
-        Field(default=None, description="Custom section labels: {variable: 'Display Name'}"),
+        Field(
+            default=None,
+            description="Custom section labels: {variable: 'Display Name'}",
+        ),
     ]
     show_section_separators: Annotated[
         bool,
@@ -201,7 +218,9 @@ class ForestPlotConfig(BaseModel):
     ]
     section_separator_alpha: Annotated[
         float,
-        Field(default=0.25, ge=0.0, le=1.0, description="Transparency of separator lines"),
+        Field(
+            default=0.25, ge=0.0, le=1.0, description="Transparency of separator lines"
+        ),
     ]
     section_gap: Annotated[
         float,
@@ -209,7 +228,9 @@ class ForestPlotConfig(BaseModel):
     ]
     section_label_x_position: Annotated[
         float,
-        Field(default=-0.35, description="X-position for section labels (negative = left)"),
+        Field(
+            default=-0.35, description="X-position for section labels (negative = left)"
+        ),
     ]
 
     # ==========================================================================
@@ -237,15 +258,27 @@ class ForestPlotConfig(BaseModel):
     # ==========================================================================
     ytick_fontsize: Annotated[
         Optional[int],
-        Field(default=None, ge=1, description="Y-axis label font size. None uses rcParams."),
+        Field(
+            default=None,
+            ge=1,
+            description="Y-axis label font size. None uses rcParams.",
+        ),
     ]
     xtick_fontsize: Annotated[
         Optional[int],
-        Field(default=None, ge=1, description="X-tick label font size. None uses rcParams."),
+        Field(
+            default=None,
+            ge=1,
+            description="X-tick label font size. None uses rcParams.",
+        ),
     ]
     xlabel_fontsize: Annotated[
         Optional[int],
-        Field(default=None, ge=1, description="X-axis label font size. None uses rcParams."),
+        Field(
+            default=None,
+            ge=1,
+            description="X-axis label font size. None uses rcParams.",
+        ),
     ]
     title_fontsize: Annotated[
         Optional[int],

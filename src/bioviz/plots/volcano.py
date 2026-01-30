@@ -33,7 +33,9 @@ def _internal_resolve_values(df: pd.DataFrame, cfg: VolcanoConfig) -> List[str]:
                 available = set(df.index.astype(str).tolist())
             missing = [v for v in base if v not in available]
             if missing:
-                warnings.warn(f"Requested labels not found in DataFrame: {missing}", UserWarning)
+                warnings.warn(
+                    f"Requested labels not found in DataFrame: {missing}", UserWarning
+                )
             if cfg.additional_values_to_label:
                 # Warn about missing additions, but only append the valid ones
                 add = list(cfg.additional_values_to_label)
@@ -148,7 +150,10 @@ def resolve_labels(df: pd.DataFrame, cfg: VolcanoConfig) -> List[str]:
                     ycol = cfg.y_col
                     for _, r in elp.iterrows():
                         try:
-                            explicit_map[str(r[labcol])] = (float(r[xcol]), float(r[ycol]))
+                            explicit_map[str(r[labcol])] = (
+                                float(r[xcol]),
+                                float(r[ycol]),
+                            )
                         except Exception:
                             continue
             else:
@@ -195,7 +200,9 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
     if do_transform and cfg.y_col and cfg.y_col in df.columns:
         try:
             y_vals = -np.log10(
-                pd.to_numeric(df[cfg.y_col], errors="coerce").replace([np.inf, -np.inf], np.nan)
+                pd.to_numeric(df[cfg.y_col], errors="coerce").replace(
+                    [np.inf, -np.inf], np.nan
+                )
             )
             transformed_y = True
         except Exception:
@@ -260,7 +267,9 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
                     return cfg.connector_color_nonsig_right
 
             # Per-side override
-            side_color = cfg.connector_color_left if ox < 0 else cfg.connector_color_right
+            side_color = (
+                cfg.connector_color_left if ox < 0 else cfg.connector_color_right
+            )
             if side_color:
                 return side_color
 
@@ -275,7 +284,9 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
         except Exception:
             return cfg.connector_color
 
-    def _nudge_label_if_overlapping(text_obj, marker_x, marker_y, marker_radius_pixels=None):
+    def _nudge_label_if_overlapping(
+        text_obj, marker_x, marker_y, marker_radius_pixels=None
+    ):
         try:
             fig.canvas.draw()
             renderer = fig.canvas.get_renderer()
@@ -399,7 +410,9 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
     # dataframe), interpret that as a request to color all points so the
     # plot isn't entirely nonsignificant by default.
     try:
-        has_y_thresh = getattr(cfg, "y_col_thresh", None) is not None and cfg.y_col in df.columns
+        has_y_thresh = (
+            getattr(cfg, "y_col_thresh", None) is not None and cfg.y_col in df.columns
+        )
         has_x_thresh = (
             getattr(cfg, "abs_x_thresh", None) is not None
             and cfg.abs_x_thresh > 0
@@ -445,7 +458,11 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
                     xv = float(df.loc[i, cfg.x_col])
                 except Exception:
                     xv = 0.0
-                color = cfg.palette.get("sig_up") if xv >= 0 else cfg.palette.get("sig_down")
+                color = (
+                    cfg.palette.get("sig_up")
+                    if xv >= 0
+                    else cfg.palette.get("sig_down")
+                )
             colors.append(color)
 
     # axis limits: compute sensible defaults but allow caller overrides via cfg.xlim/cfg.ylim
@@ -563,7 +580,9 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
                 labval = str(i)
         except Exception:
             labval = str(i)
-        coord_to_labels.setdefault(coord, []).append((i, labval, bool(sig_mask.loc[i]), dir_val))
+        coord_to_labels.setdefault(coord, []).append(
+            (i, labval, bool(sig_mask.loc[i]), dir_val)
+        )
 
     # Parse explicit label placements if provided. Support dict, iterable of
     # (label, (x,y)) tuples, or a DataFrame with label/x/y columns.
@@ -585,7 +604,10 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
                 if "label" in cols and ("x" in cols and "y" in cols):
                     for _, r in elp.iterrows():
                         try:
-                            explicit_map[str(r["label"])] = (float(r["x"]), float(r["y"]))
+                            explicit_map[str(r["label"])] = (
+                                float(r["x"]),
+                                float(r["y"]),
+                            )
                         except Exception:
                             continue
                 else:
@@ -595,7 +617,10 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
                     ycol = cfg.y_col
                     for _, r in elp.iterrows():
                         try:
-                            explicit_map[str(r[labcol])] = (float(r[xcol]), float(r[ycol]))
+                            explicit_map[str(r[labcol])] = (
+                                float(r[xcol]),
+                                float(r[ycol]),
+                            )
                         except Exception:
                             continue
             else:
@@ -616,7 +641,9 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
                 available_labels = set(df[cfg.label_col].astype(str).tolist())
             else:
                 available_labels = set(df.index.astype(str).tolist())
-            missing_explicit = [k for k in explicit_map.keys() if k not in available_labels]
+            missing_explicit = [
+                k for k in explicit_map.keys() if k not in available_labels
+            ]
             if missing_explicit:
                 warnings.warn(
                     f"Explicit label positions reference labels not in DataFrame: {missing_explicit}",
@@ -684,7 +711,10 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
                     except Exception:
                         dir_ann = None
                 ann_color = (
-                    dir_ann or cfg.annotation_sig_color or point_color or cfg.palette.get("sig_up")
+                    dir_ann
+                    or cfg.annotation_sig_color
+                    or point_color
+                    or cfg.palette.get("sig_up")
                 )
                 weight = getattr(cfg, "annotation_fontweight_sig", "bold")
                 fontsize = cfg.fontsize_sig
@@ -710,7 +740,10 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
                 try:
                     if matched_idx is not None:
                         adjustable_points.append(
-                            (float(df.loc[matched_idx, cfg.x_col]), float(y_vals.loc[matched_idx]))
+                            (
+                                float(df.loc[matched_idx, cfg.x_col]),
+                                float(y_vals.loc[matched_idx]),
+                            )
                         )
                     else:
                         adjustable_points.append((lx, ly))
@@ -729,13 +762,18 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
                         try:
                             if getattr(cfg, "attach_to_marker_edge", True):
                                 label_disp = ax.transData.transform((lx, ly))
-                                attach_x, attach_y = _marker_edge_data_point(ox, oy, label_disp)
+                                attach_x, attach_y = _marker_edge_data_point(
+                                    ox, oy, label_disp
+                                )
                             else:
                                 attach_x, attach_y = ox, oy
                         except Exception:
                             attach_x, attach_y = ox, oy
 
-                        if getattr(cfg, "connector_color_use_point_color", False) and point_color:
+                        if (
+                            getattr(cfg, "connector_color_use_point_color", False)
+                            and point_color
+                        ):
                             conn_color = point_color
                         else:
                             conn_color = _select_connector_color(is_sig, ox)
@@ -789,7 +827,9 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
             continue
         text_str = "\n".join(labels)
         # Determine group-based color if available
-        group_val = stacked[0][3] if stacked and len(stacked) and len(stacked[0]) > 3 else None
+        group_val = (
+            stacked[0][3] if stacked and len(stacked) and len(stacked[0]) > 3 else None
+        )
         ann_color = None
         if group_val is not None and str(group_val) in group_side_color:
             ann_color = group_side_color[str(group_val)]
@@ -905,7 +945,9 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
                     try:
                         if getattr(cfg, "attach_to_marker_edge", True):
                             label_disp = ax.transData.transform((tx, ty))
-                            attach_x, attach_y = _marker_edge_data_point(x, y, label_disp)
+                            attach_x, attach_y = _marker_edge_data_point(
+                                x, y, label_disp
+                            )
                         else:
                             attach_x, attach_y = x, y
                     except Exception:
@@ -1052,14 +1094,20 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
 
     # Title and font sizes
     if cfg.title:
-        ax.set_title(cfg.title, fontsize=cfg.title_fontsize, fontweight=cfg.title_fontweight)
+        ax.set_title(
+            cfg.title, fontsize=cfg.title_fontsize, fontweight=cfg.title_fontweight
+        )
     ax.xaxis.label.set_size(cfg.axis_label_fontsize)
     ax.yaxis.label.set_size(cfg.axis_label_fontsize)
     for tick in ax.xaxis.get_ticklabels() + ax.yaxis.get_ticklabels():
         tick.set_fontsize(cfg.tick_label_fontsize)
 
     # Group labels at top: infer from direction_col if not explicitly provided
-    if cfg.group_label_top is None and cfg.direction_col and cfg.direction_col in df.columns:
+    if (
+        cfg.group_label_top is None
+        and cfg.direction_col
+        and cfg.direction_col in df.columns
+    ):
         try:
             means = df.groupby(cfg.direction_col)[cfg.x_col].mean().dropna()
             if len(means) >= 2:
@@ -1175,7 +1223,9 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
     except Exception:
         renderer = None
 
-    for txt, orig, was_sig in zip(adjustable_texts, adjustable_points, adjustable_point_sigs):
+    for txt, orig, was_sig in zip(
+        adjustable_texts, adjustable_points, adjustable_point_sigs
+    ):
         try:
             tx, ty = txt.get_position()
             ox, oy = orig
@@ -1237,7 +1287,9 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
                     # Aim the marker-edge attach point toward the text bbox attach
                     # display coordinate (attach_x, attach_y) computed above.
                     label_disp = (attach_x, attach_y)
-                    attach_marker_x, attach_marker_y = _marker_edge_data_point(ox, oy, label_disp)
+                    attach_marker_x, attach_marker_y = _marker_edge_data_point(
+                        ox, oy, label_disp
+                    )
                 else:
                     attach_marker_x, attach_marker_y = ox, oy
             except Exception:
@@ -1279,8 +1331,12 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
             r_pixels = r_points * fig.dpi / 72.0
             # Convert pixel deltas to data-space deltas
             zero_data = ax.transData.inverted().transform((0.0, 0.0))
-            dx_data = ax.transData.inverted().transform((r_pixels, 0.0))[0] - zero_data[0]
-            dy_data = ax.transData.inverted().transform((0.0, r_pixels))[1] - zero_data[1]
+            dx_data = (
+                ax.transData.inverted().transform((r_pixels, 0.0))[0] - zero_data[0]
+            )
+            dy_data = (
+                ax.transData.inverted().transform((0.0, r_pixels))[1] - zero_data[1]
+            )
             x0, x1 = ax.get_xlim()
             y0, y1 = ax.get_ylim()
             pad_x = abs(dx_data) + 0.05
@@ -1380,7 +1436,9 @@ class VolcanoPlotter:
         return self
 
     def annotate(
-        self, explicit_positions: Mapping[str, Tuple[float, float]], replace: bool = True
+        self,
+        explicit_positions: Mapping[str, Tuple[float, float]],
+        replace: bool = True,
     ) -> "VolcanoPlotter":
         """Add explicit label placements and re-render.
 
@@ -1391,7 +1449,10 @@ class VolcanoPlotter:
         """
         try:
             # normalize to dict[str, (x,y)]
-            new_map = {str(k): (float(v[0]), float(v[1])) for k, v in explicit_positions.items()}
+            new_map = {
+                str(k): (float(v[0]), float(v[1]))
+                for k, v in explicit_positions.items()
+            }
         except Exception:
             raise ValueError("explicit_positions must be a mapping label->(x,y)")
 
@@ -1402,7 +1463,8 @@ class VolcanoPlotter:
         try:
             if self.config is None:
                 self.config = VolcanoConfig(
-                    explicit_label_positions=new_map, explicit_label_replace=bool(replace)
+                    explicit_label_positions=new_map,
+                    explicit_label_replace=bool(replace),
                 )
             else:
                 self.config.explicit_label_positions = new_map
@@ -1420,7 +1482,9 @@ class VolcanoPlotter:
         resolver -- useful for interactive 'label more' flows.
         """
         if self.df is None or self.config is None:
-            raise RuntimeError("No dataframe available; call .set_data(df) or .plot(df) first")
+            raise RuntimeError(
+                "No dataframe available; call .set_data(df) or .plot(df) first"
+            )
         resolved = resolve_labels(self.df, self.config)
         if not resolved:
             return self

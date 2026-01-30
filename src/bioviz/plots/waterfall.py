@@ -130,7 +130,10 @@ class WaterfallPlotter:
         )
         df_sorted = df_sorted.sort_values(
             [cfg.sort_within_group_col, cfg.value_col],
-            ascending=[True, not cfg.sort_ascending],  # Descending within groups for waterfall
+            ascending=[
+                True,
+                not cfg.sort_ascending,
+            ],  # Descending within groups for waterfall
         ).reset_index(drop=True)
 
         # Create x-axis positions with gaps between groups
@@ -161,9 +164,9 @@ class WaterfallPlotter:
             group_boundaries.append(current_pos)
             current_pos += cfg.group_gap
 
-        df_sorted = df_sorted[df_sorted[cfg.sort_within_group_col].isin(group_order)].reset_index(
-            drop=True
-        )
+        df_sorted = df_sorted[
+            df_sorted[cfg.sort_within_group_col].isin(group_order)
+        ].reset_index(drop=True)
         df_sorted["_x_position"] = x_positions
 
         values = df_sorted[cfg.value_col].values
@@ -176,7 +179,9 @@ class WaterfallPlotter:
 
         # Zero line (draw first so bars are on top)
         if cfg.show_zero_line:
-            ax.axhline(y=0, color=cfg.zero_line_color, linewidth=cfg.zero_line_width, zorder=1)
+            ax.axhline(
+                y=0, color=cfg.zero_line_color, linewidth=cfg.zero_line_width, zorder=1
+            )
 
         # Threshold lines
         if cfg.threshold_lines:
@@ -197,8 +202,12 @@ class WaterfallPlotter:
                 ax.bar(
                     row["_x_position"],
                     row[cfg.value_col],
-                    color=fill_colors[i] if isinstance(fill_colors, list) else fill_colors,
-                    edgecolor=edge_colors[i] if isinstance(edge_colors, list) else edge_colors,
+                    color=fill_colors[i]
+                    if isinstance(fill_colors, list)
+                    else fill_colors,
+                    edgecolor=edge_colors[i]
+                    if isinstance(edge_colors, list)
+                    else edge_colors,
                     linewidth=cfg.linewidth,
                     width=cfg.bar_width,
                     zorder=2,
@@ -283,9 +292,9 @@ class WaterfallPlotter:
             fig = ax.figure
 
         # Sort data
-        df_sorted = self.df.sort_values(by=cfg.value_col, ascending=cfg.sort_ascending).reset_index(
-            drop=True
-        )
+        df_sorted = self.df.sort_values(
+            by=cfg.value_col, ascending=cfg.sort_ascending
+        ).reset_index(drop=True)
         x = np.arange(len(df_sorted))
         values = df_sorted[cfg.value_col].values
 
@@ -295,7 +304,9 @@ class WaterfallPlotter:
 
         # Zero line (draw first)
         if cfg.show_zero_line:
-            ax.axhline(y=0, color=cfg.zero_line_color, linewidth=cfg.zero_line_width, zorder=1)
+            ax.axhline(
+                y=0, color=cfg.zero_line_color, linewidth=cfg.zero_line_width, zorder=1
+            )
 
         # Threshold lines
         if cfg.threshold_lines:
@@ -424,9 +435,9 @@ class WaterfallPlotter:
             .reset_index()
             .rename(columns={cfg.value_col: "agg_value"})
         )
-        plot_df = agg_df.sort_values(by="agg_value", ascending=cfg.sort_ascending).reset_index(
-            drop=True
-        )
+        plot_df = agg_df.sort_values(
+            by="agg_value", ascending=cfg.sort_ascending
+        ).reset_index(drop=True)
 
         x = np.arange(len(plot_df))
         values = plot_df["agg_value"].values
@@ -528,7 +539,9 @@ class WaterfallPlotter:
             if cfg.palette is not None:
                 if isinstance(cfg.palette, dict):
                     # Dict mapping category -> color
-                    pal = [cfg.palette.get(cat, cfg.default_color) for cat in categories]
+                    pal = [
+                        cfg.palette.get(cat, cfg.default_color) for cat in categories
+                    ]
                 else:
                     # List of colors
                     pal = cfg.palette
@@ -570,7 +583,9 @@ class WaterfallPlotter:
             else:
                 # Default to a grayscale palette
                 pal = get_default_palette(len(categories))
-                edge_colors = [pal[groups.codes[i] % len(pal)] for i in range(len(groups))]
+                edge_colors = [
+                    pal[groups.codes[i] % len(pal)] for i in range(len(groups))
+                ]
 
             return edge_colors
         else:
@@ -722,7 +737,9 @@ def waterfall_with_distribution(
         fig.patch.set_alpha(0.0)
     except Exception:
         pass
-    plot_waterfall(df, value_col, id_col=id_col, color_col=color_col, ax=ax_top, show=False)
+    plot_waterfall(
+        df, value_col, id_col=id_col, color_col=color_col, ax=ax_top, show=False
+    )
     from .grouped import plot_grouped_boxplots
 
     plot_grouped_boxplots(

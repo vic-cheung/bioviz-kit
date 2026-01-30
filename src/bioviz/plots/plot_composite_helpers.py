@@ -104,7 +104,9 @@ def apply_statannotations(
     # BH correction when requested
     if use_bh and len(pvals) > 0:
         try:
-            mask = [not (p is None or (isinstance(p, float) and np.isnan(p))) for p in pvals]
+            mask = [
+                not (p is None or (isinstance(p, float) and np.isnan(p))) for p in pvals
+            ]
             valid_pvals = [p for p, m in zip(pvals, mask) if m]
             if valid_pvals:
                 rej, p_adj, _, _ = multipletests(valid_pvals, method="fdr_bh")
@@ -159,7 +161,9 @@ def apply_statannotations(
         # Determine label (use adjusted p if available)
         p_for_label = (
             adj_p
-            if (adj_p is not None and not (isinstance(adj_p, float) and np.isnan(adj_p)))
+            if (
+                adj_p is not None and not (isinstance(adj_p, float) and np.isnan(adj_p))
+            )
             else raw_p
         )
         label = "n.s."
@@ -177,4 +181,6 @@ def apply_statannotations(
                     label = f"p={p_for_label:.3g}"
         except Exception:
             label = "n.s."
-        ax.text((left + right) / 2.0, yline + offset * 0.02, label, ha="center", va="bottom")
+        ax.text(
+            (left + right) / 2.0, yline + offset * 0.02, label, ha="center", va="bottom"
+        )

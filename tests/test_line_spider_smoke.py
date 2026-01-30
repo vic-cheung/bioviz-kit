@@ -13,7 +13,11 @@ def test_lineplot_accepts_non_categorical_x_and_respects_background():
         }
     )
     cfg = LinePlotConfig(
-        patient_id="P1", label_col="label", x="Timepoint", y="Value", figure_facecolor="#abcdef"
+        patient_id="P1",
+        label_col="label",
+        x="Timepoint",
+        y="Value",
+        figure_facecolor="#abcdef",
     )
     fig = generate_styled_lineplot(df, cfg)
     assert fig is not None
@@ -31,7 +35,11 @@ def test_lineplot_allows_transparent_background():
         }
     )
     cfg = LinePlotConfig(
-        patient_id="P1", label_col="label", x="Timepoint", y="Value", figure_transparent=True
+        patient_id="P1",
+        label_col="label",
+        x="Timepoint",
+        y="Value",
+        figure_transparent=True,
     )
     fig = generate_styled_lineplot(df, cfg)
     assert fig is not None

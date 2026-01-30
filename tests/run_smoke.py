@@ -15,7 +15,8 @@ def run():
     )
 
     heat = HeatmapAnnotationConfig(
-        values="mut_type", colors={"SNV": "#EC745C", "CNV": "#44A9CC", "Fusion": "#FFB600"}
+        values="mut_type",
+        colors={"SNV": "#EC745C", "CNV": "#44A9CC", "Fusion": "#FFB600"},
     )
     config = OncoplotConfig(heatmap_annotation=heat, x_col="patient_id", y_col="gene")
     plotter = OncoPlotter(pdf, config=config)

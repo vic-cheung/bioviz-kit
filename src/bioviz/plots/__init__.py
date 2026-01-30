@@ -59,7 +59,10 @@ _PUBLIC_FUNCS = {
     # grouped bar exports
     "GroupedBarPlotter": ("bioviz.plots.grouped_bar", "GroupedBarPlotter"),
     "plot_grouped_bars": ("bioviz.plots.grouped_bar", "plot_grouped_bars"),
-    "compute_proportion_summary": ("bioviz.plots.grouped_bar", "compute_proportion_summary"),
+    "compute_proportion_summary": (
+        "bioviz.plots.grouped_bar",
+        "compute_proportion_summary",
+    ),
     "clopper_pearson_ci": ("bioviz.plots.grouped_bar", "clopper_pearson_ci"),
     # KM plot exports
     "KMPlotter": ("bioviz.plots.km", "KMPlotter"),
