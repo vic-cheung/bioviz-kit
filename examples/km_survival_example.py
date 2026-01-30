@@ -12,9 +12,9 @@ Run inside your project venv where `bioviz` deps are installed:
 """
 
 # %%
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 
 from bioviz.configs import KMPlotConfig
 from bioviz.plots import KMPlotter

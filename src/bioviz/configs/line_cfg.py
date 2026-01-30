@@ -1,6 +1,7 @@
 from typing import Annotated, Any
 
 from pydantic import Field
+
 from .base_cfg import BasePlotConfig
 
 

@@ -1,9 +1,10 @@
 # %%
+import matplotlib.colors as mcolors
 import numpy as np
 import pandas as pd
-import matplotlib.colors as mcolors
-from bioviz.plots import OncoPlotter
+
 from bioviz.configs import HeatmapAnnotationConfig, OncoplotConfig
+from bioviz.plots import OncoPlotter
 
 
 # %%

@@ -6,7 +6,7 @@ analysis. Font sizes default to None to inherit from matplotlib rcParams.
 
 from __future__ import annotations
 
-from typing import Annotated, Any, Dict, List, Literal, Optional, Tuple
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -47,11 +47,11 @@ class ForestPlotConfig(BaseModel):
         Field(default="p_value", description="Column name for p-values"),
     ]
     reference_col: Annotated[
-        Optional[str],
+        str | None,
         Field(default="reference", description="Column name for reference group"),
     ]
     variable_col: Annotated[
-        Optional[str],
+        str | None,
         Field(
             default="variable",
             description="Column for variable grouping (multi-section plots)",
@@ -62,11 +62,11 @@ class ForestPlotConfig(BaseModel):
     # Figure layout
     # ==========================================================================
     figsize: Annotated[
-        Tuple[float, float],
+        tuple[float, float],
         Field(default=(10.0, 8.0), description="Figure size (width, height) in inches"),
     ]
     title: Annotated[
-        Optional[str],
+        str | None,
         Field(default=None, description="Plot title"),
     ]
     xlabel: Annotated[
@@ -113,7 +113,7 @@ class ForestPlotConfig(BaseModel):
         Field(default=0.15, description="Spacing between stats table columns"),
     ]
     stats_fontsize: Annotated[
-        Optional[int],
+        int | None,
         Field(
             default=None, ge=1, description="Stats table font size. None uses rcParams."
         ),
@@ -127,11 +127,11 @@ class ForestPlotConfig(BaseModel):
         Field(default=False, description="Use log scale for x-axis"),
     ]
     xlim: Annotated[
-        Optional[Tuple[float, float]],
+        tuple[float, float] | None,
         Field(default=None, description="X-axis limits (min, max)"),
     ]
     xticks: Annotated[
-        Optional[List[float]],
+        list[float] | None,
         Field(default=None, description="Custom x-tick positions"),
     ]
     center_around_null: Annotated[
@@ -153,14 +153,14 @@ class ForestPlotConfig(BaseModel):
         Field(default="#757575", description="Color for non-significant results"),
     ]
     marker_color_significant: Annotated[
-        Optional[str],
+        str | None,
         Field(
             default=None,
             description="Marker color for significant. None uses color_significant.",
         ),
     ]
     marker_color_nonsignificant: Annotated[
-        Optional[str],
+        str | None,
         Field(
             default=None,
             description="Marker color for non-significant. None uses color_nonsignificant.",
@@ -202,7 +202,7 @@ class ForestPlotConfig(BaseModel):
     # Section styling (multi-variable plots)
     # ==========================================================================
     section_labels: Annotated[
-        Optional[Dict[str, str]],
+        dict[str, str] | None,
         Field(
             default=None,
             description="Custom section labels: {variable: 'Display Name'}",
@@ -257,7 +257,7 @@ class ForestPlotConfig(BaseModel):
     # Font sizes (None = use rcParams)
     # ==========================================================================
     ytick_fontsize: Annotated[
-        Optional[int],
+        int | None,
         Field(
             default=None,
             ge=1,
@@ -265,7 +265,7 @@ class ForestPlotConfig(BaseModel):
         ),
     ]
     xtick_fontsize: Annotated[
-        Optional[int],
+        int | None,
         Field(
             default=None,
             ge=1,
@@ -273,7 +273,7 @@ class ForestPlotConfig(BaseModel):
         ),
     ]
     xlabel_fontsize: Annotated[
-        Optional[int],
+        int | None,
         Field(
             default=None,
             ge=1,
@@ -281,7 +281,7 @@ class ForestPlotConfig(BaseModel):
         ),
     ]
     title_fontsize: Annotated[
-        Optional[int],
+        int | None,
         Field(default=None, ge=1, description="Title font size. None uses rcParams."),
     ]
 
@@ -289,7 +289,7 @@ class ForestPlotConfig(BaseModel):
     # Category ordering
     # ==========================================================================
     category_order: Annotated[
-        Optional[Dict[str, List[Any]]],
+        dict[str, list[Any]] | None,
         Field(
             default=None,
             description=(

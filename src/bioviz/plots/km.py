@@ -15,7 +15,8 @@ Example
 from __future__ import annotations
 
 import textwrap
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from collections.abc import Iterable
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -193,14 +194,14 @@ def _wrap_label(label: str, wrap_chars: int | None, max_lines: int = 2) -> str:
 
 
 def _wrap_labels(
-    labels: List[str], wrap_chars: int | None, max_lines: int = 2
-) -> List[str]:
+    labels: list[str], wrap_chars: int | None, max_lines: int = 2
+) -> list[str]:
     """Apply label wrapping to a list."""
     return [_wrap_label(lbl, wrap_chars, max_lines) for lbl in labels]
 
 
 def format_pvalue(
-    p_value: float, significance_cutoffs: Dict[float, str] | None = None
+    p_value: float, significance_cutoffs: dict[float, str] | None = None
 ) -> str:
     """Format p-value with appropriate precision and notation.
 
@@ -321,7 +322,7 @@ class KMPlotter:
     # -------------------------------------------------------------------------
     # Internal helpers
     # -------------------------------------------------------------------------
-    def _get_groups(self) -> List[Any]:
+    def _get_groups(self) -> list[Any]:
         """Return ordered list of groups from data.
 
         Priority:
@@ -346,8 +347,8 @@ class KMPlotter:
 
     def _fit_kmf(
         self,
-        durations: List,
-        events: List,
+        durations: list,
+        events: list,
         label: str,
         timeline: Iterable[float] | None = None,
     ) -> KaplanMeierFitter:
@@ -534,7 +535,7 @@ class KMPlotter:
                 zorder=11,
             )
 
-    def _compute_xticks(self, ax) -> List[float] | None:
+    def _compute_xticks(self, ax) -> list[float] | None:
         """Determine x-tick positions from config or data."""
         cfg = self.config
         if cfg.xticks is not None:
@@ -547,7 +548,7 @@ class KMPlotter:
             return list(np.arange(0.0, snapped + 1e-9, interval))
         return None
 
-    def _position_legend(self, ax, fontsize: int | float) -> Optional[Any]:
+    def _position_legend(self, ax, fontsize: int | float) -> Any | None:
         """Create and position the legend."""
         cfg = self.config
         handles, labels = ax.get_legend_handles_labels()
@@ -593,10 +594,10 @@ class KMPlotter:
         self,
         ax,
         table_ax,
-        kmfs: List[KaplanMeierFitter],
-        labels: List[str],
-        colors: List[str],
-        xticks: List[float] | None,
+        kmfs: list[KaplanMeierFitter],
+        labels: list[str],
+        colors: list[str],
+        xticks: list[float] | None,
     ) -> None:
         """Populate a risk table axes with counts at each time point."""
         cfg = self.config
@@ -708,7 +709,7 @@ class KMPlotter:
         ax=None,
         fig=None,
         output_path: str | None = None,
-    ) -> Tuple[Any, Any, float | None]:
+    ) -> tuple[Any, Any, float | None]:
         """Generate the Kaplan-Meier plot.
 
         Parameters
@@ -788,8 +789,8 @@ class KMPlotter:
                 custom_colors[g] = default_colors[i % len(default_colors)]
 
         # Fit and plot each group
-        kmfs: List[KaplanMeierFitter] = []
-        risktable_labels: List[str] = []
+        kmfs: list[KaplanMeierFitter] = []
+        risktable_labels: list[str] = []
         legend_overrides = dict(cfg.legend_label_overrides or {})
         risktable_overrides = dict(cfg.risktable_label_overrides or {})
 

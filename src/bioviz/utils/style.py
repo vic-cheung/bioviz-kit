@@ -5,7 +5,9 @@ should accept an optional `style` argument and fall back to `DefaultStyle`.
 """
 
 from __future__ import annotations
-from typing import Protocol, Optional, Mapping
+
+from collections.abc import Mapping
+from typing import Protocol
 
 import matplotlib as mpl
 
@@ -17,7 +19,7 @@ class StyleBase(Protocol):
     font_family: str
     base_fontsize: int
 
-    def apply_theme(self, rc_overrides: Optional[dict] = None) -> None: ...
+    def apply_theme(self, rc_overrides: dict | None = None) -> None: ...
 
 
 class DefaultStyle:
@@ -48,7 +50,7 @@ class DefaultStyle:
             "Fusion": "#FFB600",
         }
 
-    def apply_theme(self, rc_overrides: Optional[dict] = None) -> None:
+    def apply_theme(self, rc_overrides: dict | None = None) -> None:
         """
         Apply the style to Matplotlib `rcParams`.
 

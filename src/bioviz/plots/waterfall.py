@@ -10,12 +10,12 @@ Supports two main modes:
 
 from __future__ import annotations
 
-from typing import Optional, Tuple, Callable, Union
+from collections.abc import Callable
 
 import matplotlib.pyplot as plt
-from matplotlib.patches import Patch
 import numpy as np
 import pandas as pd
+from matplotlib.patches import Patch
 
 from ..configs.waterfall_cfg import WaterfallConfig
 from .plot_composite_helpers import get_default_palette
@@ -66,9 +66,9 @@ class WaterfallPlotter:
 
     def plot(
         self,
-        ax: Optional[plt.Axes] = None,
+        ax: plt.Axes | None = None,
         show: bool = False,
-    ) -> Tuple[plt.Figure, plt.Axes]:
+    ) -> tuple[plt.Figure, plt.Axes]:
         """Generate the waterfall plot.
 
         Args:
@@ -97,9 +97,9 @@ class WaterfallPlotter:
 
     def _plot_grouped(
         self,
-        ax: Optional[plt.Axes],
+        ax: plt.Axes | None,
         show: bool,
-    ) -> Tuple[plt.Figure, plt.Axes]:
+    ) -> tuple[plt.Figure, plt.Axes]:
         """Plot a grouped waterfall with gaps between groups."""
         cfg = self.cfg
         created_fig = False
@@ -273,9 +273,9 @@ class WaterfallPlotter:
 
     def _plot_standard(
         self,
-        ax: Optional[plt.Axes],
+        ax: plt.Axes | None,
         show: bool,
-    ) -> Tuple[plt.Figure, plt.Axes]:
+    ) -> tuple[plt.Figure, plt.Axes]:
         """Plot a standard per-sample waterfall (ungrouped)."""
         cfg = self.cfg
         created_fig = False
@@ -410,9 +410,9 @@ class WaterfallPlotter:
 
     def _plot_aggregated(
         self,
-        ax: Optional[plt.Axes],
+        ax: plt.Axes | None,
         show: bool,
-    ) -> Tuple[plt.Figure, plt.Axes]:
+    ) -> tuple[plt.Figure, plt.Axes]:
         """Plot aggregated values by group."""
         cfg = self.cfg
         created_fig = False
@@ -476,7 +476,7 @@ class WaterfallPlotter:
 
         return fig, ax
 
-    def _plot_faceted(self, show: bool) -> Tuple[plt.Figure, plt.Axes]:
+    def _plot_faceted(self, show: bool) -> tuple[plt.Figure, plt.Axes]:
         """Plot faceted (small multiples) waterfall."""
         cfg = self.cfg
         facet_vals = list(pd.Categorical(self.df[cfg.facet_col]).categories)
@@ -522,7 +522,7 @@ class WaterfallPlotter:
 
         return fig, axes[0]
 
-    def _get_colors(self, df_plot: pd.DataFrame) -> Tuple[list | str, list[Patch]]:
+    def _get_colors(self, df_plot: pd.DataFrame) -> tuple[list | str, list[Patch]]:
         """Determine bar fill colors and legend handles.
 
         Returns:
@@ -670,15 +670,15 @@ class WaterfallPlotter:
 def plot_waterfall(
     df: pd.DataFrame,
     value_col: str,
-    id_col: Optional[str] = None,
-    color_col: Optional[str] = None,
-    group_col: Optional[str] = None,
-    aggregate: Optional[Union[Callable, str]] = None,
-    facet_by: Optional[str] = None,
-    figsize: Tuple[float, float] = (10, 6),
+    id_col: str | None = None,
+    color_col: str | None = None,
+    group_col: str | None = None,
+    aggregate: Callable | str | None = None,
+    facet_by: str | None = None,
+    figsize: tuple[float, float] = (10, 6),
     ax=None,
     show: bool = True,
-) -> Tuple[plt.Figure, plt.Axes]:
+) -> tuple[plt.Figure, plt.Axes]:
     """Plot a simple waterfall (sorted bar) chart.
 
     This is the legacy function interface. For more control, use WaterfallPlotter
@@ -718,13 +718,13 @@ def plot_waterfall(
 def waterfall_with_distribution(
     df: pd.DataFrame,
     value_col: str,
-    id_col: Optional[str] = None,
-    color_col: Optional[str] = None,
-    group_col: Optional[str] = None,
-    stat_pairs: Optional[list] = None,
-    figsize: Tuple[float, float] = (10, 8),
+    id_col: str | None = None,
+    color_col: str | None = None,
+    group_col: str | None = None,
+    stat_pairs: list | None = None,
+    figsize: tuple[float, float] = (10, 8),
     show: bool = True,
-) -> Tuple[plt.Figure, Tuple[plt.Axes, plt.Axes]]:
+) -> tuple[plt.Figure, tuple[plt.Axes, plt.Axes]]:
     """Draw a waterfall on top and a grouped boxplot + annotations below.
 
     Returns (fig, (ax_waterfall, ax_box))

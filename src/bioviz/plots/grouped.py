@@ -4,18 +4,18 @@ This module provides `plot_grouped_boxplots` which mirrors the behaviour
 used in PRG requests, including Mann-Whitney tests and BH correction.
 """
 
-from typing import Iterable, List, Optional, Tuple
+from collections.abc import Iterable
 
 import matplotlib.pyplot as plt
-import pandas as pd
 import numpy as np
+import pandas as pd
 import seaborn as sns
 from statsmodels.stats.multitest import multipletests
 
 from .plot_composite_helpers import (
-    get_default_palette,
-    compute_mwu_and_annot_pairs,
     apply_statannotations,
+    compute_mwu_and_annot_pairs,
+    get_default_palette,
 )
 
 
@@ -23,18 +23,18 @@ def plot_grouped_boxplots(
     df: pd.DataFrame,
     x: str,
     y: str,
-    hue: Optional[str] = None,
-    order: Optional[List[str]] = None,
-    palette: Optional[Iterable[str]] = None,
-    stat_pairs: Optional[List[Tuple[str, str]]] = None,
+    hue: str | None = None,
+    order: list[str] | None = None,
+    palette: Iterable[str] | None = None,
+    stat_pairs: list[tuple[str, str]] | None = None,
     ax=None,
-    figsize: Optional[Tuple[float, float]] = (8, 6),
+    figsize: tuple[float, float] | None = (8, 6),
     show: bool = True,
     use_bh_correction: bool = True,
     pval_alpha: float = 0.05,
     show_pvalues: bool = False,
-    strip_kwargs: Optional[dict] = None,
-) -> Tuple[plt.Figure, plt.Axes]:
+    strip_kwargs: dict | None = None,
+) -> tuple[plt.Figure, plt.Axes]:
     """Draw grouped boxplots with optional statistical annotations.
 
     Enhancements over the basic version:

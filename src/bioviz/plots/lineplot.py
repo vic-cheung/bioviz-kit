@@ -6,21 +6,19 @@ Ported and adapted from tm_toolbox. Uses neutral `DefaultStyle`.
 
 # %%
 import math
-from typing import Optional, List, Dict
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from pandas.api.types import CategoricalDtype
 import seaborn as sns
 from adjustText import adjust_text
 from matplotlib import font_manager
 from matplotlib.lines import Line2D
+from pandas.api.types import CategoricalDtype
 
 from bioviz.configs import LinePlotConfig
-from bioviz.utils.plotting import adjust_legend, resolve_font_family
 from bioviz.utils.plot_utils import is_categorical
-
+from bioviz.utils.plotting import adjust_legend, resolve_font_family
 
 # Expose public function
 __all__ = [
@@ -45,9 +43,9 @@ class LinePlotter:
             config = LinePlotConfig(**config)
         self.df = df.copy()
         self.config = config
-        self.fig: Optional[plt.Figure] = None
-        self.ax: Optional[plt.Axes] = None
-        self.annotation_history: List[Dict] = []
+        self.fig: plt.Figure | None = None
+        self.ax: plt.Axes | None = None
+        self.annotation_history: list[dict] = []
 
     def set_data(self, df: pd.DataFrame) -> "LinePlotter":
         self.df = df.copy()
@@ -63,11 +61,11 @@ class LinePlotter:
 
     def plot(
         self,
-        df: Optional[pd.DataFrame] = None,
+        df: pd.DataFrame | None = None,
         *,
-        twinx_data: Optional[pd.DataFrame] = None,
-        secondary_config: Optional[LinePlotConfig | dict] = None,
-        annotation_color_dict: Optional[dict] = None,
+        twinx_data: pd.DataFrame | None = None,
+        secondary_config: LinePlotConfig | dict | None = None,
+        annotation_color_dict: dict | None = None,
         annotation_source: str = "auto",
         draw_legend: bool = True,
     ):

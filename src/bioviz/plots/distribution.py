@@ -5,19 +5,18 @@ Pure plotting helpers: functions accept Axes and data and draw the plot.
 These helpers do not perform DataFrame checks or file IO.
 """
 
-from typing import Optional, Tuple
-
-import numpy as np
-import matplotlib.pyplot as plt
-from bioviz.utils.style import DefaultStyle
-from bioviz.utils.style import StyleBase
 from typing import Any
-from bioviz.configs.distribution_cfg import DistributionConfig
+
+import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
+
+from bioviz.configs.distribution_cfg import DistributionConfig
 from bioviz.utils.plot_utils import is_categorical
+from bioviz.utils.style import DefaultStyle, StyleBase
 
 
-def _default_color(style: Optional[StyleBase] = None) -> str:
+def _default_color(style: StyleBase | None = None) -> str:
     s = style or DefaultStyle()
     vals = list(getattr(s, "palette", {}).values())
     return vals[0] if vals else "#009E73"
@@ -29,23 +28,23 @@ def generate_histogram(
     variable_name: str,
     indication: str,
     median_value: float,
-    title_prefix: Optional[str] = None,
+    title_prefix: str | None = None,
     bins: int = 20,
     alpha: float = 0.7,
     grid_alpha: float = 0.3,
     hist_grid: bool = False,
-    hist_alpha: Optional[float] = None,
-    color: Optional[str] = None,
+    hist_alpha: float | None = None,
+    color: str | None = None,
     edgecolor: str = "black",
     median_color: str = "black",
     median_linestyle: str = "--",
     median_linewidth: int = 2,
     median_alpha: float = 0.8,
-    style: Optional[StyleBase] = None,
-    xlabel: Optional[str] = None,
-    ylabel: Optional[str] = None,
-    title: Optional[str] = None,
-    title_template: Optional[str] = None,
+    style: StyleBase | None = None,
+    xlabel: str | None = None,
+    ylabel: str | None = None,
+    title: str | None = None,
+    title_template: str | None = None,
     median_label_fmt: str = "Median = {median:.2f}",
     show_median_label: bool = True,
     title_fontsize: int = 14,
@@ -64,10 +63,10 @@ def generate_histogram(
     validation or saving.
     """
     # If grouped data handling: caller may pass `hue` and grouped data via kwargs
-    hue = kwargs.get("hue", None)
-    hue_palette = kwargs.get("hue_palette", None)
+    hue = kwargs.get("hue")
+    hue_palette = kwargs.get("hue_palette")
     hist_mode = kwargs.get("hist_mode", "bar")
-    hue_alpha = kwargs.get("hue_alpha", None)
+    hue_alpha = kwargs.get("hue_alpha")
 
     if color is None:
         color = _default_color(style)
@@ -289,12 +288,12 @@ def generate_horizontal_boxplot_with_swarm(
     plot_data,
     variable_name: str,
     indication: str,
-    title_prefix: Optional[str] = None,
+    title_prefix: str | None = None,
     alpha: float = 0.7,
     grid_alpha: float = 0.3,
     box_grid: bool = False,
-    box_alpha: Optional[float] = None,
-    box_color: Optional[str] = None,
+    box_alpha: float | None = None,
+    box_color: str | None = None,
     median_color: str = "red",
     median_linewidth: int = 2,
     swarm_facecolor: str = "white",
@@ -304,15 +303,15 @@ def generate_horizontal_boxplot_with_swarm(
     swarm_alpha: float = 0.8,
     jitter_std: float = 0.02,
     random_seed: int = 42,
-    style: Optional[StyleBase] = None,
-    xlabel: Optional[str] = None,
-    ylabel: Optional[str] = None,
-    y_ticks: Optional[list] = None,
-    y_ticklabels: Optional[list] = None,
-    ylim: Optional[tuple] = None,
-    title: Optional[str] = None,
-    title_template: Optional[str] = None,
-    color: Optional[str] = None,
+    style: StyleBase | None = None,
+    xlabel: str | None = None,
+    ylabel: str | None = None,
+    y_ticks: list | None = None,
+    y_ticklabels: list | None = None,
+    ylim: tuple | None = None,
+    title: str | None = None,
+    title_template: str | None = None,
+    color: str | None = None,
     title_fontsize: int = 14,
     xlabel_fontsize: int = 12,
     ylabel_fontsize: int = 12,
@@ -352,9 +351,7 @@ def generate_horizontal_boxplot_with_swarm(
         kwargs.get("hue")
         and kwargs.get("value_col")
         and isinstance(plot_data, pd.DataFrame)
-    ):
-        box_vals = plot_data[kwargs.get("value_col")].dropna()
-    elif isinstance(plot_data, pd.DataFrame) and kwargs.get("value_col"):
+    ) or isinstance(plot_data, pd.DataFrame) and kwargs.get("value_col"):
         box_vals = plot_data[kwargs.get("value_col")].dropna()
     else:
         # attempt to coerce to numeric if needed
@@ -385,7 +382,7 @@ def generate_horizontal_boxplot_with_swarm(
     )
 
     # scatter colored by hue if provided
-    hue = kwargs.get("hue", None)
+    hue = kwargs.get("hue")
     if hue is None:
         ax.scatter(
             box_vals,
@@ -529,18 +526,18 @@ def generate_grouped_boxplots(
     plot_data,
     variable_name: str,
     indication: str,
-    value_col: Optional[str] = None,
-    hue: Optional[str] = None,
-    hue_palette: Optional[dict] = None,
-    style: Optional[StyleBase] = None,
-    title: Optional[str] = None,
-    title_prefix: Optional[str] = None,
+    value_col: str | None = None,
+    hue: str | None = None,
+    hue_palette: dict | None = None,
+    style: StyleBase | None = None,
+    title: str | None = None,
+    title_prefix: str | None = None,
     title_fontsize: int = 12,
-    xlabel: Optional[str] = None,
-    ylabel: Optional[str] = None,
+    xlabel: str | None = None,
+    ylabel: str | None = None,
     xtick_fontsize: int = 10,
     ytick_fontsize: int = 10,
-    box_alpha: Optional[float] = None,
+    box_alpha: float | None = None,
     show_group_medians: bool = True,
     group_median_marker: str = "v",
     group_median_markersize: int = 8,
@@ -552,12 +549,12 @@ def generate_grouped_boxplots(
     swarm: bool = False,
     swarm_size: int = 30,
     swarm_alpha: float = 1.0,
-    swarm_facecolor: Optional[str] = None,
+    swarm_facecolor: str | None = None,
     swarm_edgecolor: str = "black",
     swarm_jitter: float = 0.05,
     # box shading alpha (boxes will be colored with this alpha)
-    per_box_alpha: Optional[float] = None,
-    group_order: Optional[list] = None,
+    per_box_alpha: float | None = None,
+    group_order: list | None = None,
 ):
     """Render horizontal grouped boxplots where each group gets its own box."""
     if hue is None or not isinstance(plot_data, pd.DataFrame):
@@ -772,20 +769,20 @@ def generate_grouped_boxplots(
 
 
 def plot_distribution(
-    axes: Tuple[plt.Axes, plt.Axes],
+    axes: tuple[plt.Axes, plt.Axes],
     plot_data,
     variable_name: str,
     indication: str,
-    title_prefix: Optional[str] = None,
+    title_prefix: str | None = None,
     bins: int = 20,
-    style: Optional[StyleBase] = None,
-    title: Optional[str] = None,
-    title_template: Optional[str] = None,
-    xlabel: Optional[str] = None,
-    ylabel: Optional[str] = None,
-    y_ticks: Optional[list] = None,
-    y_ticklabels: Optional[list] = None,
-    ylim: Optional[tuple] = None,
+    style: StyleBase | None = None,
+    title: str | None = None,
+    title_template: str | None = None,
+    xlabel: str | None = None,
+    ylabel: str | None = None,
+    y_ticks: list | None = None,
+    y_ticklabels: list | None = None,
+    ylim: tuple | None = None,
     **kwargs,
 ):
     """
@@ -860,8 +857,8 @@ class DistributionPlotter:
         self.df = None
         self.data = data
         self.config: DistributionConfig = config or DistributionConfig()
-        self.fig: Optional[plt.Figure] = None
-        self.axes: Optional[Tuple[plt.Axes, plt.Axes]] = None
+        self.fig: plt.Figure | None = None
+        self.axes: tuple[plt.Axes, plt.Axes] | None = None
 
     def set_data(self, data: Any) -> "DistributionPlotter":
         self.data = data
@@ -880,7 +877,7 @@ class DistributionPlotter:
                     continue
         return self
 
-    def plot(self, data: Any = None, *, return_fig: Optional[bool] = None):
+    def plot(self, data: Any = None, *, return_fig: bool | None = None):
         """
         Render plot according to config. Returns fig (and axes) when requested.
 

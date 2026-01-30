@@ -4,10 +4,10 @@ This contains small wrappers for palettes, stat tests and annotator helpers used
 by the composite plotting functions.
 """
 
-from typing import Iterable, List, Tuple
+from collections.abc import Iterable
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 
 try:
     from scipy.stats import mannwhitneyu
@@ -22,7 +22,7 @@ except Exception:  # pragma: no cover - optional
 import seaborn as sns
 
 
-def get_default_palette(n: int, prefer: str = "Set2") -> List[str]:
+def get_default_palette(n: int, prefer: str = "Set2") -> list[str]:
     """Return a palette of length `n`.
 
     Prefer seaborn palettes (`Set2` or `Dark2`) for public package defaults.
@@ -35,8 +35,8 @@ def get_default_palette(n: int, prefer: str = "Set2") -> List[str]:
 
 
 def compute_mwu_and_annot_pairs(
-    df: pd.DataFrame, group_col: str, value_col: str, pairs: Iterable[Tuple[str, str]]
-) -> List[Tuple[Tuple[str, str], float]]:
+    df: pd.DataFrame, group_col: str, value_col: str, pairs: Iterable[tuple[str, str]]
+) -> list[tuple[tuple[str, str], float]]:
     results = []
     for a, b in pairs:
         try:

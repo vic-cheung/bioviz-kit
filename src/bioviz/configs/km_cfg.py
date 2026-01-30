@@ -7,8 +7,8 @@ to inherit from matplotlib rcParams.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
-from typing import Annotated, Any, Dict, Iterable, List, Literal, Optional, Tuple
+from collections.abc import Iterable, Mapping
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -60,11 +60,11 @@ class KMPlotConfig(BaseModel):
         Field(default=None, description="Plot title"),
     ]
     xlim: Annotated[
-        Tuple[float | None, float | None] | None,
+        tuple[float | None, float | None] | None,
         Field(default=None, description="X-axis limits (min, max)"),
     ]
     ylim: Annotated[
-        Tuple[float, float],
+        tuple[float, float],
         Field(default=(0.0, 1.05), description="Y-axis limits (min, max)"),
     ]
     xlabel: Annotated[
@@ -101,7 +101,7 @@ class KMPlotConfig(BaseModel):
     # Figure/layout
     # ==========================================================================
     figsize: Annotated[
-        Tuple[float, float] | None,
+        tuple[float, float] | None,
         Field(
             default=None,
             description="Figure size as (width, height) tuple. Takes precedence over fig_width/fig_height.",
@@ -124,7 +124,7 @@ class KMPlotConfig(BaseModel):
         ),
     ]
 
-    def get_figsize(self) -> Tuple[float, float]:
+    def get_figsize(self) -> tuple[float, float]:
         """Return effective figsize, preferring figsize over fig_width/fig_height."""
         if self.figsize is not None:
             return self.figsize
@@ -181,7 +181,7 @@ class KMPlotConfig(BaseModel):
         Field(default=2, ge=1, description="Maximum lines for wrapped legend labels"),
     ]
     legend_label_overrides: Annotated[
-        Dict[Any, str] | None,
+        dict[Any, str] | None,
         Field(
             default=None, description="Override labels: {group_value: 'Display Label'}"
         ),
@@ -335,7 +335,7 @@ class KMPlotConfig(BaseModel):
         ),
     ]
     risktable_label_overrides: Annotated[
-        Dict[Any, str] | None,
+        dict[Any, str] | None,
         Field(
             default=None,
             description="Override risk table labels: {group_value: 'Label'}",
@@ -346,7 +346,7 @@ class KMPlotConfig(BaseModel):
     # Ticks/timeline
     # ==========================================================================
     xticks: Annotated[
-        List[float] | None,
+        list[float] | None,
         Field(default=None, description="Explicit x-tick positions"),
     ]
     timeline: Annotated[
@@ -362,7 +362,7 @@ class KMPlotConfig(BaseModel):
     # Group ordering and colors
     # ==========================================================================
     group_order: Annotated[
-        List[Any] | None,
+        list[Any] | None,
         Field(
             default=None,
             description="Explicit order of groups for plotting and legend. "
@@ -370,7 +370,7 @@ class KMPlotConfig(BaseModel):
         ),
     ]
     color_dict: Annotated[
-        Dict[Any, str] | None,
+        dict[Any, str] | None,
         Field(default=None, description="Mapping of group values to colors"),
     ]
 
@@ -414,7 +414,7 @@ class KMPlotConfig(BaseModel):
     # ==========================================================================
     @field_validator("ylim")
     @classmethod
-    def _check_ylim(cls, v: Tuple[float, float]) -> Tuple[float, float]:
+    def _check_ylim(cls, v: tuple[float, float]) -> tuple[float, float]:
         y0, y1 = v
         if y0 >= y1:
             raise ValueError("ylim must be (min, max) with min < max")
@@ -433,8 +433,8 @@ class KMPlotConfig(BaseModel):
     @field_validator("color_dict")
     @classmethod
     def _check_color_values(
-        cls, v: Optional[Dict[Any, str]]
-    ) -> Optional[Dict[Any, str]]:
+        cls, v: dict[Any, str] | None
+    ) -> dict[Any, str] | None:
         if v is None:
             return v
         for _, color in v.items():

@@ -15,7 +15,7 @@ Example
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -132,7 +132,7 @@ class ForestPlotter:
 
         return y_positions
 
-    def _get_colors(self, df: pd.DataFrame) -> Tuple[List[str], List[str]]:
+    def _get_colors(self, df: pd.DataFrame) -> tuple[list[str], list[str]]:
         """Determine CI bar and marker colors based on significance."""
         cfg = self.config
         n = len(df)
@@ -256,7 +256,7 @@ class ForestPlotter:
             return
 
         # Build section ranges
-        var_ranges: Dict[Any, Dict[str, Any]] = {}
+        var_ranges: dict[Any, dict[str, Any]] = {}
         for i, (_, row) in enumerate(df.iterrows()):
             var = row[cfg.variable_col]
             if var not in var_ranges:
@@ -310,7 +310,7 @@ class ForestPlotter:
         ax=None,
         fig=None,
         output_path: str | Path | None = None,
-    ) -> Tuple[Any, Any]:
+    ) -> tuple[Any, Any]:
         """Generate the forest plot.
 
         Parameters

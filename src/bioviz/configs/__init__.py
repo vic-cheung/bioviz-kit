@@ -5,15 +5,15 @@ import from ``bioviz.configs`` instead of deeper modules.
 """
 
 from .base_cfg import BasePlotConfig
-from .line_cfg import LinePlotConfig
-from .table_cfg import StyledTableConfig
-from .oncoplot_cfg import OncoplotConfig, TopAnnotationConfig, HeatmapAnnotationConfig
 from .distribution_cfg import DistributionConfig
-from .volcano_cfg import VolcanoConfig
+from .forest_cfg import ForestPlotConfig
 from .grouped_bar_cfg import GroupedBarConfig
 from .km_cfg import KMPlotConfig
-from .forest_cfg import ForestPlotConfig
-from .waterfall_cfg import WaterfallConfig, ThresholdLine
+from .line_cfg import LinePlotConfig
+from .oncoplot_cfg import HeatmapAnnotationConfig, OncoplotConfig, TopAnnotationConfig
+from .table_cfg import StyledTableConfig
+from .volcano_cfg import VolcanoConfig
+from .waterfall_cfg import ThresholdLine, WaterfallConfig
 
 __all__ = [
     "BasePlotConfig",

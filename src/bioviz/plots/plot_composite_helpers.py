@@ -6,7 +6,6 @@ to use optional dependencies when available (`statannotations`) but falls
 back to conservative implementations otherwise.
 """
 
-from typing import List, Tuple, Optional
 
 import numpy as np
 import pandas as pd
@@ -31,16 +30,16 @@ def compute_mwu_and_annot_pairs(
     df: pd.DataFrame,
     x: str,
     y: str,
-    pairs: List[Tuple[str, str]],
+    pairs: list[tuple[str, str]],
     alternative: str = "two-sided",
     nan_policy: str = "omit",
-) -> List[Tuple[Tuple[str, str], float, Optional[float]]]:
+) -> list[tuple[tuple[str, str], float, float | None]]:
     """Compute Mann-Whitney U p-values and Cliff's delta effect sizes for pairs.
 
     Returns a list of tuples: ((a, b), pvalue, cliffs_delta)
     cliffs_delta is None on failure.
     """
-    results: List[Tuple[Tuple[str, str], float, Optional[float]]] = []
+    results: list[tuple[tuple[str, str], float, float | None]] = []
     for a, b in pairs:
         va = df.loc[df[x] == a, y].dropna()
         vb = df.loc[df[x] == b, y].dropna()
@@ -69,7 +68,7 @@ def apply_statannotations(
     df: pd.DataFrame,
     x: str,
     y: str,
-    pairs: List[Tuple[str, str]],
+    pairs: list[tuple[str, str]],
     use_bh: bool = True,
     test: str = "Mann-Whitney",
     text_format: str = "star",

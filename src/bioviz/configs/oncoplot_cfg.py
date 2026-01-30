@@ -3,8 +3,8 @@ from typing import Annotated, Any
 from pydantic import BaseModel, Field, model_validator
 
 from .oncoplot_annotations_cfg import (
-    TopAnnotationConfig,  # noqa: F401
     HeatmapAnnotationConfig,
+    TopAnnotationConfig,  # noqa: F401
 )
 
 

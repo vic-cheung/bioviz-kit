@@ -2,8 +2,9 @@
 Writes two PNGs demonstrating different connector colors/widths and attach behavior.
 """
 
-import pandas as pd
 import numpy as np
+import pandas as pd
+
 from bioviz.configs.volcano_cfg import VolcanoConfig
 from bioviz.plots import VolcanoPlotter
 

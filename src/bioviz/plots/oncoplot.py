@@ -18,9 +18,9 @@ from matplotlib import font_manager  # type: ignore
 from matplotlib.patches import Patch  # type: ignore
 
 from bioviz.configs import HeatmapAnnotationConfig, OncoplotConfig
-from bioviz.utils.style import DefaultStyle, StyleBase
-from bioviz.utils.plotting import resolve_font_family
 from bioviz.utils.plot_utils import is_categorical
+from bioviz.utils.plotting import resolve_font_family
+from bioviz.utils.style import DefaultStyle, StyleBase
 
 __all__ = [
     "diagonal_fill",
@@ -860,9 +860,7 @@ class OncoPlotter:
         # mapping, we will skip row-group assembly entirely (no dummy columns
         # injected) and avoid drawing bars/labels.
         self._has_row_groups = False
-        if self.row_group_col is not None and row_groups is not None:
-            self._has_row_groups = True
-        elif self.row_group_col is not None and self.row_group_col in self.df.columns:
+        if self.row_group_col is not None and row_groups is not None or self.row_group_col is not None and self.row_group_col in self.df.columns:
             self._has_row_groups = True
 
         self.col_split_by = config.col_split_by

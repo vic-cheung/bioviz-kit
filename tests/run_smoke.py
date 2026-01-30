@@ -1,8 +1,9 @@
 import sys
-from bioviz.plots import OncoPlotter
-from bioviz.configs import OncoplotConfig
-from bioviz.configs import HeatmapAnnotationConfig
+
 import pandas as pd
+
+from bioviz.configs import HeatmapAnnotationConfig, OncoplotConfig
+from bioviz.plots import OncoPlotter
 
 
 def run():

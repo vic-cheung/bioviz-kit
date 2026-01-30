@@ -5,12 +5,12 @@ Creates two example plots using random data and saves them to the examples folde
 
 # %%
 from pathlib import Path
+
 import numpy as np
 import pandas as pd
 
 from bioviz.configs.distribution_cfg import DistributionConfig
 from bioviz.plots.distribution import DistributionPlotter
-
 
 OUT = Path(__file__).resolve().parent
 

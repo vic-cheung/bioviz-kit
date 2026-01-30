@@ -6,8 +6,8 @@ Helper functions for processing and annotating plotting data.
 import matplotlib as mpl
 import numpy as np
 import pandas as pd
-from pandas.api.types import CategoricalDtype
 from matplotlib.axes import Axes
+from pandas.api.types import CategoricalDtype
 
 # Expose all public functions
 __all__ = [

@@ -4,13 +4,14 @@ Generate a volcano-style plot with a pydantic `VolcanoConfig`.
 
 from __future__ import annotations
 
-from typing import List, Tuple, Optional, Mapping, Dict
-
 import math
+import warnings
+from collections.abc import Mapping
+
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-import warnings
+
 from bioviz.configs.volcano_cfg import VolcanoConfig
 
 try:
@@ -21,7 +22,7 @@ except Exception:
         return None
 
 
-def _internal_resolve_values(df: pd.DataFrame, cfg: VolcanoConfig) -> List[str]:
+def _internal_resolve_values(df: pd.DataFrame, cfg: VolcanoConfig) -> list[str]:
     # If caller provided exact values to label, honor that
     if cfg.values_to_label:
         base = list(cfg.values_to_label)
@@ -115,7 +116,7 @@ def _internal_resolve_values(df: pd.DataFrame, cfg: VolcanoConfig) -> List[str]:
     return base
 
 
-def resolve_labels(df: pd.DataFrame, cfg: VolcanoConfig) -> List[str]:
+def resolve_labels(df: pd.DataFrame, cfg: VolcanoConfig) -> list[str]:
     """Return the final list of labels `plot_volcano` will use.
 
     This helper mirrors the internal selection logic, including:
@@ -171,7 +172,7 @@ def resolve_labels(df: pd.DataFrame, cfg: VolcanoConfig) -> List[str]:
     return base
 
 
-def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.Axes]:
+def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> tuple[plt.Figure, plt.Axes]:
     """Plot a volcano using the provided `VolcanoConfig`.
 
     This function is intentionally strict: it requires a `VolcanoConfig` and
@@ -228,7 +229,7 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
     # direction toward `target_disp` so connectors attach at the marker edge
     # rather than the marker center. This uses `cfg.marker_size` (the scatter
     # `s` parameter) to estimate a display-space radius.
-    def _marker_edge_data_point(xd: float, yd: float, target_disp: Tuple[float, float]):
+    def _marker_edge_data_point(xd: float, yd: float, target_disp: tuple[float, float]):
         try:
             # center in display coords
             center_disp = ax.transData.transform((xd, yd))
@@ -1390,18 +1391,18 @@ class VolcanoPlotter:
         self.last_df: pd.DataFrame = self.df
         self.config: VolcanoConfig = config
         self.cfg: VolcanoConfig = config  # backward alias
-        self.fig: Optional[plt.Figure] = None
-        self.ax: Optional[plt.Axes] = None
+        self.fig: plt.Figure | None = None
+        self.ax: plt.Axes | None = None
         # history of explicit annotations added via .annotate()
-        self.annotation_history: List[Dict] = []
+        self.annotation_history: list[dict] = []
 
     # Data / rendering -------------------------------------------------
-    def set_data(self, df: pd.DataFrame) -> "VolcanoPlotter":
+    def set_data(self, df: pd.DataFrame) -> VolcanoPlotter:
         self.df = df.copy()
         self.last_df = self.df
         return self
 
-    def plot(self, df: Optional[pd.DataFrame] = None) -> Tuple[plt.Figure, plt.Axes]:
+    def plot(self, df: pd.DataFrame | None = None) -> tuple[plt.Figure, plt.Axes]:
         """Render the volcano. If `df` is provided, set it as the current data.
 
         Returns the `(fig, ax)` produced by `plot_volcano` and stores them
@@ -1426,7 +1427,7 @@ class VolcanoPlotter:
         self.fig.savefig(path, **save_kwargs)
 
     # Convenience interactive operations --------------------------------
-    def update_config(self, **kwargs) -> "VolcanoPlotter":
+    def update_config(self, **kwargs) -> VolcanoPlotter:
         """Update configuration in-place and return self for chaining."""
         for k, v in kwargs.items():
             try:
@@ -1437,9 +1438,9 @@ class VolcanoPlotter:
 
     def annotate(
         self,
-        explicit_positions: Mapping[str, Tuple[float, float]],
+        explicit_positions: Mapping[str, tuple[float, float]],
         replace: bool = True,
-    ) -> "VolcanoPlotter":
+    ) -> VolcanoPlotter:
         """Add explicit label placements and re-render.
 
         `explicit_positions` should be a mapping label -> (x, y).
@@ -1477,7 +1478,7 @@ class VolcanoPlotter:
             self.plot(self.df)
         return self
 
-    def label_more(self, n: int = 10) -> "VolcanoPlotter":
+    def label_more(self, n: int = 10) -> VolcanoPlotter:
         """Convenience to expand `cfg.values_to_label` using the internal
         resolver -- useful for interactive 'label more' flows.
         """
@@ -1505,7 +1506,7 @@ class VolcanoPlotter:
         return self
 
     # Serialization / utilities ----------------------------------------
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         try:
             return {
                 "cfg": self.config.model_dump() if self.config is not None else {},
@@ -1515,7 +1516,7 @@ class VolcanoPlotter:
             return {"cfg": {}, "annotations": list(self.annotation_history)}
 
     @classmethod
-    def from_dict(cls, data: Mapping) -> "VolcanoPlotter":
+    def from_dict(cls, data: Mapping) -> VolcanoPlotter:
         c = data.get("cfg", {})
         vp = cls(c if isinstance(c, VolcanoConfig) else c)
         # restore annotation history if present
@@ -1535,12 +1536,12 @@ class VolcanoPlotter:
             self.fig = None
             self.ax = None
 
-    def resolve_labels(self) -> List[str]:
+    def resolve_labels(self) -> list[str]:
         if self.last_df is None:
             raise RuntimeError("No dataframe plotted yet; call .plot(df) first")
         return resolve_labels(self.last_df, self.cfg)
 
-    def __enter__(self) -> "VolcanoPlotter":
+    def __enter__(self) -> VolcanoPlotter:
         return self
 
     def __exit__(self, exc_type, exc, tb) -> None:

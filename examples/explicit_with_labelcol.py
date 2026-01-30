@@ -1,9 +1,11 @@
 # %%
 from pathlib import Path
+
+import numpy as np
+import pandas as pd
+
 from bioviz.configs.volcano_cfg import VolcanoConfig
 from bioviz.plots import VolcanoPlotter
-import pandas as pd
-import numpy as np
 
 np.random.seed(2)
 idx = [f"g{i}" for i in range(1, 11)]

@@ -6,16 +6,15 @@ Run inside your project venv where `bioviz` deps are installed.
 
 # %%
 import pandas as pd
-from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib import pyplot as plt
+from matplotlib.backends.backend_pdf import PdfPages
 
 from bioviz.configs import (
-    OncoplotConfig,
     HeatmapAnnotationConfig,
+    OncoplotConfig,
     TopAnnotationConfig,
 )
 from bioviz.plots import OncoPlotter
-
 
 # %%
 # Oncoplot minimal data with pathway (row-group) bars

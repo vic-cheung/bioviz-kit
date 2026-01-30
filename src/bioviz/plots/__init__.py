@@ -91,7 +91,7 @@ def __getattr__(name: str):
     raise AttributeError(f"module {__name__} has no attribute {name}")
 
 
-def __dir__() -> List[str]:
+def __dir__() -> list[str]:
     names = set(globals().keys())
     names.update(_PUBLIC_FUNCS.keys())
     names.update(__all__)

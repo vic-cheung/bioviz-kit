@@ -1,8 +1,9 @@
-from typing import Annotated, Any, Sequence
+from collections.abc import Sequence
+from typing import Annotated, Any
 
 import numpy as np
 import pandas as pd
-from pydantic import BaseModel, field_validator, Field
+from pydantic import BaseModel, Field, field_validator
 
 try:
     from pydantic import ConfigDict

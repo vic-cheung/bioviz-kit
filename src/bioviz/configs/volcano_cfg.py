@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Optional, Iterable, List, Dict, Tuple, Any, Literal
+from collections.abc import Iterable
+from typing import Any, Literal
 
 import matplotlib.pyplot as plt
 from pydantic import BaseModel, Field, field_validator
@@ -14,11 +15,11 @@ class VolcanoConfig(BaseModel):
 
     # Label col not required; if provided, used to match labels to points
     # if no label_col is provided, labels are matched by point index
-    label_col: Optional[str] = None
+    label_col: str | None = None
 
     # ------ Selection & Thresholds ------
-    values_to_label: Optional[List[str]] = None
-    additional_values_to_label: Optional[List[str]] = None
+    values_to_label: list[str] | None = None
+    additional_values_to_label: list[str] | None = None
 
     label_mode: Literal[
         "auto",
@@ -54,7 +55,7 @@ class VolcanoConfig(BaseModel):
         ),
     )
 
-    y_thresh: Optional[float] = Field(
+    y_thresh: float | None = Field(
         None,
         description=(
             "Optional y-axis threshold position (in data units). "
@@ -62,7 +63,7 @@ class VolcanoConfig(BaseModel):
         ),
     )
 
-    x_thresh: Optional[Iterable[float]] = Field(
+    x_thresh: Iterable[float] | None = Field(
         None,
         description=(
             "Optional x-axis threshold line positions. Provide an iterable of numeric positions to draw vertical threshold lines."
@@ -85,40 +86,40 @@ class VolcanoConfig(BaseModel):
         description="Line width used for threshold lines (applies when per-axis override is not provided).",
     )
 
-    x_thresh_line_color: Optional[str] = Field(
+    x_thresh_line_color: str | None = Field(
         None,
         description="Optional color override for x-axis threshold lines.",
     )
 
-    x_thresh_line_style: Optional[str] = Field(
+    x_thresh_line_style: str | None = Field(
         None,
         description="Optional line-style override for x-axis threshold lines.",
     )
 
-    x_thresh_line_width: Optional[float] = Field(
+    x_thresh_line_width: float | None = Field(
         None,
         description="Optional line-width override for x-axis threshold lines.",
     )
 
-    y_thresh_line_color: Optional[str] = Field(
+    y_thresh_line_color: str | None = Field(
         None,
         description="Optional color override for y-axis threshold lines.",
     )
 
-    y_thresh_line_style: Optional[str] = Field(
+    y_thresh_line_style: str | None = Field(
         None,
         description="Optional line-style override for y-axis threshold lines.",
     )
 
-    y_thresh_line_width: Optional[float] = Field(
+    y_thresh_line_width: float | None = Field(
         None,
         description="Optional line-width override for y-axis threshold lines.",
     )
 
     # ------ Coloring & Direction ------
-    direction_col: Optional[str] = None
-    direction_colors: Optional[Dict[str, str]] = None
-    palette: Dict[str, str] = Field(
+    direction_col: str | None = None
+    direction_colors: dict[str, str] | None = None
+    palette: dict[str, str] = Field(
         default_factory=lambda: {
             "nonsig": "gainsboro",
             "sig_up": "#009E73",
@@ -177,17 +178,17 @@ class VolcanoConfig(BaseModel):
         description="Font weight used for labels on non-significant points (default: 'normal').",
     )
 
-    annotation_sig_color: Optional[str] = None
+    annotation_sig_color: str | None = None
     annotation_nonsig_color: str = "#7f7f7f"
     # Optional per-direction annotation colors. If provided these will be used
     # for significant annotations that have a direction/group value (e.g. 'Early'/'Durable')
     # and take precedence over `annotation_sig_color` when the direction maps to
     # 'sig_up' or 'sig_down' semantics.
-    annotation_sig_up_color: Optional[str] = None
-    annotation_sig_down_color: Optional[str] = None
+    annotation_sig_up_color: str | None = None
+    annotation_sig_down_color: str | None = None
 
-    horiz_offset_range: Tuple[float, float] = (0.02, 0.06)
-    vert_jitter_range: Tuple[float, float] = (-0.03, 0.03)
+    horiz_offset_range: tuple[float, float] = (0.02, 0.06)
+    vert_jitter_range: tuple[float, float] = (-0.03, 0.03)
 
     use_adjust_text: bool = Field(
         True,
@@ -214,14 +215,14 @@ class VolcanoConfig(BaseModel):
         ),
     )
 
-    horiz_offset_range: Tuple[float, float] = Field(
+    horiz_offset_range: tuple[float, float] = Field(
         (0.02, 0.06),
         description=(
             "Range (lo,hi) for horizontal offset fractions used when placing labels."
         ),
     )
 
-    vert_jitter_range: Tuple[float, float] = Field(
+    vert_jitter_range: tuple[float, float] = Field(
         (-0.03, 0.03),
         description=(
             "Range (lo,hi) for vertical jitter applied to labels as fraction of axis span."
@@ -229,54 +230,54 @@ class VolcanoConfig(BaseModel):
     )
 
     # ------ Layout & Axes ------
-    x_label: Optional[str] = Field(
+    x_label: str | None = Field(
         None,
         description="Optional x-axis label (string or TeX). If not provided a sensible default is used.",
     )
 
-    y_label: Optional[str] = Field(
+    y_label: str | None = Field(
         None,
         description="Optional y-axis label (string or TeX). If not provided a sensible default is used.",
     )
 
-    xlim: Optional[Tuple[float, float]] = Field(
+    xlim: tuple[float, float] | None = Field(
         None,
         description=(
             "Optional explicit x-axis limits (min, max) in data units. When provided these override automatic expansion."
         ),
     )
 
-    ylim: Optional[Tuple[float, float]] = Field(
+    ylim: tuple[float, float] | None = Field(
         None,
         description=(
             "Optional explicit y-axis limits (min, max) in data units. When provided these override automatic expansion."
         ),
     )
 
-    xticks: Optional[Iterable[float]] = Field(
+    xticks: Iterable[float] | None = Field(
         None,
         description="Optional explicit x-tick locations (iterable of numeric values).",
     )
 
-    yticks: Optional[Iterable[float]] = Field(
+    yticks: Iterable[float] | None = Field(
         None,
         description="Optional explicit y-tick locations (iterable of numeric values).",
     )
 
-    xtick_step: Optional[int] = None
+    xtick_step: int | None = None
     fontsize_sig: int = 12
     fontsize_nonsig: int = 11
     tick_label_fontsize: int = 16
     axis_label_fontsize: int = 18
-    title: Optional[str] = None
+    title: str | None = None
     title_fontsize: int = 20
     title_fontweight: str = Field(
         "normal",
         description="Font weight for title ('normal', 'bold', 'light', etc.).",
     )
-    figsize: Tuple[int, int] = (5, 5)
-    group_label_top: Optional[Tuple[str, str]] = None
-    group_label_kwargs: Optional[Dict] = None
+    figsize: tuple[int, int] = (5, 5)
+    group_label_top: tuple[str, str] | None = None
+    group_label_kwargs: dict | None = None
 
     # ------ Marker & Connectors ------
     marker_size: float = 50.0
@@ -291,42 +292,42 @@ class VolcanoConfig(BaseModel):
 
     connector_color: str = "gray"
     connector_width: float = 0.8
-    connector_color_sig: Optional[str] = Field(
+    connector_color_sig: str | None = Field(
         None,
         description="Optional connector color for significant points (falls back to `connector_color` if None).",
     )
 
-    connector_color_nonsig: Optional[str] = Field(
+    connector_color_nonsig: str | None = Field(
         None,
         description="Optional connector color for non-significant points (falls back to `connector_color` if None).",
     )
 
-    connector_color_left: Optional[str] = Field(
+    connector_color_left: str | None = Field(
         None,
         description="Optional connector color override for left-side labels.",
     )
 
-    connector_color_right: Optional[str] = Field(
+    connector_color_right: str | None = Field(
         None,
         description="Optional connector color override for right-side labels.",
     )
 
-    connector_color_sig_left: Optional[str] = Field(
+    connector_color_sig_left: str | None = Field(
         None,
         description="Most-specific override: connector color for significant points on the left side.",
     )
 
-    connector_color_sig_right: Optional[str] = Field(
+    connector_color_sig_right: str | None = Field(
         None,
         description="Most-specific override: connector color for significant points on the right side.",
     )
 
-    connector_color_nonsig_left: Optional[str] = Field(
+    connector_color_nonsig_left: str | None = Field(
         None,
         description="Most-specific override: connector color for non-significant points on the left side.",
     )
 
-    connector_color_nonsig_right: Optional[str] = Field(
+    connector_color_nonsig_right: str | None = Field(
         None,
         description="Most-specific override: connector color for non-significant points on the right side.",
     )
@@ -334,8 +335,8 @@ class VolcanoConfig(BaseModel):
     connector_color_use_point_color: bool = False
 
     # ------ Execution / Explicit placements ------
-    ax: Optional[plt.Axes] = None
-    explicit_label_positions: Optional[Any] = Field(
+    ax: plt.Axes | None = None
+    explicit_label_positions: Any | None = Field(
         None,
         description=(
             "Optional explicit label positions. Accepts a dict label->(x,y), an iterable of (label,(x,y)), "

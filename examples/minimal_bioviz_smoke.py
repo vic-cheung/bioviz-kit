@@ -4,18 +4,17 @@ Run inside your project venv where `bioviz` deps are installed.
 """
 
 # %%
-import pandas as pd
 import matplotlib.pyplot as plt
+import pandas as pd
+
 from bioviz.configs import (
+    HeatmapAnnotationConfig,
     LinePlotConfig,
     OncoplotConfig,
-    HeatmapAnnotationConfig,
     StyledTableConfig,
     TopAnnotationConfig,
 )
-from bioviz.plots import LinePlotter
-from bioviz.plots import OncoPlotter
-from bioviz.plots import TablePlotter
+from bioviz.plots import LinePlotter, OncoPlotter, TablePlotter
 
 # %%
 # 1) Line plot minimal data
