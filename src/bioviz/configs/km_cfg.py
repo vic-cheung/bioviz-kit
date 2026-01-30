@@ -69,12 +69,29 @@ class KMPlotConfig(BaseModel):
     ]
     xlabel: Annotated[
         str,
-        Field(default="Time (Months)", description="X-axis label"),
+        Field(default="Time (Months)", description="X-axis label (preferred)"),
     ]
     ylabel: Annotated[
         str,
-        Field(default="Survival Probability", description="Y-axis label"),
+        Field(default="Survival Probability", description="Y-axis label (preferred)"),
     ]
+    # Aliases for backwards compatibility with tm-modeling
+    xlab: Annotated[
+        str | None,
+        Field(default=None, description="Alias for xlabel (for tm-modeling compatibility)"),
+    ]
+    ylab: Annotated[
+        str | None,
+        Field(default=None, description="Alias for ylabel (for tm-modeling compatibility)"),
+    ]
+
+    def get_xlabel(self) -> str:
+        """Return effective xlabel, preferring xlab alias if set."""
+        return self.xlab if self.xlab is not None else self.xlabel
+
+    def get_ylabel(self) -> str:
+        """Return effective ylabel, preferring ylab alias if set."""
+        return self.ylab if self.ylab is not None else self.ylabel
 
     # ==========================================================================
     # Figure/layout

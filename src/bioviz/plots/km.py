@@ -29,7 +29,130 @@ __all__ = [
     "KMPlotter",
     "format_pvalue",
     "add_pvalue_annotation",
+    "expand_canvas",
+    "expand_figure_to_fit_artists",
 ]
+
+
+# =============================================================================
+# Canvas Expansion Utilities
+# =============================================================================
+def expand_canvas(
+    fig,
+    left_in: float = 0.0,
+    right_in: float = 0.0,
+    top_in: float = 0.0,
+    bottom_in: float = 0.0,
+) -> None:
+    """Expand figure canvas by the given inches on each side without squeezing axes.
+
+    Axes retain their physical size; we shift them to account for new margins.
+
+    Parameters
+    ----------
+    fig : matplotlib.figure.Figure
+        Figure to resize.
+    left_in, right_in, top_in, bottom_in : float
+        Inches to add on each side.
+    """
+    if fig is None:
+        return
+    add_w = max(0.0, float(left_in) + float(right_in))
+    add_h = max(0.0, float(top_in) + float(bottom_in))
+    if add_w == 0 and add_h == 0:
+        return
+
+    # Current and new sizes (inches)
+    w, h = fig.get_size_inches()
+    new_w = w + float(left_in) + float(right_in)
+    new_h = h + float(top_in) + float(bottom_in)
+
+    # Update axes positions to preserve physical sizes and shift by new margins
+    for ax in list(fig.axes):
+        bbox = ax.get_position()
+        # Convert to inches
+        x0_in = bbox.x0 * w
+        y0_in = bbox.y0 * h
+        width_in = bbox.width * w
+        height_in = bbox.height * h
+        # Shift by added margins
+        x0_in_new = x0_in + float(left_in)
+        y0_in_new = y0_in + float(bottom_in)
+        # Convert back to figure coords of new canvas
+        x0_new = x0_in_new / new_w
+        y0_new = y0_in_new / new_h
+        width_new = width_in / new_w
+        height_new = height_in / new_h
+        ax.set_position([x0_new, y0_new, width_new, height_new])
+
+    # Finally, grow the figure
+    fig.set_size_inches(new_w, new_h, forward=True)
+
+
+def expand_figure_to_fit_artists(
+    fig,
+    artists,
+    pad_left_in: float = 0.25,
+    pad_right_in: float = 0.25,
+    pad_top_in: float = 0.0,
+    pad_bottom_in: float = 0.0,
+) -> None:
+    """Expand canvas to ensure a set of artists fit within the figure bounds.
+
+    Computes overhang on each side for provided artists and expands canvas just enough
+    to bring them into view, adding specified padding.
+
+    Parameters
+    ----------
+    fig : matplotlib.figure.Figure
+        Target figure.
+    artists : list[Artist]
+        Artists to fit (e.g., legend, text labels).
+    pad_left_in, pad_right_in, pad_top_in, pad_bottom_in : float
+        Extra padding (inches) to add on respective sides once the artist fits.
+    """
+    if fig is None or not artists:
+        return
+    try:
+        fig.canvas.draw()
+        renderer = fig.canvas.get_renderer()
+    except Exception:
+        return
+
+    try:
+        fig_px = fig.bbox
+        dpi = fig.dpi
+        left_over_px = 0.0
+        right_over_px = 0.0
+        top_over_px = 0.0
+        bottom_over_px = 0.0
+
+        for art in artists:
+            if art is None:
+                continue
+            try:
+                bb = art.get_window_extent(renderer=renderer)
+            except Exception:
+                continue
+            # Overhangs: positive if beyond figure on that side
+            left_over_px = max(left_over_px, float(fig_px.x0 - bb.x0))
+            right_over_px = max(right_over_px, float(bb.x1 - fig_px.x1))
+            bottom_over_px = max(bottom_over_px, float(fig_px.y0 - bb.y0))
+            top_over_px = max(top_over_px, float(bb.y1 - fig_px.y1))
+
+        # Convert pixels to inches and add padding
+        left_in = max(0.0, left_over_px / dpi) + pad_left_in
+        right_in = max(0.0, right_over_px / dpi) + pad_right_in
+        top_in = max(0.0, top_over_px / dpi) + pad_top_in
+        bottom_in = max(0.0, bottom_over_px / dpi) + pad_bottom_in
+
+        # Only expand if needed
+        if left_in > 0 or right_in > 0 or top_in > 0 or bottom_in > 0:
+            expand_canvas(
+                fig, left_in=left_in, right_in=right_in, top_in=top_in, bottom_in=bottom_in
+            )
+    except Exception:
+        pass
 
 
 # =============================================================================
@@ -575,7 +698,8 @@ class KMPlotter:
             fig_w, fig_h = cfg.get_figsize()
             if cfg.show_risktable:
                 rt_height = max(1.1, risktable_min * per_row_in + title_pad_in)
-                gap_in = max(0.5, cfg.risktable_hspace, (label_fs / 72.0) * 1.1)
+                # Use risktable_hspace directly, with a small minimum for xlabel clearance
+                gap_in = max(0.1, cfg.risktable_hspace)
                 total_h = fig_h + gap_in + rt_height
 
                 height_ratios = [fig_h, gap_in, rt_height]
@@ -638,6 +762,7 @@ class KMPlotter:
 
         # P-value
         p_value = None
+        pval_text = None
         if len(groups) >= 2 and cfg.show_pvalue:
             try:
                 g0, g1 = groups[0], groups[1]
@@ -650,7 +775,7 @@ class KMPlotter:
                     data.loc[m1, cfg.event_col],
                 )
                 p_value = res.p_value
-                add_pvalue_annotation(
+                pval_text = add_pvalue_annotation(
                     ax, p_value, loc=cfg.pval_loc, box=cfg.pvalue_box, fontsize=pval_fs
                 )
             except Exception:
@@ -658,8 +783,8 @@ class KMPlotter:
 
         # Axis labels/title
         # Keep xlabel on KM plot, clear it on risk table
-        ax.set_xlabel(cfg.xlabel, fontsize=label_fs, fontweight="bold")
-        ax.set_ylabel(cfg.ylabel, fontsize=label_fs, fontweight="bold")
+        ax.set_xlabel(cfg.get_xlabel(), fontsize=label_fs, fontweight="bold")
+        ax.set_ylabel(cfg.get_ylabel(), fontsize=label_fs, fontweight="bold")
         if cfg.title:
             ax.set_title(cfg.title, fontsize=title_fs, fontweight=cfg.title_fontweight, loc="left")
 
@@ -689,7 +814,7 @@ class KMPlotter:
             )
 
         # Legend
-        self._position_legend(ax, legend_fs)
+        legend = self._position_legend(ax, legend_fs)
 
         # Risk table
         if cfg.show_risktable and table_ax is not None and kmfs:
@@ -719,14 +844,45 @@ class KMPlotter:
                 lab.set_visible(False)
             table_ax.set_xlabel("")  # Clear xlabel on risk table
 
+            # Expand canvas to fit all artists (legend, p-value, risk table labels)
+            artists = []
+            if legend is not None:
+                artists.append(legend)
+            if pval_text is not None:
+                artists.append(pval_text)
+            # Include y-axis label and ticks
+            try:
+                artists.append(ax.yaxis.get_label())
+                for ytick in ax.get_yticklabels():
+                    artists.append(ytick)
+            except Exception:
+                pass
+            if artists:
+                expand_figure_to_fit_artists(
+                    fig,
+                    artists,
+                    pad_left_in=0.6,
+                    pad_right_in=0.8,
+                    pad_top_in=0.4,
+                    pad_bottom_in=1.0,
+                )
+
         # Save - draw canvas first
         if output_path and fig:
             try:
                 fig.canvas.draw()
             except Exception:
                 pass
+            # Expand canvas to ensure nothing is clipped
+            if cfg.show_risktable:
+                try:
+                    expand_canvas(fig, left_in=0.5, bottom_in=1.0, right_in=0.8, top_in=0.4)
+                except Exception:
+                    pass
             save_kwargs = {"dpi": 300}
-            if cfg.save_bbox_inches:
+            # Only use bbox_inches="tight" when NOT showing risk table
+            # (tight layout can cause artifacts with subfigures)
+            if cfg.save_bbox_inches and not cfg.show_risktable:
                 save_kwargs["bbox_inches"] = cfg.save_bbox_inches
             fig.savefig(output_path, **save_kwargs)
 
