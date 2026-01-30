@@ -74,7 +74,7 @@ class BasePlotConfig(BaseModel):
     # Figure-level display controls; keep axes facecolor opaque. These
     # configure the Figure patch used for export/transparent backgrounds.
     figure_facecolor: Annotated[str | None, Field(default="white")]
-    figure_transparent: Annotated[bool, Field(default=True)]
+    figure_transparent: Annotated[bool, Field(default=False)]
 
     @field_validator("palette")
     @classmethod
