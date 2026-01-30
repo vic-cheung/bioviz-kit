@@ -698,8 +698,14 @@ class KMPlotter:
             fig_w, fig_h = cfg.get_figsize()
             if cfg.show_risktable:
                 rt_height = max(1.1, risktable_min * per_row_in + title_pad_in)
-                # Use risktable_hspace directly, with a small minimum for xlabel clearance
-                gap_in = max(0.1, cfg.risktable_hspace)
+                # Minimum gap to fit xlabel; allow user override via risktable_hspace
+                min_gap_in = (label_fs / 72.0) * 1.1
+                # Use user-specified hspace if provided (0 means minimal gap)
+                # Only enforce 0.5" minimum if neither is specified
+                if cfg.risktable_hspace is not None and cfg.risktable_hspace >= 0:
+                    gap_in = max(min_gap_in, cfg.risktable_hspace)
+                else:
+                    gap_in = max(0.5, min_gap_in)
                 total_h = fig_h + gap_in + rt_height
 
                 height_ratios = [fig_h, gap_in, rt_height]
@@ -857,28 +863,35 @@ class KMPlotter:
                     artists.append(ytick)
             except Exception:
                 pass
+            # Include risk table text elements (group labels and counts)
+            try:
+                for child in table_ax.get_children():
+                    if hasattr(child, "get_text") and child.get_text():
+                        artists.append(child)
+            except Exception:
+                pass
             if artists:
                 expand_figure_to_fit_artists(
                     fig,
                     artists,
-                    pad_left_in=0.6,
-                    pad_right_in=0.8,
-                    pad_top_in=0.4,
-                    pad_bottom_in=1.0,
+                    pad_left_in=0.3,
+                    pad_right_in=0.3,
+                    pad_top_in=0.2,
+                    pad_bottom_in=0.2,
                 )
+            # Always expand canvas for risk table plots
+            try:
+                fig.canvas.draw()
+                expand_canvas(fig, left_in=0.3, bottom_in=0.2, right_in=0.3, top_in=0.2)
+            except Exception:
+                pass
 
-        # Save - draw canvas first
+        # Save
         if output_path and fig:
             try:
                 fig.canvas.draw()
             except Exception:
                 pass
-            # Expand canvas to ensure nothing is clipped
-            if cfg.show_risktable:
-                try:
-                    expand_canvas(fig, left_in=0.5, bottom_in=1.0, right_in=0.8, top_in=0.4)
-                except Exception:
-                    pass
             save_kwargs = {"dpi": 300}
             # Only use bbox_inches="tight" when NOT showing risk table
             # (tight layout can cause artifacts with subfigures)

@@ -1099,15 +1099,29 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
             fontsize_g = g_kwargs.get("fontsize", int(cfg.axis_label_fontsize * 0.9))
             left_rot = g_kwargs.get("rotation", 0)
             right_rot = g_kwargs.get("rotation_right", 0)
+
+            # Helper to find color from direction_colors with fuzzy matching
+            def _find_direction_color(label: str, direction_colors: dict) -> str | None:
+                if not direction_colors:
+                    return None
+                # Exact match first
+                if label in direction_colors:
+                    return direction_colors[label]
+                # Fuzzy: check if any direction key is contained in label or vice versa
+                for key, color in direction_colors.items():
+                    if key in label or label in key:
+                        return color
+                return None
+
             # Use direction_colors if available, otherwise fall back to palette
             left_color = (
                 color_map.get(left_label)
-                or (cfg.direction_colors.get(left_label) if cfg.direction_colors else None)
+                or _find_direction_color(left_label, cfg.direction_colors)
                 or cfg.palette.get("sig_down", "#D55E00")
             )
             right_color = (
                 color_map.get(right_label)
-                or (cfg.direction_colors.get(right_label) if cfg.direction_colors else None)
+                or _find_direction_color(right_label, cfg.direction_colors)
                 or cfg.palette.get("sig_up", "#009E73")
             )
             ax.text(
