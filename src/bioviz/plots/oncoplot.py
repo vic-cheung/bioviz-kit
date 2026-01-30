@@ -920,13 +920,8 @@ class OncoPlotter:
                 # Ignore invalid conversion; leave defaults in place
                 pass
 
-        # Apply provided style or default
+        # Store provided style for reference (do NOT apply_theme - respect user's global rcParams)
         self.style = style or DefaultStyle()
-        try:
-            self.style.apply_theme()
-        except Exception:
-            # Style application is best-effort
-            pass
 
         if config.heatmap_annotation is None:
             if config.row_values_color_dict is None:

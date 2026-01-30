@@ -11,15 +11,25 @@ __all__ = [
     "oncoplot",
     "lineplot",
     "table",
+    "grouped_bar",
+    "km",
+    "forest",
     # convenience functions / classes
     "plot_volcano",
     "resolve_labels",
     "plot_waterfall",
     "waterfall_with_distribution",
+    "WaterfallPlotter",
     "plot_grouped_boxplots",
     "plot_oncoplot",
     "OncoPlotter",
     "TablePlotter",
+    "GroupedBarPlotter",
+    "plot_grouped_bars",
+    "compute_proportion_summary",
+    "clopper_pearson_ci",
+    "KMPlotter",
+    "ForestPlotter",
 ]
 
 from importlib import import_module
@@ -34,6 +44,7 @@ _PUBLIC_FUNCS = {
         "bioviz.plots.waterfall",
         "waterfall_with_distribution",
     ),
+    "WaterfallPlotter": ("bioviz.plots.waterfall", "WaterfallPlotter"),
     "plot_grouped_boxplots": ("bioviz.plots.grouped", "plot_grouped_boxplots"),
     "plot_distribution": ("bioviz.plots.distribution", "plot_distribution"),
     "DistributionPlotter": ("bioviz.plots.distribution", "DistributionPlotter"),
@@ -45,6 +56,17 @@ _PUBLIC_FUNCS = {
     # lineplot / table helpers
     "LinePlotter": ("bioviz.plots.lineplot", "LinePlotter"),
     "TablePlotter": ("bioviz.plots.table", "TablePlotter"),
+    # grouped bar exports
+    "GroupedBarPlotter": ("bioviz.plots.grouped_bar", "GroupedBarPlotter"),
+    "plot_grouped_bars": ("bioviz.plots.grouped_bar", "plot_grouped_bars"),
+    "compute_proportion_summary": ("bioviz.plots.grouped_bar", "compute_proportion_summary"),
+    "clopper_pearson_ci": ("bioviz.plots.grouped_bar", "clopper_pearson_ci"),
+    # KM plot exports
+    "KMPlotter": ("bioviz.plots.km", "KMPlotter"),
+    "format_pvalue": ("bioviz.plots.km", "format_pvalue"),
+    "add_pvalue_annotation": ("bioviz.plots.km", "add_pvalue_annotation"),
+    # forest plot exports
+    "ForestPlotter": ("bioviz.plots.forest", "ForestPlotter"),
 }
 
 

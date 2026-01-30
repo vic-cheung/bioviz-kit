@@ -1062,7 +1062,7 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
 
     # Title and font sizes
     if cfg.title:
-        ax.set_title(cfg.title, fontsize=cfg.title_fontsize)
+        ax.set_title(cfg.title, fontsize=cfg.title_fontsize, fontweight=cfg.title_fontweight)
     ax.xaxis.label.set_size(cfg.axis_label_fontsize)
     ax.yaxis.label.set_size(cfg.axis_label_fontsize)
     for tick in ax.xaxis.get_ticklabels() + ax.yaxis.get_ticklabels():
@@ -1097,8 +1097,19 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
             color_val = g_kwargs.get("color", {})
             color_map = color_val if isinstance(color_val, dict) else {}
             fontsize_g = g_kwargs.get("fontsize", int(cfg.axis_label_fontsize * 0.9))
-            left_rot = g_kwargs.get("rotation", 12)
-            right_rot = g_kwargs.get("rotation_right", -12)
+            left_rot = g_kwargs.get("rotation", 0)
+            right_rot = g_kwargs.get("rotation_right", 0)
+            # Use direction_colors if available, otherwise fall back to palette
+            left_color = (
+                color_map.get(left_label)
+                or (cfg.direction_colors.get(left_label) if cfg.direction_colors else None)
+                or cfg.palette.get("sig_down", "#D55E00")
+            )
+            right_color = (
+                color_map.get(right_label)
+                or (cfg.direction_colors.get(right_label) if cfg.direction_colors else None)
+                or cfg.palette.get("sig_up", "#009E73")
+            )
             ax.text(
                 0.02,
                 1.02,
@@ -1108,7 +1119,7 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
                 va="bottom",
                 fontsize=fontsize_g,
                 fontweight="bold",
-                color=color_map.get(left_label, cfg.palette.get("sig_up", "#000000")),
+                color=left_color,
                 rotation=left_rot,
             )
             ax.text(
@@ -1120,7 +1131,7 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> Tuple[plt.Figure, plt.
                 va="bottom",
                 fontsize=fontsize_g,
                 fontweight="bold",
-                color=color_map.get(right_label, cfg.palette.get("nonsig", "gainsboro")),
+                color=right_color,
                 rotation=right_rot,
             )
         except Exception:

@@ -264,6 +264,10 @@ class VolcanoConfig(BaseModel):
     axis_label_fontsize: int = 18
     title: Optional[str] = None
     title_fontsize: int = 20
+    title_fontweight: str = Field(
+        "normal",
+        description="Font weight for title ('normal', 'bold', 'light', etc.).",
+    )
     figsize: Tuple[int, int] = (5, 5)
     group_label_top: Optional[Tuple[str, str]] = None
     group_label_kwargs: Optional[Dict] = None

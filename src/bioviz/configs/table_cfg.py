@@ -13,14 +13,14 @@ class StyledTableConfig(BaseModel):
     Each field corresponds to a visual parameter used by `generate_styled_table`.
     """
     title: Annotated[str, Field(default="")]
-    title_font_size: Annotated[float | int, Field(default=16)]
+    title_font_size: Annotated[float | int | None, Field(default=None, description="Title font size. None uses rcParams['axes.titlesize'].")]
     header_bg_color: Annotated[str, Field(default="#1E6B5C")]
     header_text_color: Annotated[str, Field(default="white")]
     row_colors: Annotated[tuple[str, str], Field(default=("#f2f2f2", "gainsboro"))]
     edge_color: Annotated[str, Field(default="white")]
-    header_font_size: Annotated[float | int, Field(default=16)]
+    header_font_size: Annotated[float | int | None, Field(default=None, description="Header font size. None uses rcParams['axes.labelsize'].")]
     header_font_weight: Annotated[str, Field(default="bold")]
-    cell_font_size: Annotated[float | int, Field(default=16)]
+    cell_font_size: Annotated[float | int | None, Field(default=None, description="Cell font size. None uses rcParams['font.size'].")]
     max_chars: Annotated[int, Field(default=18)]
     shrink_by: Annotated[float | int, Field(default=2)]
     row_height: Annotated[float, Field(default=0.3)]

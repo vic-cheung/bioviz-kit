@@ -13,6 +13,27 @@ from bioviz.utils.plotting import resolve_font_family
 __all__ = ["TablePlotter"]
 
 
+def _resolve_fontsize(config_value: float | int | None, rcparam_key: str) -> float:
+    """
+    Resolve fontsize: use config value if set, otherwise fall back to rcParams.
+
+    Parameters
+    ----------
+    config_value : float | int | None
+        Value from config. If None, use rcParams.
+    rcparam_key : str
+        Key in matplotlib.rcParams to fall back to.
+
+    Returns
+    -------
+    float
+        The resolved fontsize.
+    """
+    if config_value is not None:
+        return float(config_value)
+    return float(plt.rcParams.get(rcparam_key, 12))
+
+
 def generate_styled_table(
     df: pd.DataFrame,
     config: StyledTableConfig,
@@ -37,12 +58,17 @@ def generate_styled_table(
         print("DataFrame is empty.")
         return None
 
+    # Resolve fontsizes from config or rcParams
+    title_font_size = _resolve_fontsize(config.title_font_size, "axes.titlesize")
+    header_font_size = _resolve_fontsize(config.header_font_size, "axes.labelsize")
+    cell_font_size = _resolve_fontsize(config.cell_font_size, "font.size")
+
     created_fig = None
     if ax is None:
         # Use a consistent base figure size; avoid implicit scaling surprises
         created_fig, ax = plt.subplots()
         try:
-            created_fig.patch.set_facecolor('white')
+            created_fig.patch.set_facecolor("white")
             created_fig.patch.set_alpha(0.0)
         except Exception:
             pass
@@ -51,9 +77,7 @@ def generate_styled_table(
     ax.axis("off")
 
     header_height = (
-        config.header_row_height
-        if config.header_row_height is not None
-        else config.row_height
+        config.header_row_height if config.header_row_height is not None else config.row_height
     )
 
     # Reduce margins so saved output is tight around the table
@@ -111,16 +135,14 @@ def generate_styled_table(
         text_obj = cell.get_text()
         is_header = row == 0
         cell.set_edgecolor(config.edge_color)
-        font_size = config.header_font_size if is_header else config.cell_font_size
+        font_size = header_font_size if is_header else cell_font_size
         if len(text_obj.get_text()) > config.max_chars:
             font_size = max(8, font_size - config.shrink_by)
         text_obj.set_fontsize(font_size)
         family = header_family if is_header else body_family
         if family:
             text_obj.set_fontname(family)
-        text_obj.set_fontweight(
-            config.header_font_weight if is_header else config.body_font_weight
-        )
+        text_obj.set_fontweight(config.header_font_weight if is_header else config.body_font_weight)
         text_obj.set_color(config.header_text_color if is_header else "black")
         text_obj.set_ha("center")
         text_obj.set_va("center")
@@ -138,7 +160,7 @@ def generate_styled_table(
             config.title,
             ha="center",
             va="bottom",
-            fontsize=config.title_font_size,
+            fontsize=title_font_size,
             fontweight="bold",
             fontfamily=title_family,
             transform=ax.transAxes,
