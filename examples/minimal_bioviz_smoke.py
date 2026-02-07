@@ -213,6 +213,53 @@ if fig_table_multi:
 
 
 # %%
+# 4c) Table with auto column widths - columns sized by content length
+# Demonstrates: short headers (PFS, OS) vs long headers (HAZARD RATIO (95% CI))
+# Also handles case where cell content is longer than header
+auto_width_df = pd.DataFrame(
+    {
+        "PFS": [1.2, 3.4, 5.6],
+        "OS": [10.1, 20.2, 30.3],
+        "HAZARD RATIO (95% CI)": ["0.75 (0.52-1.08)", "0.82 (0.61-1.10)", "0.91 (0.70-1.18)"],
+        "ID": ["A", "B", "C"],
+        "LONG_CELL_VALUES": [
+            "This is a very long cell value",
+            "Short",
+            "Another lengthy cell text here",
+        ],
+    }
+)
+auto_width_cfg = StyledTableConfig(
+    table_width=3.0,
+    header_row_height=0.25,
+    row_height=0.2,
+    title="Auto Column Widths Example",
+    auto_column_widths=True,  # Key feature: columns sized by content
+    min_column_width_fraction=0.08,  # Prevent too-narrow columns
+)
+tp_auto = TablePlotter(auto_width_df, auto_width_cfg)
+fig_auto, ax_auto = tp_auto.plot()
+if fig_auto:
+    fig_auto.savefig("table_auto_widths_smoke.pdf", bbox_inches="tight", pad_inches=0.05)
+    print("table_auto_widths_smoke.pdf")
+
+# %%
+# 4d) Table with manual column widths - explicit control
+manual_width_cfg = StyledTableConfig(
+    table_width=2.0,
+    header_row_height=0.25,
+    row_height=0.2,
+    title="Manual Column Widths Example",
+    column_widths=[0.08, 0.08, 0.35, 0.08, 0.41],  # Explicit fractions
+)
+tp_manual = TablePlotter(auto_width_df, manual_width_cfg)
+fig_manual, ax_manual = tp_manual.plot()
+if fig_manual:
+    fig_manual.savefig("table_manual_widths_smoke.pdf", bbox_inches="tight", pad_inches=0.05)
+    print("table_manual_widths_smoke.pdf")
+
+
+# %%
 # 5) Oncoplot minimal data with pathway (row-group) bars
 mut_df = pd.DataFrame(
     {
