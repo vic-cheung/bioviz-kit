@@ -52,3 +52,30 @@ class StyledTableConfig(BaseModel):
     auto_shrink_total_height: Annotated[bool, Field(default=False)]
     shrink_row_threshold: Annotated[int, Field(default=30)]
     max_total_height: Annotated[float, Field(default=10.0)]
+    column_widths: Annotated[
+        list[float] | None,
+        Field(
+            default=None,
+            description="Explicit column width fractions (must sum to ~1.0 or table_width). "
+            "If provided, takes precedence over auto_column_widths. "
+            "E.g., [0.1, 0.1, 0.5, 0.15, 0.15] for 5 columns.",
+        ),
+    ]
+    auto_column_widths: Annotated[
+        bool,
+        Field(
+            default=False,
+            description="Automatically size column widths based on content length. "
+            "Wider columns for longer text (e.g., 'HAZARD RATIO (95% CI)') vs narrower for short text (e.g., 'PFS'). "
+            "Considers both header and cell values - uses whichever is longer per column. "
+            "Ignored if column_widths is explicitly set.",
+        ),
+    ]
+    min_column_width_fraction: Annotated[
+        float,
+        Field(
+            default=0.05,
+            description="Minimum column width as fraction of table_width when using auto_column_widths "
+            "(prevents columns from being too narrow).",
+        ),
+    ]

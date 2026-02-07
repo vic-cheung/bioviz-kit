@@ -13,6 +13,98 @@ from bioviz.utils.plotting import resolve_font_family
 __all__ = ["TablePlotter"]
 
 
+def _calculate_column_widths(
+    df: pd.DataFrame,
+    table_width: float,
+    min_fraction: float,
+) -> list[float]:
+    """
+    Calculate proportional column widths based on max content length per column.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        The data (columns include headers).
+    table_width : float
+        Total table width to distribute.
+    min_fraction : float
+        Minimum width per column as fraction of table_width.
+
+    Returns
+    -------
+    list[float]
+        Column widths summing to table_width.
+    """
+    n_cols = len(df.columns)
+    if n_cols == 0:
+        return []
+
+    # Find max string length per column (header + all cell values)
+    max_lengths = []
+    for col in df.columns:
+        header_len = len(str(col))
+        cell_max = df[col].astype(str).str.len().max() if len(df) > 0 else 0
+        max_lengths.append(max(header_len, cell_max, 1))  # at least 1 to avoid div by zero
+
+    # Apply minimum width constraint
+    min_width = min_fraction * table_width
+    total_len = sum(max_lengths)
+
+    # Proportional widths
+    raw_widths = [(length / total_len) * table_width for length in max_lengths]
+
+    # Enforce minimum, then redistribute excess
+    widths = [max(w, min_width) for w in raw_widths]
+    excess = sum(widths) - table_width
+
+    if excess > 0:
+        # Scale down proportionally (those above minimum)
+        scalable = [w - min_width for w in widths]
+        scalable_total = sum(scalable)
+        if scalable_total > 0:
+            widths = [
+                min_width + (s / scalable_total) * (table_width - min_width * n_cols)
+                for s in scalable
+            ]
+
+    return widths
+
+
+def _normalize_column_widths(
+    widths: list[float],
+    table_width: float,
+) -> list[float]:
+    """
+    Normalize explicit column widths to sum to table_width.
+
+    If widths already sum close to table_width (within 1%), use as-is.
+    Otherwise scale proportionally.
+
+    Parameters
+    ----------
+    widths : list[float]
+        User-provided column width fractions.
+    table_width : float
+        Target total width.
+
+    Returns
+    -------
+    list[float]
+        Normalized widths summing to table_width.
+    """
+    if not widths:
+        return []
+    total = sum(widths)
+    if total == 0:
+        # All zeros - fall back to equal widths
+        return [table_width / len(widths)] * len(widths)
+    # If already sums to ~table_width, use as-is
+    if abs(total - table_width) / table_width < 0.01:
+        return widths
+    # Scale to table_width
+    return [(w / total) * table_width for w in widths]
+
+
 def _resolve_fontsize(config_value: float | int | None, rcparam_key: str) -> float:
     """
     Resolve fontsize: use config value if set, otherwise fall back to rcParams.
@@ -95,9 +187,25 @@ def generate_styled_table(
     table_left = 0.0
     table_bottom = 0.0
 
+    # Calculate column widths:
+    # Priority: explicit column_widths > auto_column_widths > equal (None)
+    col_widths = None
+    if config.column_widths is not None:
+        # Manual: use explicit fractions, scale to table_width if needed
+        col_widths = _normalize_column_widths(config.column_widths, config.table_width)
+    elif config.auto_column_widths:
+        # Auto: proportional to content length (header or cell, whichever longer)
+        col_widths = _calculate_column_widths(
+            df,
+            config.table_width,
+            config.min_column_width_fraction,
+        )
+    # else: None = equal widths (matplotlib default)
+
     table = ax.table(
         cellText=df.values.tolist(),
         colLabels=df.columns.tolist(),
+        colWidths=col_widths,
         cellLoc="center",
         edges="closed",
         bbox=[
