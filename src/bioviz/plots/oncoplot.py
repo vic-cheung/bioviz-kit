@@ -1,5 +1,5 @@
 """
-Oncoplot utilities adapted from tm_toolbox, ported into bioviz.
+Oncoplot utilities
 
 This module implements oncoprint drawing helpers and the
 `OncoPlotter` class. It accepts a `style` object implementing

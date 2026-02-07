@@ -1,7 +1,6 @@
 """Feature-complete helpers for composite plots.
 
-This module provides helpers used by `grouped.py` and `waterfall.py` with
-behavior closer to the original implementations in tm_toolbox. It prefers
+This module provides helpers used by `grouped.py` and `waterfall.py`. It prefers
 to use optional dependencies when available (`statannotations`) but falls
 back to conservative implementations otherwise.
 """

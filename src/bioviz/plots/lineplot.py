@@ -1,7 +1,7 @@
 """
 Line plot utilities (bioviz)
 
-Ported and adapted from tm_toolbox. Uses neutral `DefaultStyle`.
+Uses neutral `DefaultStyle`.
 """
 
 # %%
@@ -222,7 +222,7 @@ def generate_styled_lineplot(
 
     # Ensure long-format required columns exist; bioviz expects callers to
     # supply long-format data. Forward-fill (if desired) should be done by
-    # adapters (e.g. tm_toolbox) before calling bioviz.
+    # adapters before calling bioviz.
     required_cols = [
         c for c in (config.x, config.y, config.label_col, config.secondary_group_col) if c
     ]

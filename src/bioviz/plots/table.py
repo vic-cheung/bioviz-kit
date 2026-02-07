@@ -1,7 +1,7 @@
 """
 Table utilities (bioviz)
 
-Ported and adapted from tm_toolbox. Uses neutral `DefaultStyle`.
+Uses neutral `DefaultStyle`.
 """
 
 import matplotlib.pyplot as plt
