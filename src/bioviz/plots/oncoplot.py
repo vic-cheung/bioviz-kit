@@ -883,7 +883,7 @@ class OncoPlotter:
         self.legend_category_order = config.legend_category_order
         self.xticklabel_xoffset = config.xticklabel_xoffset
         self.xticklabel_yoffset = config.xticklabel_yoffset
-        self.rowlabel_xoffset = getattr(config, "rowlabel_xoffset", -0.3)
+        self.yticklabel_xoffset = getattr(config, "yticklabel_xoffset", -0.3)
         self.rowlabel_use_points = getattr(config, "rowlabel_use_points", True)
         self.legend_bbox_to_anchor = config.legend_bbox_to_anchor
         self.legend_offset = config.legend_offset
@@ -1235,7 +1235,7 @@ class OncoPlotter:
         xlim_span = max(ax.get_xlim()[1] - ax.get_xlim()[0], 1e-6)
         pts_per_data_unit_x = (fig.get_figwidth() * 72.0) / xlim_span
         if rowlabel_use_points:
-            rowlabel_offset_pts = float(self.rowlabel_xoffset) * pts_per_data_unit_x
+            rowlabel_offset_pts = float(self.yticklabel_xoffset) * pts_per_data_unit_x
             rowlabel_translate = mtransforms.ScaledTranslation(
                 rowlabel_offset_pts / 72.0, 0.0, fig.dpi_scale_trans
             )
@@ -1243,7 +1243,7 @@ class OncoPlotter:
             rowlabel_base_x = 0.0
         else:
             rowlabel_text_transform = ax.transData
-            rowlabel_base_x = float(self.rowlabel_xoffset)
+            rowlabel_base_x = float(self.yticklabel_xoffset)
 
         # Draw an opaque white background for every cell so empty cells
         # are filled (important for transparent PNG exports).
