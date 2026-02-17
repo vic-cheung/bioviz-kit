@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: bioviz-kit
-Version: 0.3.5
+Version: 0.3.6
 Summary: Framework-agnostic plotting utilities for biological and clinical data visualization
 Author-email: Victoria Cheung <victoriakcheung@gmail.com>
 License: MIT License
