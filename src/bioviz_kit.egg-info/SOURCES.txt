@@ -37,5 +37,6 @@ src/bioviz_kit.egg-info/requires.txt
 src/bioviz_kit.egg-info/top_level.txt
 tests/test_legend_filtering.py
 tests/test_line_spider_smoke.py
+tests/test_lineplot_labels_and_overlay.py
 tests/test_oncoplot_smoke.py
 tests/test_top_level_exports.py
