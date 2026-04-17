@@ -59,6 +59,9 @@ class LinePlotConfig(BasePlotConfig):
     ymin_padding_fraction: Annotated[float, Field(default=0.05)]
     align_first_tick_to_origin: Annotated[bool, Field(default=False)]
     symmetric_ylim: Annotated[bool, Field(default=True)]
+    preserve_x_categories: Annotated[
+        bool, Field(default=True)
+    ]  # if True, keep all x-axis categories even when no data exists for some
 
     # Threshold support
     threshold: Annotated[float | int | None, Field(default=None)]

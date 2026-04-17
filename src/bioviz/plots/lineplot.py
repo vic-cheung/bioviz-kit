@@ -239,8 +239,9 @@ def generate_styled_lineplot(
         x_dtype = CategoricalDtype(categories=list(pd.unique(df[config.x])), ordered=True)
         df[config.x] = df[config.x].astype(x_dtype)
     elif config.x in df and hasattr(df[config.x].dtype, "categories"):
-        with contextlib.suppress(Exception):
-            df[config.x] = df[config.x].cat.remove_unused_categories()
+        if not getattr(config, "preserve_x_categories", False):
+            with contextlib.suppress(Exception):
+                df[config.x] = df[config.x].cat.remove_unused_categories()
 
     # Map categorical Timepoint to numeric position for x-axis plotting
     cat_to_pos = (
@@ -621,8 +622,9 @@ def generate_styled_multigroup_lineplot(
         x_dtype = CategoricalDtype(categories=list(pd.unique(df[config.x])), ordered=True)
         df[config.x] = df[config.x].astype(x_dtype)
     elif config.x in df and hasattr(df[config.x].dtype, "categories"):
-        with contextlib.suppress(Exception):
-            df[config.x] = df[config.x].cat.remove_unused_categories()
+        if not getattr(config, "preserve_x_categories", False):
+            with contextlib.suppress(Exception):
+                df[config.x] = df[config.x].cat.remove_unused_categories()
 
     required_cols = [config.group_col, config.x, config.y]
     missing = [c for c in required_cols if c not in df.columns]
@@ -1007,8 +1009,9 @@ def generate_lineplot_twinx(
             x_dtype = CategoricalDtype(categories=list(pd.unique(df[x_col])), ordered=True)
             df[x_col] = df[x_col].astype(x_dtype)
         else:
-            with contextlib.suppress(Exception):
-                df[x_col] = df[x_col].cat.remove_unused_categories()
+            if not getattr(primary_config, "preserve_x_categories", False):
+                with contextlib.suppress(Exception):
+                    df[x_col] = df[x_col].cat.remove_unused_categories()
         df_cats = _categories_in_order(df[x_col])
         all_x_levels = _combine_categories(all_x_levels, df_cats)
     if has_twinx:
@@ -1019,8 +1022,9 @@ def generate_lineplot_twinx(
             )
             twinx_data[twinx_x_col] = twinx_data[twinx_x_col].astype(twinx_dtype)
         else:
-            with contextlib.suppress(Exception):
-                twinx_data[twinx_x_col] = twinx_data[twinx_x_col].cat.remove_unused_categories()
+            if not getattr(ann_cfg, "preserve_x_categories", False):
+                with contextlib.suppress(Exception):
+                    twinx_data[twinx_x_col] = twinx_data[twinx_x_col].cat.remove_unused_categories()
         twinx_cats = _categories_in_order(twinx_data[twinx_x_col])
         all_x_levels = _combine_categories(all_x_levels, twinx_cats)
 
