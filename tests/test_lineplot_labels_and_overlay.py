@@ -213,3 +213,68 @@ class TestOverlayVlines:
             if hasattr(line, "get_xdata") and len(set(line.get_xdata())) == 1
         ]
         assert len(vlines) >= 1, f"Expected vlines but found {len(vlines)}"
+
+
+class TestTwinxLegendTitles:
+    def test_twinx_legend_titles_honor_primary_and_secondary_config(self):
+        primary_df = pd.DataFrame(
+            {
+                "timepoint": pd.Categorical(
+                    ["T1", "T2", "T3"], categories=["T1", "T2", "T3"], ordered=True
+                ),
+                "y_primary": [10.0, 20.0, 15.0],
+                "patient": ["P1", "P1", "P1"],
+            }
+        )
+        secondary_df = pd.DataFrame(
+            {
+                "timepoint": pd.Categorical(
+                    ["T1", "T2", "T3"], categories=["T1", "T2", "T3"], ordered=True
+                ),
+                "y_secondary": [0.0, -20.0, -40.0],
+                "location": ["Lung", "Lung", "Lung"],
+                "status": ["Low", "Medium", "Medium"],
+            }
+        )
+
+        primary_cfg = LinePlotConfig(
+            x="timepoint",
+            y="y_primary",
+            group_col="patient",
+            legend_title="Patient",
+            title="Primary Axis",
+        )
+        secondary_cfg = LinePlotConfig(
+            x="timepoint",
+            y="y_secondary",
+            label_col="location",
+            legend_title="Lesion Location",
+            overlay_col="status",
+            overlay_palette={"Low": "gray", "Medium": "green"},
+            title="Secondary Axis",
+        )
+
+        fig = generate_lineplot_twinx(
+            df=primary_df,
+            twinx_data=secondary_df,
+            primary_config=primary_cfg,
+            secondary_config=secondary_cfg,
+            annotation_color_dict={"Low": "gray", "Medium": "green"},
+            annotation_source="secondary",
+        )
+
+        assert fig is not None
+        assert len(fig.axes) >= 2
+
+        primary_legend = fig.axes[0].get_legend()
+        secondary_legend = fig.axes[1].get_legend()
+        assert primary_legend is not None
+        assert secondary_legend is not None
+
+        primary_labels = [t.get_text() for t in primary_legend.get_texts()]
+        secondary_labels = [t.get_text() for t in secondary_legend.get_texts()]
+
+        assert "Patient" in primary_labels
+        assert "Lesion Location" in secondary_labels
+        assert "rm_patient_full" not in primary_labels
+        assert "Location" not in secondary_labels
