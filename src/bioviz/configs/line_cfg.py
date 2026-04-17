@@ -14,7 +14,9 @@ class LinePlotConfig(BasePlotConfig):
     entity_id: Annotated[str | int | None, Field(default=None, alias="patient_id")]
     group_col: Annotated[str | None, Field(default=None)]
     label_col: Annotated[str | None, Field(default=None)]  # preferred hue column for single-series
-    legend_title: Annotated[str | None, Field(default=None)]  # override legend header; defaults to label_col
+    legend_title: Annotated[
+        str | None, Field(default=None)
+    ]  # override legend header; defaults to label_col
     secondary_group_col: Annotated[str | None, Field(default=None)]
     subgroup_name: Annotated[str | None, Field(default=None)]
 
