@@ -771,7 +771,8 @@ def generate_styled_multigroup_lineplot(
             ]
         )
     else:
-        handles.append(Line2D([0], [0], color="none", label=config.group_col))
+        primary_legend_title = getattr(config, "legend_title", None) or config.group_col
+        handles.append(Line2D([0], [0], color="none", label=primary_legend_title))
         handles.extend(
             [
                 Line2D(
@@ -1310,13 +1311,14 @@ def generate_lineplot_twinx(
             },
         )
         handles, labels = ax.get_legend_handles_labels()
-        section_label = Line2D([0], [0], color="none", label="Location")
+        secondary_legend_title = getattr(ann_cfg, "legend_title", None) or secondary_hue or "Location"
+        section_label = Line2D([0], [0], color="none", label=secondary_legend_title)
         for h in handles:
             if hasattr(h, "set_alpha"):
                 h.set_alpha(1)
         ax.legend(
             handles=[section_label] + handles,
-            labels=["Location"] + labels,
+            labels=[secondary_legend_title] + labels,
             frameon=False,
             prop=font_manager.FontProperties(family=resolve_font_family(), size=14, weight="bold"),
         )
@@ -1596,13 +1598,14 @@ def generate_lineplot_twinx(
     if tick_kwargs:
         ax2.tick_params(axis="y", **tick_kwargs)
     handles, labels = ax2.get_legend_handles_labels()
-    section_label = Line2D([0], [0], color="none", label="Location")
+    secondary_legend_title = getattr(ann_cfg, "legend_title", None) or secondary_hue or "Location"
+    section_label = Line2D([0], [0], color="none", label=secondary_legend_title)
     for h in handles:
         if hasattr(h, "set_alpha"):
             h.set_alpha(1)
     ax2.legend(
         handles=[section_label] + handles,
-        labels=["Location"] + labels,
+        labels=[secondary_legend_title] + labels,
         frameon=False,
         prop=font_manager.FontProperties(family=resolve_font_family(), size=14, weight="bold"),
     )
