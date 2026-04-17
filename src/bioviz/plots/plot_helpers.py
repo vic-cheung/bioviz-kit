@@ -93,8 +93,8 @@ def apply_statannotations(ax, data, x, y, pairs, test="Mann-Whitney", **kwargs):
     pad = (y1 - y0) * 0.05
     cur = 0
     for (a, b), p in computed:
-        x1 = tick_positions.get(str(a), None)
-        x2 = tick_positions.get(str(b), None)
+        x1 = tick_positions.get(str(a))
+        x2 = tick_positions.get(str(b))
         if x1 is None or x2 is None:
             continue
         y_coord = top + pad * (cur + 1)
