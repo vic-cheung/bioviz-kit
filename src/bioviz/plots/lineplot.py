@@ -444,28 +444,22 @@ def generate_styled_lineplot(
     ax.spines["right"].set_visible(False)
 
     if config.label_points:
-        df = df.dropna(subset=[config.x, config.y])
-        first_points = (
-            df.groupby(config.label_col)
-            .apply(lambda df: df.sort_values(config.x).head(1))
-            .reset_index(drop=True)
+        _label_df = df.dropna(subset=[config.x, config.y, config.label_col]).copy()
+        first_points = _label_df.sort_values([config.label_col, config.x]).drop_duplicates(
+            subset=[config.label_col], keep="first"
         )
         texts = []
         x_pos_ = []
         y_pos_ = []
         for _, row in first_points.iterrows():
-            x_pos = cat_to_pos[row[config.x]]
-            y_pos = row[config.y]
-            jitter_x = np.random.normal(loc=0, scale=0.01)
-            jitter_y = np.random.normal(loc=0, scale=0.01)
-            x_pos += jitter_x
-            y_pos += jitter_y
+            label_val = str(row[config.label_col])
+            x_val = row[config.x]
+            if x_val not in cat_to_pos:
+                continue
+            x_pos = cat_to_pos[x_val] + np.random.normal(loc=0, scale=0.01)
+            y_pos = row[config.y] + np.random.normal(loc=0, scale=0.01)
             x_pos_.append(x_pos)
             y_pos_.append(y_pos)
-            # Safely access label value from the row (may be in the index for groupby.apply results)
-            label_val = (
-                row.get(config.label_col, None) if hasattr(row, "get") else row[config.label_col]
-            )
             texts.append(
                 ax.text(
                     x_pos - 0.08,
@@ -478,23 +472,25 @@ def generate_styled_lineplot(
                     zorder=10,
                 )
             )
-        plt.draw()
-        adjust_text(
-            texts,
-            ax=ax,
-            force_text=(1, 3),
-            force_points=(0.5, 1),
-            points=list(zip(x_pos_, y_pos_, strict=True)),
-            expand_text=(1.2, 1.2),
-            verbose=0,
-        )
+        if texts:
+            plt.draw()
+            adjust_text(
+                texts,
+                ax=ax,
+                force_text=(1, 3),
+                force_points=(0.5, 1),
+                points=list(zip(x_pos_, y_pos_, strict=True)),
+                expand_text=(1.2, 1.2),
+                verbose=0,
+            )
 
+    _legend_title = getattr(config, "legend_title", None) or config.label_col or "Value"
     handles = [
         Line2D(
             [0],
             [0],
             linewidth=0,
-            label=(config.label_col or "Value"),
+            label=_legend_title,
             color="black",
         )
     ] + [
@@ -1306,7 +1302,7 @@ def generate_lineplot_twinx(
         )
         ax.set_title(ann_cfg.title, loc="left", fontweight="bold")
         ax.set_ylabel(
-            r"Diameter %$\Delta$ from First Timepoint",
+            ann_cfg.ylabel or r"%$\Delta$ from First Timepoint",
             fontdict={
                 "family": resolve_font_family(),
                 "size": ax.yaxis.label.get_fontsize(),
@@ -1578,7 +1574,7 @@ def generate_lineplot_twinx(
         verbose=0,
     )
     ax2.set_ylabel(
-        r"Diameter %$\Delta$ from First Timepoint",
+        ann_cfg.ylabel or r"%$\Delta$ from First Timepoint",
         fontdict={
             "family": resolve_font_family(),
             "size": ax.yaxis.label.get_fontsize(),
