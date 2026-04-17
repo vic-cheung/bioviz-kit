@@ -378,7 +378,8 @@ def generate_styled_lineplot(
             right = xl1 if xl1 is not None else xlim_default[1]
             xlim = (left, right)
 
-    if config.threshold is not None:
+    show_threshold_line = getattr(config, "show_threshold_line", True)
+    if config.threshold is not None and show_threshold_line:
         thresh_kwargs = dict(
             y=config.threshold,
             color=getattr(config, "threshold_color", "#C0C0C0"),

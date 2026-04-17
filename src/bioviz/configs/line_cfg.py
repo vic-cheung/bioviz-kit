@@ -74,6 +74,9 @@ class LinePlotConfig(BasePlotConfig):
     threshold_below_label: Annotated[str, Field(default="Below Threshold")]
     threshold_above_label: Annotated[str, Field(default="Above Threshold")]
     filled_marker_scale: Annotated[float, Field(default=1.2)]
+    show_threshold_line: Annotated[
+        bool, Field(default=True)
+    ]  # if False, threshold still drives marker styling but the line + label are hidden
     threshold_label: Annotated[str | None, Field(default=None)]
     threshold_label_color: Annotated[str | None, Field(default=None)]
     threshold_label_alpha: Annotated[float, Field(default=1.0)]
