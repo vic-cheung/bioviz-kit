@@ -1311,7 +1311,9 @@ def generate_lineplot_twinx(
             },
         )
         handles, labels = ax.get_legend_handles_labels()
-        secondary_legend_title = getattr(ann_cfg, "legend_title", None) or secondary_hue or "Location"
+        secondary_legend_title = (
+            getattr(ann_cfg, "legend_title", None) or secondary_hue or "Location"
+        )
         section_label = Line2D([0], [0], color="none", label=secondary_legend_title)
         for h in handles:
             if hasattr(h, "set_alpha"):
