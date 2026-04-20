@@ -1134,7 +1134,28 @@ class OncoPlotter:
             # Leave space for rotated xtick labels and bottom gutter.
             bottom_padding_in = max(0.4, (column_label_fontsize / 72.0) * 1.6)
 
-            fig_w = max(1.0, ncols * cell_w + left_padding_in + right_padding_in)
+            # For small grids, scale padding down so that cells maintain a
+            # consistent physical size relative to labels.  Without this,
+            # fixed padding dominates the figure and inflates inches-per-data-
+            # unit, making cells appear disproportionately large vs font.
+            data_w = ncols * cell_w * cell_aspect
+            data_h = nrows * cell_h
+            total_h_padding = top_padding_in + bottom_padding_in
+            total_w_padding = left_padding_in + right_padding_in
+            # Target: padding should not exceed 6x the data area.  If it does,
+            # compress padding proportionally so the cell-to-font ratio stays
+            # comparable to larger grids.
+            max_pad_ratio = 6.0
+            if total_w_padding > max_pad_ratio * data_w and data_w > 0:
+                compress = max(0.35, data_w * max_pad_ratio / total_w_padding)
+                left_padding_in *= compress
+                right_padding_in *= compress
+            if total_h_padding > max_pad_ratio * data_h and data_h > 0:
+                compress = max(0.35, data_h * max_pad_ratio / total_h_padding)
+                top_padding_in *= compress
+                bottom_padding_in *= compress
+
+            fig_w = max(1.0, ncols * cell_w * cell_aspect + left_padding_in + right_padding_in)
             fig_h = max(1.0, nrows * cell_h + top_padding_in + bottom_padding_in)
             # After sizing, apply aspect by shrinking/expanding width, then rescale to keep height.
             width_aspected = fig_w
