@@ -188,6 +188,24 @@ def generate_lineplot(
     raise ValueError("LinePlotConfig must set either group_col or label_col for line plotting.")
 
 
+def _apply_xtick_rotation(ax: plt.Axes, config: LinePlotConfig) -> None:
+    """Apply configured x-tick rotation when explicitly enabled."""
+    rotation = getattr(config, "xtick_rotation", None)
+    if rotation is None:
+        return
+
+    rotation_value = rotation
+    rotation_mode = getattr(config, "xtick_rotation_mode", "anchor")
+    ha_value = getattr(config, "xtick_rotation_ha", "right")
+
+    ax.tick_params(axis="x", labelsize=getattr(config, "xtick_fontsize", 13) or 13)
+    for label in ax.get_xticklabels():
+        label.set_rotation(rotation_value)
+        label.set_ha("center")
+        label.set_rotation_mode(rotation_mode)
+        label.set_ha(ha_value)
+
+
 def generate_styled_lineplot(
     df: pd.DataFrame,
     config: LinePlotConfig,
@@ -514,42 +532,40 @@ def generate_styled_lineplot(
 
     detection_handles = []
     if config.threshold:
-        detection_handles.extend(
-            [
-                Line2D([0], [0], linewidth=0, label="", color="black"),
-                Line2D(
-                    [0],
-                    [0],
-                    linewidth=0,
-                    label=config.threshold_legend_title or "Threshold",
-                    color="black",
-                    markerfacecolor="black",
-                    markeredgecolor="black",
-                ),
-                Line2D(
-                    [0],
-                    [0],
-                    marker="o",
-                    color="white",
-                    markerfacecolor="white",
-                    markeredgecolor="black",
-                    markersize=config.markersize,
-                    linewidth=0,
-                    label=config.threshold_below_label or "Below Threshold",
-                ),
-                Line2D(
-                    [0],
-                    [0],
-                    marker="o",
-                    color="white",
-                    markerfacecolor="black",
-                    markeredgecolor="black",
-                    markersize=config.markersize,
-                    linewidth=0,
-                    label=config.threshold_above_label or "Above Threshold",
-                ),
-            ]
-        )
+        detection_handles.extend([
+            Line2D([0], [0], linewidth=0, label="", color="black"),
+            Line2D(
+                [0],
+                [0],
+                linewidth=0,
+                label=config.threshold_legend_title or "Threshold",
+                color="black",
+                markerfacecolor="black",
+                markeredgecolor="black",
+            ),
+            Line2D(
+                [0],
+                [0],
+                marker="o",
+                color="white",
+                markerfacecolor="white",
+                markeredgecolor="black",
+                markersize=config.markersize,
+                linewidth=0,
+                label=config.threshold_below_label or "Below Threshold",
+            ),
+            Line2D(
+                [0],
+                [0],
+                marker="o",
+                color="white",
+                markerfacecolor="black",
+                markeredgecolor="black",
+                markersize=config.markersize,
+                linewidth=0,
+                label=config.threshold_above_label or "Above Threshold",
+            ),
+        ])
 
     # Use caller/applied rcParams for legend font; fall back to matplotlib default
     legend_family = resolve_font_family()
@@ -755,82 +771,74 @@ def generate_styled_multigroup_lineplot(
     handles = []
     if config.color_dict_subgroup:
         handles.append(Line2D([0], [0], color="none", label=config.subgroup_name))
-        handles.extend(
-            [
-                Line2D(
-                    [0],
-                    [0],
-                    color=color,
-                    marker="o",
-                    markerfacecolor=color,
-                    markeredgecolor="white",
-                    markeredgewidth=1,
-                    markersize=config.markersize,
-                    linewidth=config.lw,
-                    label=label,
-                    alpha=0.5,
-                )
-                for label, color in config.color_dict_subgroup.items()
-            ]
-        )
+        handles.extend([
+            Line2D(
+                [0],
+                [0],
+                color=color,
+                marker="o",
+                markerfacecolor=color,
+                markeredgecolor="white",
+                markeredgewidth=1,
+                markersize=config.markersize,
+                linewidth=config.lw,
+                label=label,
+                alpha=0.5,
+            )
+            for label, color in config.color_dict_subgroup.items()
+        ])
     else:
         primary_legend_title = getattr(config, "legend_title", None) or config.group_col
         handles.append(Line2D([0], [0], color="none", label=primary_legend_title))
-        handles.extend(
-            [
-                Line2D(
-                    [0],
-                    [0],
-                    color=color_dict[label],
-                    marker="o",
-                    markerfacecolor=color_dict[label],
-                    markeredgecolor="white",
-                    markeredgewidth=1,
-                    markersize=config.markersize,
-                    linewidth=config.lw,
-                    label=label,
-                    alpha=0.5,
-                )
-                for label in df[config.group_col].unique()
-            ]
-        )
+        handles.extend([
+            Line2D(
+                [0],
+                [0],
+                color=color_dict[label],
+                marker="o",
+                markerfacecolor=color_dict[label],
+                markeredgecolor="white",
+                markeredgewidth=1,
+                markersize=config.markersize,
+                linewidth=config.lw,
+                label=label,
+                alpha=0.5,
+            )
+            for label in df[config.group_col].unique()
+        ])
 
     if config.linestyle_dict:
         handles.append(Line2D([0], [0], color="none", label=""))
         handles.append(Line2D([0], [0], color="none", label=config.linestyle_col))
-        handles.extend(
-            [
-                Line2D(
-                    [0],
-                    [0],
-                    color="black",
-                    marker=None,
-                    linewidth=config.lw,
-                    label=label,
-                    linestyle=linestyle,
-                    alpha=1,
-                )
-                for label, linestyle in config.linestyle_dict.items()
-            ]
-        )
+        handles.extend([
+            Line2D(
+                [0],
+                [0],
+                color="black",
+                marker=None,
+                linewidth=config.lw,
+                label=label,
+                linestyle=linestyle,
+                alpha=1,
+            )
+            for label, linestyle in config.linestyle_dict.items()
+        ])
 
     if config.markerstyle_dict:
         handles.append(Line2D([0], [0], color="none", label=""))
         handles.append(Line2D([0], [0], color="none", label=config.markerstyle_col))
-        handles.extend(
-            [
-                Line2D(
-                    [0],
-                    [0],
-                    color="black",
-                    marker=markerstyle,
-                    linewidth=0,
-                    label=label,
-                    alpha=1,
-                )
-                for label, markerstyle in config.markerstyle_dict.items()
-            ]
-        )
+        handles.extend([
+            Line2D(
+                [0],
+                [0],
+                color="black",
+                marker=markerstyle,
+                linewidth=0,
+                label=label,
+                alpha=1,
+            )
+            for label, markerstyle in config.markerstyle_dict.items()
+        ])
 
     labels = [h.get_label() for h in handles]
 
@@ -1151,11 +1159,7 @@ def generate_lineplot_twinx(
         ax.set_facecolor("white")
         fig.patch.set_alpha(0.0)
         fig.subplots_adjust(right=primary_config.rhs_pdf_padding)
-        xticks = ax.get_xticks()
-        if len(xticks) > 8:
-            ax.tick_params(axis="x", labelsize=13, rotation=45)
-        else:
-            ax.tick_params(axis="x", labelsize=13)
+        _apply_xtick_rotation(ax, primary_config)
         return fig
 
     if has_twinx and not has_df:
@@ -1337,14 +1341,11 @@ def generate_lineplot_twinx(
         fig.patch.set_alpha(0.0)
         ax.set_xlabel(ann_cfg.x, fontweight="bold")
         xtick_size = getattr(primary_config or ann_cfg, "xtick_fontsize", None)
-        xticks = ax.get_xticks()
         if xtick_size is not None:
             ax.tick_params(axis="x", labelsize=xtick_size)
         else:
-            if len(xticks) > 8:
-                ax.tick_params(axis="x", labelsize=13, rotation=45)
-            else:
-                ax.tick_params(axis="x", labelsize=13)
+            ax.tick_params(axis="x", labelsize=13)
+        _apply_xtick_rotation(ax, primary_config or ann_cfg)
         return fig
 
     generate_styled_multigroup_lineplot(df=df, config=primary_config, ax=ax)
@@ -1626,14 +1627,15 @@ def generate_lineplot_twinx(
     ax.set_facecolor("white")
     fig.patch.set_alpha(0.0)
     xtick_size = getattr(primary_config or ann_cfg, "xtick_fontsize", None)
-    xticks = ax.get_xticks()
     if xtick_size is not None:
         ax.tick_params(axis="x", labelsize=xtick_size)
         if ax2:
             ax2.tick_params(axis="x", labelsize=xtick_size)
     else:
-        if len(xticks) > 8:
-            ax.tick_params(axis="x", labelsize=13, rotation=45)
-        else:
-            ax.tick_params(axis="x", labelsize=13)
+        ax.tick_params(axis="x", labelsize=13)
+    _apply_xtick_rotation(ax, primary_config or ann_cfg)
+    if ax2 and getattr((primary_config or ann_cfg), "xtick_rotation", None) is not None:
+        ax2.tick_params(
+            axis="x", labelsize=getattr(primary_config or ann_cfg, "xtick_fontsize", 13) or 13
+        )
     return fig
