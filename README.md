@@ -29,12 +29,24 @@ Install from PyPI:
 pip install bioviz-kit
 ```
 
+Or using `uv`:
+
+```bash
+uv install bioviz-kit
+```
+
 Or install in development mode:
 
 ```bash
 git clone https://github.com/yourusername/bioviz-kit.git
 cd bioviz-kit
 pip install -e .
+```
+
+Or using `uv` in editable/development mode:
+
+```bash
+uv install -e .
 ```
 
 ## Requirements

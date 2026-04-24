@@ -13,6 +13,10 @@ Install from PyPI:
 
    pip install bioviz-kit
 
+    # Or using `uv`:
+
+    uv install bioviz-kit
+
 Or install in development mode:
 
 .. code-block:: bash
@@ -20,6 +24,10 @@ Or install in development mode:
    git clone https://github.com/yourusername/bioviz-kit.git
    cd bioviz-kit
    pip install -e .
+
+    # Or using `uv` in editable/development mode:
+
+    uv install -e .
 
 
 Core Concepts
