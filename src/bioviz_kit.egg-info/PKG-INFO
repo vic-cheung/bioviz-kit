@@ -1,10 +1,10 @@
 Metadata-Version: 2.4
 Name: bioviz-kit
-Version: 0.3.12
+Version: 0.3.13
 Summary: Framework-agnostic plotting utilities for biological and clinical data visualization
 Author-email: Victoria Cheung <victoriakcheung@gmail.com>
 License: MIT License
-
+        
         Copyright (c) 2025 Victoria Cheung
         
         Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -28,8 +28,8 @@ License: MIT License
         Acknowledgement: This project builds on work originally developed at
         Revolution Medicines.
         
-Project-URL: Homepage, <https://github.com/vic-cheung/bioviz-kit>
-Project-URL: Issue Tracker, <https://github.com/vic-cheung/bioviz-kit/issues>
+Project-URL: Homepage, https://github.com/vic-cheung/bioviz-kit
+Project-URL: Issue Tracker, https://github.com/vic-cheung/bioviz-kit/issues
 Classifier: License :: OSI Approved :: MIT License
 Classifier: Programming Language :: Python
 Classifier: Programming Language :: Python :: 3
