@@ -4,6 +4,7 @@ pyproject.toml
 src/bioviz/__init__.py
 src/bioviz/configs/__init__.py
 src/bioviz/configs/base_cfg.py
+src/bioviz/configs/clinical_forest_cfg.py
 src/bioviz/configs/distribution_cfg.py
 src/bioviz/configs/forest_cfg.py
 src/bioviz/configs/grouped_bar_cfg.py
@@ -15,6 +16,7 @@ src/bioviz/configs/table_cfg.py
 src/bioviz/configs/volcano_cfg.py
 src/bioviz/configs/waterfall_cfg.py
 src/bioviz/plots/__init__.py
+src/bioviz/plots/clinical_forest.py
 src/bioviz/plots/distribution.py
 src/bioviz/plots/forest.py
 src/bioviz/plots/grouped.py
