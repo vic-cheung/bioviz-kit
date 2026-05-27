@@ -236,10 +236,26 @@ class ClinicalForestPlotter:
 
         # Scale vertical offsets down on very tall figures so title/header/footer
         # spacing remains visually consistent instead of stretching with height.
-        vertical_scale = min(1.0, 12.0 / max(fig_height_in, 1.0))
+        default_vertical_scaling = cfg.scale_vertical_positions_on_tall_figures
+        title_vertical_scaling = (
+            cfg.scale_title_position_on_tall_figures
+            if cfg.scale_title_position_on_tall_figures is not None
+            else default_vertical_scaling
+        )
+        header_footer_vertical_scaling = (
+            cfg.scale_header_footer_positions_on_tall_figures
+            if cfg.scale_header_footer_positions_on_tall_figures is not None
+            else default_vertical_scaling
+        )
+        title_vertical_scale = (
+            min(1.0, 12.0 / max(fig_height_in, 1.0)) if title_vertical_scaling else 1.0
+        )
+        header_footer_vertical_scale = (
+            min(1.0, 12.0 / max(fig_height_in, 1.0)) if header_footer_vertical_scaling else 1.0
+        )
 
-        def _scale_about_anchor(value: float, anchor: float) -> float:
-            return anchor + ((value - anchor) * vertical_scale)
+        def _scale_about_anchor(value: float, anchor: float, scale: float) -> float:
+            return anchor + ((value - anchor) * scale)
 
         if len(y_positions) > 0:
             if n_rows <= 1:
@@ -265,13 +281,17 @@ class ClinicalForestPlotter:
         bottom_margin = min(0.3, bottom_margin_in / max(fig_height_in, 1.0))
         top_margin = max(0.72, 1.0 - (top_margin_in / max(fig_height_in, 1.0)))
 
-        xlabel_y = _scale_about_anchor(cfg.footer_xlabel_offset, 0.0)
-        footer_arrow_y = _scale_about_anchor(cfg.footer_arrow_offset, 0.0)
-        footer_text_y = _scale_about_anchor(cfg.footer_text_offset, 0.0)
+        xlabel_y = _scale_about_anchor(cfg.footer_xlabel_offset, 0.0, header_footer_vertical_scale)
+        footer_arrow_y = _scale_about_anchor(
+            cfg.footer_arrow_offset, 0.0, header_footer_vertical_scale
+        )
+        footer_text_y = _scale_about_anchor(
+            cfg.footer_text_offset, 0.0, header_footer_vertical_scale
+        )
 
         auto_title_y = min(0.995, top_margin + (title_gap_in / max(fig_height_in, 1.0)))
         title_y = (
-            _scale_about_anchor(cfg.title_y_position, 1.0)
+            _scale_about_anchor(cfg.title_y_position, 1.0, title_vertical_scale)
             if cfg.title_y_position is not None
             else auto_title_y
         )
@@ -293,9 +313,9 @@ class ClinicalForestPlotter:
         median_cmp_x = cfg.median_cmp_x_position
         pvalue_x = cfg.pvalue_x_position
 
-        header_top_y = _scale_about_anchor(cfg.header_top_y, 1.0)
-        header_sub_y = _scale_about_anchor(cfg.header_sub_y, 1.0)
-        header_rule_y = header_sub_y - max(0.012, 0.03 * vertical_scale)
+        header_top_y = _scale_about_anchor(cfg.header_top_y, 1.0, header_footer_vertical_scale)
+        header_sub_y = _scale_about_anchor(cfg.header_sub_y, 1.0, header_footer_vertical_scale)
+        header_rule_y = header_sub_y - max(0.012, 0.03 * header_footer_vertical_scale)
 
         ref_cmp_fontsize = self._compute_events_fontsize(
             fig, ax, prepared_df, reference_x, comparator_x

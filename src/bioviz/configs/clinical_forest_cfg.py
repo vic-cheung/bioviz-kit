@@ -175,6 +175,37 @@ class ClinicalForestPlotConfig(BaseModel):
         float,
         Field(default=3.6, description="Base figure height before row scaling"),
     ]
+    scale_vertical_positions_on_tall_figures: Annotated[
+        bool,
+        Field(
+            default=True,
+            description=(
+                "When True, scale title/header/footer vertical positions toward their anchors "
+                "on very tall figures to avoid oversized whitespace. Set False to use exact "
+                "manual vertical positions."
+            ),
+        ),
+    ]
+    scale_title_position_on_tall_figures: Annotated[
+        bool | None,
+        Field(
+            default=None,
+            description=(
+                "Optional override for title vertical scaling on tall figures. "
+                "None inherits scale_vertical_positions_on_tall_figures."
+            ),
+        ),
+    ]
+    scale_header_footer_positions_on_tall_figures: Annotated[
+        bool | None,
+        Field(
+            default=None,
+            description=(
+                "Optional override for header and footer vertical scaling on tall figures. "
+                "None inherits scale_vertical_positions_on_tall_figures."
+            ),
+        ),
+    ]
 
     # ==========================================================================
     # Layout positioning (axes fraction coordinates)
