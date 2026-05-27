@@ -110,7 +110,6 @@ class ClinicalForestPlotter:
             xticks = self._generate_xticks(xlim[0], xlim[1])
             return xlim, xticks
 
-        hr_col = cfg.hr_col
         ci_lower_col = cfg.ci_lower_col
         ci_upper_col = cfg.ci_upper_col
 
@@ -167,45 +166,47 @@ class ClinicalForestPlotter:
         else:
             capsize = 6
 
-        return ForestPlotConfig.model_validate({
-            "hr_col": cfg.hr_col,
-            "ci_lower_col": cfg.ci_lower_col,
-            "ci_upper_col": cfg.ci_upper_col,
-            "label_col": "display_label",
-            "pvalue_col": cfg.pvalue_col,
-            "reference_col": None,
-            "variable_col": None,
-            "title": None,
-            "xlabel": cfg.xlabel,
-            "figsize": figsize,
-            "log_scale": False,
-            "show_reference_line": cfg.show_reference_line,
-            "reference_line_color": cfg.reference_line_color,
-            "reference_line_style": cfg.reference_line_style,
-            "reference_line_width": cfg.reference_line_width,
-            "color_significant": cfg.marker_color,
-            "color_nonsignificant": cfg.marker_color,
-            "marker_color_significant": cfg.marker_color,
-            "marker_color_nonsignificant": cfg.marker_color,
-            "show_stats_table": False,
-            "show_section_separators": False,
-            "marker_style": cfg.marker_style,
-            "marker_size": cfg.marker_size,
-            "linewidth": cfg.linewidth,
-            "show_caps": cfg.show_caps,
-            "capsize": capsize,
-            "show_grid": False,
-            "center_around_null": False,
-            "xlim": xlim,
-            "xticks": xticks,
-            "show_y_spine": False,
-            "show_yticks": False,
-            "ytick_fontsize": int(cfg.axis_fontsize),
-            "xtick_fontsize": int(cfg.axis_fontsize),
-            "xlabel_fontsize": int(cfg.xlabel_fontsize),
-            "title_fontsize": int(cfg.title_fontsize) if cfg.title_fontsize else 12,
-            "stats_fontsize": int(cfg.cell_fontsize),
-        })
+        return ForestPlotConfig.model_validate(
+            {
+                "hr_col": cfg.hr_col,
+                "ci_lower_col": cfg.ci_lower_col,
+                "ci_upper_col": cfg.ci_upper_col,
+                "label_col": "display_label",
+                "pvalue_col": cfg.pvalue_col,
+                "reference_col": None,
+                "variable_col": None,
+                "title": None,
+                "xlabel": cfg.xlabel,
+                "figsize": figsize,
+                "log_scale": False,
+                "show_reference_line": cfg.show_reference_line,
+                "reference_line_color": cfg.reference_line_color,
+                "reference_line_style": cfg.reference_line_style,
+                "reference_line_width": cfg.reference_line_width,
+                "color_significant": cfg.marker_color,
+                "color_nonsignificant": cfg.marker_color,
+                "marker_color_significant": cfg.marker_color,
+                "marker_color_nonsignificant": cfg.marker_color,
+                "show_stats_table": False,
+                "show_section_separators": False,
+                "marker_style": cfg.marker_style,
+                "marker_size": cfg.marker_size,
+                "linewidth": cfg.linewidth,
+                "show_caps": cfg.show_caps,
+                "capsize": capsize,
+                "show_grid": False,
+                "center_around_null": False,
+                "xlim": xlim,
+                "xticks": xticks,
+                "show_y_spine": False,
+                "show_yticks": False,
+                "ytick_fontsize": int(cfg.axis_fontsize),
+                "xtick_fontsize": int(cfg.axis_fontsize),
+                "xlabel_fontsize": int(cfg.xlabel_fontsize),
+                "title_fontsize": int(cfg.title_fontsize) if cfg.title_fontsize else 12,
+                "stats_fontsize": int(cfg.cell_fontsize),
+            }
+        )
 
     # ==========================================================================
     # Layout and rendering

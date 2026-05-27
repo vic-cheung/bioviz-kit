@@ -532,40 +532,42 @@ def generate_styled_lineplot(
 
     detection_handles = []
     if config.threshold:
-        detection_handles.extend([
-            Line2D([0], [0], linewidth=0, label="", color="black"),
-            Line2D(
-                [0],
-                [0],
-                linewidth=0,
-                label=config.threshold_legend_title or "Threshold",
-                color="black",
-                markerfacecolor="black",
-                markeredgecolor="black",
-            ),
-            Line2D(
-                [0],
-                [0],
-                marker="o",
-                color="white",
-                markerfacecolor="white",
-                markeredgecolor="black",
-                markersize=config.markersize,
-                linewidth=0,
-                label=config.threshold_below_label or "Below Threshold",
-            ),
-            Line2D(
-                [0],
-                [0],
-                marker="o",
-                color="white",
-                markerfacecolor="black",
-                markeredgecolor="black",
-                markersize=config.markersize,
-                linewidth=0,
-                label=config.threshold_above_label or "Above Threshold",
-            ),
-        ])
+        detection_handles.extend(
+            [
+                Line2D([0], [0], linewidth=0, label="", color="black"),
+                Line2D(
+                    [0],
+                    [0],
+                    linewidth=0,
+                    label=config.threshold_legend_title or "Threshold",
+                    color="black",
+                    markerfacecolor="black",
+                    markeredgecolor="black",
+                ),
+                Line2D(
+                    [0],
+                    [0],
+                    marker="o",
+                    color="white",
+                    markerfacecolor="white",
+                    markeredgecolor="black",
+                    markersize=config.markersize,
+                    linewidth=0,
+                    label=config.threshold_below_label or "Below Threshold",
+                ),
+                Line2D(
+                    [0],
+                    [0],
+                    marker="o",
+                    color="white",
+                    markerfacecolor="black",
+                    markeredgecolor="black",
+                    markersize=config.markersize,
+                    linewidth=0,
+                    label=config.threshold_above_label or "Above Threshold",
+                ),
+            ]
+        )
 
     # Use caller/applied rcParams for legend font; fall back to matplotlib default
     legend_family = resolve_font_family()
@@ -771,74 +773,82 @@ def generate_styled_multigroup_lineplot(
     handles = []
     if config.color_dict_subgroup:
         handles.append(Line2D([0], [0], color="none", label=config.subgroup_name))
-        handles.extend([
-            Line2D(
-                [0],
-                [0],
-                color=color,
-                marker="o",
-                markerfacecolor=color,
-                markeredgecolor="white",
-                markeredgewidth=1,
-                markersize=config.markersize,
-                linewidth=config.lw,
-                label=label,
-                alpha=0.5,
-            )
-            for label, color in config.color_dict_subgroup.items()
-        ])
+        handles.extend(
+            [
+                Line2D(
+                    [0],
+                    [0],
+                    color=color,
+                    marker="o",
+                    markerfacecolor=color,
+                    markeredgecolor="white",
+                    markeredgewidth=1,
+                    markersize=config.markersize,
+                    linewidth=config.lw,
+                    label=label,
+                    alpha=0.5,
+                )
+                for label, color in config.color_dict_subgroup.items()
+            ]
+        )
     else:
         primary_legend_title = getattr(config, "legend_title", None) or config.group_col
         handles.append(Line2D([0], [0], color="none", label=primary_legend_title))
-        handles.extend([
-            Line2D(
-                [0],
-                [0],
-                color=color_dict[label],
-                marker="o",
-                markerfacecolor=color_dict[label],
-                markeredgecolor="white",
-                markeredgewidth=1,
-                markersize=config.markersize,
-                linewidth=config.lw,
-                label=label,
-                alpha=0.5,
-            )
-            for label in df[config.group_col].unique()
-        ])
+        handles.extend(
+            [
+                Line2D(
+                    [0],
+                    [0],
+                    color=color_dict[label],
+                    marker="o",
+                    markerfacecolor=color_dict[label],
+                    markeredgecolor="white",
+                    markeredgewidth=1,
+                    markersize=config.markersize,
+                    linewidth=config.lw,
+                    label=label,
+                    alpha=0.5,
+                )
+                for label in df[config.group_col].unique()
+            ]
+        )
 
     if config.linestyle_dict:
         handles.append(Line2D([0], [0], color="none", label=""))
         handles.append(Line2D([0], [0], color="none", label=config.linestyle_col))
-        handles.extend([
-            Line2D(
-                [0],
-                [0],
-                color="black",
-                marker=None,
-                linewidth=config.lw,
-                label=label,
-                linestyle=linestyle,
-                alpha=1,
-            )
-            for label, linestyle in config.linestyle_dict.items()
-        ])
+        handles.extend(
+            [
+                Line2D(
+                    [0],
+                    [0],
+                    color="black",
+                    marker=None,
+                    linewidth=config.lw,
+                    label=label,
+                    linestyle=linestyle,
+                    alpha=1,
+                )
+                for label, linestyle in config.linestyle_dict.items()
+            ]
+        )
 
     if config.markerstyle_dict:
         handles.append(Line2D([0], [0], color="none", label=""))
         handles.append(Line2D([0], [0], color="none", label=config.markerstyle_col))
-        handles.extend([
-            Line2D(
-                [0],
-                [0],
-                color="black",
-                marker=markerstyle,
-                linewidth=0,
-                label=label,
-                alpha=1,
-            )
-            for label, markerstyle in config.markerstyle_dict.items()
-        ])
+        handles.extend(
+            [
+                Line2D(
+                    [0],
+                    [0],
+                    color="black",
+                    marker=markerstyle,
+                    linewidth=0,
+                    label=label,
+                    alpha=1,
+                )
+                for label, markerstyle in config.markerstyle_dict.items()
+            ]
+        )
 
     labels = [h.get_label() for h in handles]
 
