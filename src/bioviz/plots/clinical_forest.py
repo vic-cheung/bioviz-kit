@@ -232,8 +232,6 @@ class ClinicalForestPlotter:
         )
         title = self._wrap_title(title, width=title_wrap_width)
         title_line_count = self._text_block_line_count(title)
-        row_units = self._compute_row_units(prepared_df)
-        total_row_units = sum(row_units)
         _fig_width_in, fig_height_in = fig.get_size_inches()
 
         # Scale vertical offsets down on very tall figures so title/header/footer
@@ -249,7 +247,10 @@ class ClinicalForestPlotter:
                 top_padding = 0.32
             else:
                 bottom_padding = 0.45
-                top_padding = max(1.0, 0.09 * total_row_units)
+                # Keep the header-to-first-row gap visually stable on tall plots.
+                # Padding tied to total row count creates a huge empty band above
+                # the data block once the figure height grows.
+                top_padding = 0.72 + (0.1 * max(title_line_count - 1, 0))
             ax.set_ylim(y_positions.min() - bottom_padding, y_positions.max() + top_padding)
 
         if n_rows <= 1:
