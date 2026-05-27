@@ -62,8 +62,14 @@ class ForestPlotter:
         if missing:
             raise ValueError(f"Missing required columns: {missing}")
 
-    def _prepare_data(self) -> pd.DataFrame:
-        """Prepare and order data for plotting."""
+    def prepare_data(self) -> pd.DataFrame:
+        """Prepare and order data for plotting.
+
+        Returns
+        -------
+        pd.DataFrame
+            Cleaned and ordered dataframe ready for plotting.
+        """
         cfg = self.config
         df = self.data.dropna(subset=[cfg.hr_col, cfg.ci_lower_col, cfg.ci_upper_col])
         if df.empty:
@@ -106,8 +112,22 @@ class ForestPlotter:
 
         return df
 
-    def _compute_y_positions(self, df: pd.DataFrame) -> np.ndarray:
-        """Compute y-positions with optional section gaps."""
+    # Alias for backward compat during transition
+    _prepare_data = prepare_data
+
+    def compute_y_positions(self, df: pd.DataFrame) -> np.ndarray:
+        """Compute y-positions with optional section gaps.
+
+        Parameters
+        ----------
+        df : pd.DataFrame
+            Prepared dataframe from prepare_data().
+
+        Returns
+        -------
+        np.ndarray
+            Array of y-coordinates for each row.
+        """
         cfg = self.config
         n_rows = len(df)
         y_positions = np.arange(n_rows, dtype=float)
@@ -123,6 +143,9 @@ class ForestPlotter:
                 current_var = var
 
         return y_positions
+
+    # Alias for backward compat during transition
+    _compute_y_positions = compute_y_positions
 
     def _get_colors(self, df: pd.DataFrame) -> tuple[list[str], list[str]]:
         """Determine CI bar and marker colors based on significance."""

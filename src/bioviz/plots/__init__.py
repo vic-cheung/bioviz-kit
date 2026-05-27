@@ -4,7 +4,7 @@ Attributes are loaded lazily to avoid importing optional heavy
 dependencies (e.g. `statsmodels`) when the parent package is imported.
 """
 
-__all__ = [
+__all__ = [  # noqa: F822 (lazy-loaded via __getattr__)
     "grouped",
     "waterfall",
     "volcano",
@@ -14,6 +14,7 @@ __all__ = [
     "grouped_bar",
     "km",
     "forest",
+    "clinical_forest",
     # convenience functions / classes
     "plot_volcano",
     "resolve_labels",
@@ -30,6 +31,7 @@ __all__ = [
     "clopper_pearson_ci",
     "KMPlotter",
     "ForestPlotter",
+    "ClinicalForestPlotter",
 ]
 
 from importlib import import_module
@@ -69,6 +71,8 @@ _PUBLIC_FUNCS = {
     "add_pvalue_annotation": ("bioviz.plots.km", "add_pvalue_annotation"),
     # forest plot exports
     "ForestPlotter": ("bioviz.plots.forest", "ForestPlotter"),
+    # clinical forest plot exports
+    "ClinicalForestPlotter": ("bioviz.plots.clinical_forest", "ClinicalForestPlotter"),
 }
 
 

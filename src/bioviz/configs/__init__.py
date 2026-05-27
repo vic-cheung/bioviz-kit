@@ -5,6 +5,7 @@ import from ``bioviz.configs`` instead of deeper modules.
 """
 
 from .base_cfg import BasePlotConfig
+from .clinical_forest_cfg import ClinicalForestPlotConfig
 from .distribution_cfg import DistributionConfig
 from .forest_cfg import ForestPlotConfig
 from .grouped_bar_cfg import GroupedBarConfig
@@ -17,6 +18,7 @@ from .waterfall_cfg import ThresholdLine, WaterfallConfig
 
 __all__ = [
     "BasePlotConfig",
+    "ClinicalForestPlotConfig",
     "LinePlotConfig",
     "StyledTableConfig",
     "OncoplotConfig",
