@@ -99,9 +99,7 @@ class ClinicalForestPlotter:
 
         return df.reset_index(drop=True)
 
-    def _compute_x_bounds(
-        self, df: pd.DataFrame
-    ) -> tuple[tuple[float, float], list[float]]:
+    def _compute_x_bounds(self, df: pd.DataFrame) -> tuple[tuple[float, float], list[float]]:
         """Compute bounded x-axis limits and tick positions."""
         cfg = self.config
 
@@ -114,19 +112,19 @@ class ClinicalForestPlotter:
 
         hr_col = cfg.hr_col
         ci_lower_col = cfg.ci_lower_col
+        ci_upper_col = cfg.ci_upper_col
 
-        hr_max = (
-            float(pd.to_numeric(df[hr_col], errors="coerce").dropna().max())
-            if df[hr_col].notna().any()
-            else 1.0
-        )
+        # Use CI upper bound (not just HR) to determine x_upper
+        ci_upper = pd.to_numeric(df[ci_upper_col], errors="coerce")
+        ci_upper_max = float(ci_upper.dropna().max()) if ci_upper.notna().any() else 1.0
 
         ci_lower = pd.to_numeric(df[ci_lower_col], errors="coerce")
         positive_lower = ci_lower[ci_lower > 0]
         lower_bound = float(positive_lower.min()) if not positive_lower.empty else 0.5
         x_lower = min(0.5, max(0.0, lower_bound * 0.85))
 
-        proposed_upper = max(3.5, hr_max * 1.15)
+        # Use CI upper max with padding, minimum of 1.5 (enough to show reference line)
+        proposed_upper = max(1.5, ci_upper_max * 1.15)
         x_upper = min(cfg.x_max_cap, proposed_upper)
 
         xticks = self._generate_xticks(x_lower, x_upper)
@@ -139,7 +137,8 @@ class ClinicalForestPlotter:
         tick_step = 0.5 if x_upper <= 4.0 else 1.0
         xticks = []
         current = 0.5
-        while current < x_upper:
+        # Include ticks up to and slightly beyond x_upper for a cleaner axis
+        while current <= x_upper + 0.01:
             xticks.append(round(current, 2))
             current += tick_step
         return xticks
@@ -168,47 +167,45 @@ class ClinicalForestPlotter:
         else:
             capsize = 6
 
-        return ForestPlotConfig.model_validate(
-            {
-                "hr_col": cfg.hr_col,
-                "ci_lower_col": cfg.ci_lower_col,
-                "ci_upper_col": cfg.ci_upper_col,
-                "label_col": "display_label",
-                "pvalue_col": cfg.pvalue_col,
-                "reference_col": None,
-                "variable_col": None,
-                "title": None,
-                "xlabel": cfg.xlabel,
-                "figsize": figsize,
-                "log_scale": False,
-                "show_reference_line": cfg.show_reference_line,
-                "reference_line_color": cfg.reference_line_color,
-                "reference_line_style": cfg.reference_line_style,
-                "reference_line_width": cfg.reference_line_width,
-                "color_significant": cfg.marker_color,
-                "color_nonsignificant": cfg.marker_color,
-                "marker_color_significant": cfg.marker_color,
-                "marker_color_nonsignificant": cfg.marker_color,
-                "show_stats_table": False,
-                "show_section_separators": False,
-                "marker_style": cfg.marker_style,
-                "marker_size": cfg.marker_size,
-                "linewidth": cfg.linewidth,
-                "show_caps": cfg.show_caps,
-                "capsize": capsize,
-                "show_grid": False,
-                "center_around_null": False,
-                "xlim": xlim,
-                "xticks": xticks,
-                "show_y_spine": False,
-                "show_yticks": False,
-                "ytick_fontsize": int(cfg.axis_fontsize),
-                "xtick_fontsize": int(cfg.axis_fontsize),
-                "xlabel_fontsize": int(cfg.xlabel_fontsize),
-                "title_fontsize": int(cfg.title_fontsize) if cfg.title_fontsize else 12,
-                "stats_fontsize": int(cfg.cell_fontsize),
-            }
-        )
+        return ForestPlotConfig.model_validate({
+            "hr_col": cfg.hr_col,
+            "ci_lower_col": cfg.ci_lower_col,
+            "ci_upper_col": cfg.ci_upper_col,
+            "label_col": "display_label",
+            "pvalue_col": cfg.pvalue_col,
+            "reference_col": None,
+            "variable_col": None,
+            "title": None,
+            "xlabel": cfg.xlabel,
+            "figsize": figsize,
+            "log_scale": False,
+            "show_reference_line": cfg.show_reference_line,
+            "reference_line_color": cfg.reference_line_color,
+            "reference_line_style": cfg.reference_line_style,
+            "reference_line_width": cfg.reference_line_width,
+            "color_significant": cfg.marker_color,
+            "color_nonsignificant": cfg.marker_color,
+            "marker_color_significant": cfg.marker_color,
+            "marker_color_nonsignificant": cfg.marker_color,
+            "show_stats_table": False,
+            "show_section_separators": False,
+            "marker_style": cfg.marker_style,
+            "marker_size": cfg.marker_size,
+            "linewidth": cfg.linewidth,
+            "show_caps": cfg.show_caps,
+            "capsize": capsize,
+            "show_grid": False,
+            "center_around_null": False,
+            "xlim": xlim,
+            "xticks": xticks,
+            "show_y_spine": False,
+            "show_yticks": False,
+            "ytick_fontsize": int(cfg.axis_fontsize),
+            "xtick_fontsize": int(cfg.axis_fontsize),
+            "xlabel_fontsize": int(cfg.xlabel_fontsize),
+            "title_fontsize": int(cfg.title_fontsize) if cfg.title_fontsize else 12,
+            "stats_fontsize": int(cfg.cell_fontsize),
+        })
 
     # ==========================================================================
     # Layout and rendering
@@ -229,7 +226,9 @@ class ClinicalForestPlotter:
         n_rows = max(len(prepared_df), 1)
 
         title = cfg.title or ""
-        title_wrap_width = cfg.title_wrap_width or (40 if n_rows <= 1 else 46 if n_rows <= 3 else 52)
+        title_wrap_width = cfg.title_wrap_width or (
+            40 if n_rows <= 1 else 46 if n_rows <= 3 else 52
+        )
         title = self._wrap_title(title, width=title_wrap_width)
         title_line_count = self._text_block_line_count(title)
         row_units = self._compute_row_units(prepared_df)
@@ -248,17 +247,18 @@ class ClinicalForestPlotter:
             bottom_margin = 0.19
         else:
             bottom_margin = max(0.16, 0.26 - (0.0025 * min(n_rows, 40)))
-        xlabel_y = -0.06
-        footer_arrow_y = -0.12
-        footer_text_y = -0.165
+        xlabel_y = cfg.footer_xlabel_offset
+        footer_arrow_y = cfg.footer_arrow_offset
+        footer_text_y = cfg.footer_text_offset
 
         if n_rows <= 1:
             top_margin = max(0.72, 0.84 - (0.045 * max(title_line_count - 2, 0)))
-            title_y = min(0.985, top_margin + 0.095)
+            auto_title_y = min(0.985, top_margin + 0.095)
         else:
             top_margin = max(0.82, 0.90 - (0.03 * max(title_line_count - 2, 0)))
-            title_y = min(0.985, top_margin + 0.075)
+            auto_title_y = min(0.985, top_margin + 0.075)
 
+        title_y = cfg.title_y_position if cfg.title_y_position is not None else auto_title_y
         title_fontsize = cfg.title_fontsize or (12.5 if title_line_count >= 3 else 14)
         fig.subplots_adjust(left=0.34, right=0.72, top=top_margin, bottom=bottom_margin)
 
@@ -268,17 +268,18 @@ class ClinicalForestPlotter:
         ax.set_yticklabels([])
         ax.tick_params(axis="y", length=0)
 
-        label_x = -0.90
-        reference_x = -0.34
-        comparator_x = -0.12
-        hr_x = 1.02
-        median_ref_x = 1.26
-        median_cmp_x = 1.53
-        pvalue_x = 1.80
+        # Use config positions (or defaults)
+        label_x = cfg.label_x_position
+        reference_x = cfg.reference_x_position
+        comparator_x = cfg.comparator_x_position
+        hr_x = cfg.hr_x_position
+        median_ref_x = cfg.median_ref_x_position
+        median_cmp_x = cfg.median_cmp_x_position
+        pvalue_x = cfg.pvalue_x_position
 
-        header_top_y = 1.02
-        header_sub_y = 0.97
-        header_rule_y = 0.94
+        header_top_y = cfg.header_top_y
+        header_sub_y = cfg.header_sub_y
+        header_rule_y = header_sub_y - 0.03
 
         ref_cmp_fontsize = self._compute_events_fontsize(
             fig, ax, prepared_df, reference_x, comparator_x
@@ -420,7 +421,7 @@ class ClinicalForestPlotter:
             )
 
         ax.plot(
-            [label_x, pvalue_x + 0.05],
+            [label_x, cfg.header_rule_end_x],
             [header_rule_y, header_rule_y],
             transform=ax.transAxes,
             color="black",
@@ -533,9 +534,7 @@ class ClinicalForestPlotter:
 
             self._draw_truncated_markers(ax, row, y_positions[i], n_rows)
 
-    def _draw_truncated_markers(
-        self, ax: Axes, row: pd.Series, y_pos: float, n_rows: int
-    ) -> None:
+    def _draw_truncated_markers(self, ax: Axes, row: pd.Series, y_pos: float, n_rows: int) -> None:
         """Draw truncation markers for clipped CI bars."""
         cfg = self.config
 
@@ -563,11 +562,15 @@ class ClinicalForestPlotter:
 
         ci_hi = float(row[ci_upper_col])
         if ci_hi > x_max:
-            self._draw_truncation_cap(ax, x_max, y_pos, direction="right", size_scale=truncation_scale)
+            self._draw_truncation_cap(
+                ax, x_max, y_pos, direction="right", size_scale=truncation_scale
+            )
 
         ci_lo = float(row[ci_lower_col])
         if ci_lo < x_min:
-            self._draw_truncation_cap(ax, x_min, y_pos, direction="left", size_scale=truncation_scale)
+            self._draw_truncation_cap(
+                ax, x_min, y_pos, direction="left", size_scale=truncation_scale
+            )
 
     def _draw_truncation_cap(
         self,
@@ -797,10 +800,14 @@ class ClinicalForestPlotter:
 
     @staticmethod
     def _canonicalize_arm_label(label: str) -> str:
-        """Normalize arm labels like 'Chemo' -> 'Chemotherapy'."""
+        """Normalize arm labels (e.g., 'Chemo' -> 'Chemotherapy').
+
+        Only normalizes chemotherapy variants. Other labels like 'Control'
+        and 'Placebo' are preserved as-is.
+        """
         text = str(label).strip()
         upper = text.upper()
-        if upper in {"CHEMOTHERAPY", "CHEMO", "CONTROL", "PLACEBO"}:
+        if upper in {"CHEMOTHERAPY", "CHEMO"}:
             return "Chemotherapy"
         return text
 
@@ -854,9 +861,7 @@ class ClinicalForestPlotter:
     ) -> float:
         """Compute adaptive font size for events/patients cells."""
         axes_width_inches = fig.get_figwidth() * ax.get_position().width
-        available_width_inches = max(
-            (comparator_x - reference_x - 0.035) * axes_width_inches, 0.25
-        )
+        available_width_inches = max((comparator_x - reference_x - 0.035) * axes_width_inches, 0.25)
 
         ref_width = max(
             self._estimate_text_width(self._format_reference_cell(row), 9.0)

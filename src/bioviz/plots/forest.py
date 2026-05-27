@@ -27,10 +27,18 @@ __all__ = ["ForestPlotter"]
 
 
 def _resolve_fontsize(config_value: int | None, rcparam_key: str, default: float = 10) -> float:
-    """Return config value if set, else fall back to rcParams or default."""
+    """Return config value if set, else fall back to rcParams or default.
+
+    Handles matplotlib rcParams that may be strings like 'medium', 'large', etc.
+    """
     if config_value is not None:
         return float(config_value)
-    return float(plt.rcParams.get(rcparam_key, default))
+    rc_value = plt.rcParams.get(rcparam_key, default)
+    try:
+        return float(rc_value)
+    except (ValueError, TypeError):
+        # rcParams value is a string like 'medium' - use default
+        return float(default)
 
 
 class ForestPlotter:
@@ -103,7 +111,8 @@ class ForestPlotter:
         # Reverse for matplotlib (y=0 at bottom)
         if cfg.variable_col and cfg.variable_col in df.columns:
             df = (
-                df.groupby(cfg.variable_col, sort=False, group_keys=False)
+                df
+                .groupby(cfg.variable_col, sort=False, group_keys=False)
                 .apply(lambda g: g.iloc[::-1])
                 .reset_index(drop=True)
             )

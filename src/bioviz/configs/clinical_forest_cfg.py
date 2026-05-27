@@ -177,6 +177,60 @@ class ClinicalForestPlotConfig(BaseModel):
     ]
 
     # ==========================================================================
+    # Layout positioning (axes fraction coordinates)
+    # ==========================================================================
+    # Row label position (left side)
+    label_x_position: Annotated[
+        float,
+        Field(default=-0.90, description="X position for row labels (negative = left of plot)"),
+    ]
+    # Events/Patients columns (left table)
+    reference_x_position: Annotated[
+        float,
+        Field(default=-0.34, description="X position for reference Events/Patients column"),
+    ]
+    comparator_x_position: Annotated[
+        float,
+        Field(default=-0.12, description="X position for comparator Events/Patients column"),
+    ]
+    # Right-side table columns (HR, Medians, p-value)
+    hr_x_position: Annotated[
+        float,
+        Field(default=1.02, description="X position for HR column (>1.0 = right of plot)"),
+    ]
+    median_ref_x_position: Annotated[
+        float,
+        Field(default=1.26, description="X position for Median Ref column"),
+    ]
+    median_cmp_x_position: Annotated[
+        float,
+        Field(default=1.53, description="X position for Median Cmp column"),
+    ]
+    pvalue_x_position: Annotated[
+        float,
+        Field(default=1.80, description="X position for p-value column"),
+    ]
+    # Header rule (horizontal line below headers)
+    header_rule_end_x: Annotated[
+        float,
+        Field(default=1.92, description="X position where header rule line ends"),
+    ]
+    # Header vertical positions
+    header_top_y: Annotated[
+        float,
+        Field(default=1.02, description="Y position for top header row"),
+    ]
+    header_sub_y: Annotated[
+        float,
+        Field(default=0.97, description="Y position for sub-header row"),
+    ]
+    # Title position (None = auto)
+    title_y_position: Annotated[
+        float | None,
+        Field(default=None, description="Y position for title (None = auto-calculated)"),
+    ]
+
+    # ==========================================================================
     # Table section visibility
     # ==========================================================================
     show_events_patients: Annotated[
@@ -310,6 +364,24 @@ class ClinicalForestPlotConfig(BaseModel):
     footer_fontsize: Annotated[
         float,
         Field(default=9.0, description="Footer label font size"),
+    ]
+
+    # Footer vertical positioning (negative values move down)
+    footer_xlabel_offset: Annotated[
+        float,
+        Field(default=-0.06, description="Vertical offset for x-axis label (in axes fraction)"),
+    ]
+    footer_arrow_offset: Annotated[
+        float,
+        Field(
+            default=-0.12, description="Vertical offset for directional arrows (in axes fraction)"
+        ),
+    ]
+    footer_text_offset: Annotated[
+        float,
+        Field(
+            default=-0.165, description="Vertical offset for footer text labels (in axes fraction)"
+        ),
     ]
 
     model_config = {"extra": "forbid"}

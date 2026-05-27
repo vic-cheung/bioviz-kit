@@ -4,7 +4,8 @@ Attributes are loaded lazily to avoid importing optional heavy
 dependencies (e.g. `statsmodels`) when the parent package is imported.
 """
 
-__all__ = [  # noqa: F822 (lazy-loaded via __getattr__)
+# pyright: reportUnsupportedDunderAll=false
+__all__ = [
     "grouped",
     "waterfall",
     "volcano",
