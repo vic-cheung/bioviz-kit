@@ -315,7 +315,11 @@ class ClinicalForestPlotter:
 
         header_top_y = _scale_about_anchor(cfg.header_top_y, 1.0, header_footer_vertical_scale)
         header_sub_y = _scale_about_anchor(cfg.header_sub_y, 1.0, header_footer_vertical_scale)
-        header_rule_y = header_sub_y - max(0.012, 0.03 * header_footer_vertical_scale)
+        header_rule_y = (
+            _scale_about_anchor(cfg.header_rule_y_position, 1.0, header_footer_vertical_scale)
+            if cfg.header_rule_y_position is not None
+            else header_sub_y - max(0.012, 0.03 * header_footer_vertical_scale)
+        )
 
         ref_cmp_fontsize = self._compute_events_fontsize(
             fig, ax, prepared_df, reference_x, comparator_x

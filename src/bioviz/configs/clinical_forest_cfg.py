@@ -255,6 +255,16 @@ class ClinicalForestPlotConfig(BaseModel):
         float,
         Field(default=0.97, description="Y position for sub-header row"),
     ]
+    header_rule_y_position: Annotated[
+        float | None,
+        Field(
+            default=None,
+            description=(
+                "Y position for the horizontal rule below headers. "
+                "None = auto-calculate from header_sub_y."
+            ),
+        ),
+    ]
     # Title position (None = auto)
     title_y_position: Annotated[
         float | None,
