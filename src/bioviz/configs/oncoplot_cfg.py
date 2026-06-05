@@ -1,9 +1,10 @@
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, Field, model_validator
 
 from .oncoplot_annotations_cfg import (
     HeatmapAnnotationConfig,
+    RightSummaryBarsConfig,
     TopAnnotationConfig,  # noqa: F401
 )
 
@@ -51,6 +52,7 @@ class OncoplotConfig(BaseModel):
     heatmap_annotation: Annotated[HeatmapAnnotationConfig | None, Field(default=None)]
     value_col: Annotated[str, Field(default_factory=str)]
     top_annotation_order: Annotated[list[str] | None, Field(default=None)]
+    right_summary_bars: Annotated[RightSummaryBarsConfig | None, Field(default=None)]
     # Additional layout and annotation defaults to make OncoPlotter usable
     # tuned defaults for bioviz: tighter top-annotation spacing and margins
     cell_aspect: Annotated[float, Field(default=1.0)]
@@ -73,6 +75,7 @@ class OncoplotConfig(BaseModel):
     bar_offset_use_points: Annotated[bool, Field(default=True)]
     row_group_label_gap_use_points: Annotated[bool, Field(default=True)]
     legend_category_order: Annotated[list[str] | None, Field(default=None)]
+    show_column_labels: Annotated[bool, Field(default=True)]
     xticklabel_xoffset: Annotated[float, Field(default=0.0)]
     xticklabel_yoffset: Annotated[float, Field(default=0.0)]
     legend_bbox_to_anchor: Annotated[tuple[float, float] | None, Field(default=None)]
@@ -81,6 +84,7 @@ class OncoplotConfig(BaseModel):
     legend_offset_use_points: Annotated[bool, Field(default=True)]
     fig_y_margin: Annotated[float, Field(default=0.02)]
     aspect: Annotated[float, Field(default=1.0)]
+    axes_aspect_mode: Annotated[Literal["equal", "auto"], Field(default="equal")]
     # How strongly aspect rescales horizontal spacing (0 = ignore aspect, 1 = full)
     spacing_aspect_scale: Annotated[float, Field(default=0.0)]
     # How strongly aspect rescales x-tick vertical offset (0 = ignore aspect, 1 = full)

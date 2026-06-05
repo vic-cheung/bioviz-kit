@@ -1,21 +1,20 @@
 # %%
 import matplotlib.colors as mcolors
+import matplotlib.text as mtext
 import numpy as np
 import pandas as pd
 
-from bioviz.configs import HeatmapAnnotationConfig, OncoplotConfig
+from bioviz.configs import HeatmapAnnotationConfig, OncoplotConfig, RightSummaryBarsConfig
 from bioviz.plots import OncoPlotter
 
 
 # %%
 def test_oncoplot_shapes_centered():
-    pdf = pd.DataFrame(
-        [
-            {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV"},
-            {"patient_id": "P1", "gene": "KRAS", "mut_type": "CNV"},
-            {"patient_id": "P2", "gene": "TP53", "mut_type": "Fusion"},
-        ]
-    )
+    pdf = pd.DataFrame([
+        {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV"},
+        {"patient_id": "P1", "gene": "KRAS", "mut_type": "CNV"},
+        {"patient_id": "P2", "gene": "TP53", "mut_type": "Fusion"},
+    ])
 
     heat = HeatmapAnnotationConfig(
         values="mut_type",
@@ -58,13 +57,11 @@ def test_oncoplot_shapes_centered():
 
 
 def test_oncoplot_cell_alignment(tmp_path):
-    pdf = pd.DataFrame(
-        [
-            {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV"},
-            {"patient_id": "P1", "gene": "KRAS", "mut_type": "CNV"},
-            {"patient_id": "P2", "gene": "TP53", "mut_type": "SV"},
-        ]
-    )
+    pdf = pd.DataFrame([
+        {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV"},
+        {"patient_id": "P1", "gene": "KRAS", "mut_type": "CNV"},
+        {"patient_id": "P2", "gene": "TP53", "mut_type": "SV"},
+    ])
 
     heat = HeatmapAnnotationConfig(
         values="mut_type", colors={"SNV": "#ff0000", "CNV": "#00ff00", "SV": "#0000ff"}
@@ -102,12 +99,10 @@ def test_oncoplot_cell_alignment(tmp_path):
 
 
 def test_oncoplot_transparent_figure_patch():
-    pdf = pd.DataFrame(
-        [
-            {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV"},
-            {"patient_id": "P2", "gene": "TP53", "mut_type": "SNV"},
-        ]
-    )
+    pdf = pd.DataFrame([
+        {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV"},
+        {"patient_id": "P2", "gene": "TP53", "mut_type": "SNV"},
+    ])
 
     heat = HeatmapAnnotationConfig(values="mut_type", colors={"SNV": "#EC745C"})
     cfg = OncoplotConfig(
@@ -127,12 +122,10 @@ def test_oncoplot_transparent_figure_patch():
 
 
 def test_oncoplot_forces_opaque_cell_colors():
-    pdf = pd.DataFrame(
-        [
-            {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV"},
-            {"patient_id": "P1", "gene": "KRAS", "mut_type": "CNV"},
-        ]
-    )
+    pdf = pd.DataFrame([
+        {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV"},
+        {"patient_id": "P1", "gene": "KRAS", "mut_type": "CNV"},
+    ])
 
     # Provide fully transparent colors; renderer should coerce to opaque fills
     heat = HeatmapAnnotationConfig(
@@ -156,6 +149,200 @@ def test_oncoplot_forces_opaque_cell_colors():
     cell_alphas = [a for a in alphas if a > 0.001]
     assert cell_alphas, "No non-transparent cell colors found"
     assert min(cell_alphas) > 0.01, f"Found transparent cell: {alphas}"
+
+
+def test_oncoplot_can_hide_column_labels():
+    pdf = pd.DataFrame([
+        {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV"},
+        {"patient_id": "P2", "gene": "KRAS", "mut_type": "CNV"},
+    ])
+
+    heat = HeatmapAnnotationConfig(
+        values="mut_type",
+        colors={"SNV": "#EC745C", "CNV": "#44A9CC"},
+    )
+    cfg = OncoplotConfig(
+        heatmap_annotation=heat,
+        x_col="patient_id",
+        y_col="gene",
+        show_column_labels=False,
+    )
+
+    fig = OncoPlotter(pdf, config=cfg).plot()
+    ax = fig.axes[0]
+
+    rotated_xtick_text = [
+        text.get_text()
+        for text in ax.texts
+        if isinstance(text, mtext.Text)
+        and text.get_rotation() == 90
+        and text.get_ha() == "center"
+        and text.get_va() == "top"
+    ]
+    assert rotated_xtick_text == []
+
+
+def test_oncoplot_auto_axes_aspect_preserves_plot_body_width_for_skinny_cells():
+    pdf = pd.DataFrame([
+        {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV"},
+        {"patient_id": "P2", "gene": "KRAS", "mut_type": "CNV"},
+        {"patient_id": "P3", "gene": "EGFR", "mut_type": "Fusion"},
+        {"patient_id": "P4", "gene": "PIK3CA", "mut_type": "SNV"},
+    ])
+
+    heat = HeatmapAnnotationConfig(
+        values="mut_type",
+        colors={"SNV": "#EC745C", "CNV": "#44A9CC", "Fusion": "#FFB600"},
+    )
+    equal_cfg = OncoplotConfig(
+        heatmap_annotation=heat,
+        x_col="patient_id",
+        y_col="gene",
+        figsize=(12, 6),
+        auto_adjust_cell_size=False,
+        cell_aspect=0.35,
+        axes_aspect_mode="equal",
+    )
+    auto_cfg = OncoplotConfig(
+        heatmap_annotation=heat,
+        x_col="patient_id",
+        y_col="gene",
+        figsize=(12, 6),
+        auto_adjust_cell_size=False,
+        cell_aspect=0.35,
+        axes_aspect_mode="auto",
+    )
+
+    fig_equal = OncoPlotter(pdf, config=equal_cfg).plot()
+    fig_auto = OncoPlotter(pdf, config=auto_cfg).plot()
+
+    width_equal = fig_equal.axes[0].get_position().width
+    width_auto = fig_auto.axes[0].get_position().width
+
+    assert width_auto > width_equal
+
+
+def test_oncoplot_adds_right_summary_bars_with_overall_counts():
+    pdf = pd.DataFrame([
+        {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV", "arm": "A"},
+        {"patient_id": "P1", "gene": "TP53", "mut_type": "CNV", "arm": "A"},
+        {"patient_id": "P2", "gene": "TP53", "mut_type": "SNV", "arm": "A"},
+        {"patient_id": "P2", "gene": "KRAS", "mut_type": "Fusion", "arm": "A"},
+        {"patient_id": "P3", "gene": "TP53", "mut_type": "CNV", "arm": "B"},
+        {"patient_id": "P4", "gene": "KRAS", "mut_type": "SNV", "arm": "B"},
+    ])
+
+    heat = HeatmapAnnotationConfig(
+        values="mut_type",
+        colors={"SNV": "#EC745C", "CNV": "#44A9CC", "Fusion": "#FFB600"},
+        legend_value_order=["SNV", "CNV", "Fusion"],
+    )
+    cfg = OncoplotConfig(
+        heatmap_annotation=heat,
+        x_col="patient_id",
+        y_col="gene",
+        col_split_by=["arm"],
+        col_split_order={"arm": ["A", "B"]},
+        right_summary_bars=RightSummaryBarsConfig(include_overall=True),
+    )
+
+    fig = OncoPlotter(pdf, config=cfg).plot()
+
+    assert len(fig.axes) >= 3
+    summary_axes = fig.axes[1:]
+    assert [axis.get_title() for axis in summary_axes[:3]] == ["All", "A", "B"]
+
+    all_axis = summary_axes[0]
+    summary_text = [t.get_text() for t in all_axis.texts if isinstance(t, mtext.Text)]
+    assert "75%" in summary_text
+    assert "50%" in summary_text
+
+    widths = sorted([
+        round(float(p.get_width()), 3)
+        for p in all_axis.patches
+        if round(float(p.get_width()), 3) > 0
+    ])
+    assert widths == [1.0, 1.0, 2.0, 2.0]
+
+
+def test_oncoplot_right_summary_bars_respect_split_panels():
+    pdf = pd.DataFrame([
+        {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV", "arm": "A"},
+        {"patient_id": "P2", "gene": "TP53", "mut_type": "CNV", "arm": "A"},
+        {"patient_id": "P3", "gene": "TP53", "mut_type": "SNV", "arm": "B"},
+        {"patient_id": "P4", "gene": "KRAS", "mut_type": "Fusion", "arm": "B"},
+    ])
+
+    heat = HeatmapAnnotationConfig(
+        values="mut_type",
+        colors={"SNV": "#EC745C", "CNV": "#44A9CC", "Fusion": "#FFB600"},
+    )
+    cfg = OncoplotConfig(
+        heatmap_annotation=heat,
+        x_col="patient_id",
+        y_col="gene",
+        col_split_by=["arm"],
+        col_split_order={"arm": ["A", "B"]},
+        right_summary_bars=RightSummaryBarsConfig(include_overall=False),
+    )
+
+    fig = OncoPlotter(pdf, config=cfg).plot()
+
+    assert [axis.get_title() for axis in fig.axes[1:]] == ["A", "B"]
+
+
+def test_oncoplot_right_summary_uses_panel_gap_for_first_gap_by_default_and_allows_override():
+    pdf = pd.DataFrame([
+        {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV", "arm": "A"},
+        {"patient_id": "P2", "gene": "KRAS", "mut_type": "CNV", "arm": "B"},
+    ])
+
+    heat = HeatmapAnnotationConfig(
+        values="mut_type",
+        colors={"SNV": "#EC745C", "CNV": "#44A9CC"},
+    )
+    default_cfg = OncoplotConfig(
+        heatmap_annotation=heat,
+        x_col="patient_id",
+        y_col="gene",
+        right_summary_bars=RightSummaryBarsConfig(
+            include_overall=True,
+            split_by=["arm"],
+            panel_width=0.08,
+            panel_gap=0.03,
+        ),
+    )
+    override_cfg = OncoplotConfig(
+        heatmap_annotation=heat,
+        x_col="patient_id",
+        y_col="gene",
+        right_summary_bars=RightSummaryBarsConfig(
+            include_overall=True,
+            split_by=["arm"],
+            panel_width=0.08,
+            panel_gap=0.03,
+            heatmap_gap=0.07,
+        ),
+    )
+
+    fig_default = OncoPlotter(pdf, config=default_cfg).plot()
+    fig_override = OncoPlotter(pdf, config=override_cfg).plot()
+
+    main_default = fig_default.axes[0].get_position()
+    first_default = fig_default.axes[1].get_position()
+    second_default = fig_default.axes[2].get_position()
+    default_first_gap = round(first_default.x0 - main_default.x1, 3)
+    default_panel_gap = round(second_default.x0 - first_default.x1, 3)
+
+    main_override = fig_override.axes[0].get_position()
+    first_override = fig_override.axes[1].get_position()
+    second_override = fig_override.axes[2].get_position()
+    override_first_gap = round(first_override.x0 - main_override.x1, 3)
+    override_panel_gap = round(second_override.x0 - first_override.x1, 3)
+
+    assert default_first_gap == default_panel_gap == 0.03
+    assert override_first_gap == 0.07
+    assert override_panel_gap == 0.03
 
 
 # %%

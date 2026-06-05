@@ -153,3 +153,42 @@ class HeatmapAnnotationConfig(BaseModel):
             return [str(x) for x in list(v)]
         except Exception:
             return v
+
+
+class RightSummaryBarsConfig(BaseModel):
+    """
+    Configuration for right-side per-gene summary bars on oncoplots.
+
+    The summary panels show stacked alteration counts by heatmap category and a
+    percentage label derived from the number of unique patients/samples with any
+    event for that gene within each panel's cohort.
+    """
+
+    if ConfigDict is not None:
+        model_config = ConfigDict(arbitrary_types_allowed=True)
+    else:
+        model_config = BaseModel.model_config if hasattr(BaseModel, "model_config") else {}
+
+    include_overall: Annotated[bool, Any] = True
+    split_by: Annotated[list[str] | None, Any] = None
+    panel_width: Annotated[float, Any] = 0.12
+    panel_gap: Annotated[float, Any] = 0.015
+    heatmap_gap: Annotated[float | None, Any] = None
+    max_panels: Annotated[int | None, Any] = 8
+    title_fontsize: Annotated[float | int, Any] = 11
+    tick_fontsize: Annotated[float | int, Any] = 9
+    percent_fontsize: Annotated[float | int, Any] = 10
+    xlabel: Annotated[str, Any] = "No. of alterations"
+    show_percent_labels: Annotated[bool, Any] = True
+    percent_decimals: Annotated[int, Any] = 0
+    label_padding: Annotated[float, Any] = 0.02
+    colors: Annotated[dict[str, str] | None, Any] = None
+
+    @field_validator("colors", mode="before")
+    def _coerce_summary_colors_keys(cls, v):
+        if v is None:
+            return v
+        try:
+            return {str(k): val for k, val in dict(v).items()}
+        except Exception:
+            return v

@@ -17,6 +17,7 @@ import numpy as np
 import pandas as pd
 from matplotlib import font_manager
 from matplotlib.patches import Patch
+from matplotlib.ticker import MaxNLocator
 
 from bioviz.configs import HeatmapAnnotationConfig, OncoplotConfig
 from bioviz.utils.plot_utils import is_categorical
@@ -881,6 +882,7 @@ class OncoPlotter:
         self.legend_title_fontsize = config.legend_title_fontsize
         self.rotate_left_annotation_label = config.rotate_left_annotation_label
         self.legend_category_order = config.legend_category_order
+        self.show_column_labels = getattr(config, "show_column_labels", True)
         self.xticklabel_xoffset = config.xticklabel_xoffset
         self.xticklabel_yoffset = config.xticklabel_yoffset
         self.yticklabel_xoffset = getattr(config, "yticklabel_xoffset", -0.3)
@@ -903,6 +905,7 @@ class OncoPlotter:
         self.fig_top_margin = config.fig_top_margin
         self.fig_bottom_margin = config.fig_bottom_margin
         self.fig_y_margin = config.fig_y_margin
+        self.axes_aspect_mode = getattr(config, "axes_aspect_mode", "equal")
 
         # Detect which config fields were explicitly set by the caller (pydantic)
         fields_set = getattr(
@@ -955,6 +958,229 @@ class OncoPlotter:
             self.value_col = self.heatmap_annotation.values
         else:
             self.value_col = "__value__"
+
+    def _build_right_summary_panels(
+        self,
+        df: pd.DataFrame,
+        x_values: list[Any],
+        genes_ordered: list[Any],
+    ) -> list[dict[str, Any]]:
+        cfg = getattr(self.config, "right_summary_bars", None)
+        if cfg is None:
+            return []
+
+        split_by = list(cfg.split_by or self.col_split_by or [])
+        valid_split_by = [col for col in split_by if col in df.columns]
+
+        sample_meta = df[[self.x_col] + valid_split_by].drop_duplicates(subset=[self.x_col]).copy()
+        sample_meta = sample_meta[sample_meta[self.x_col].isin(x_values)]
+        sample_meta = sample_meta.drop_duplicates(subset=[self.x_col])
+
+        panels: list[dict[str, Any]] = []
+        if cfg.include_overall:
+            panels.append({"title": "All", "samples": list(x_values)})
+
+        if valid_split_by:
+            grouped = sample_meta.groupby(valid_split_by, dropna=False, sort=False)
+            for keys, subset in grouped:
+                if not isinstance(keys, tuple):
+                    keys = (keys,)
+                label_parts = []
+                for col, val in zip(valid_split_by, keys, strict=True):
+                    display = str(val)
+                    if val is None or display.lower() == "nan":
+                        display = "NA"
+                    label_parts.append(display if len(valid_split_by) == 1 else f"{col}={display}")
+                samples = subset[self.x_col].drop_duplicates().tolist()
+                if samples:
+                    panels.append({"title": " | ".join(label_parts), "samples": samples})
+
+        max_panels = getattr(cfg, "max_panels", None)
+        if max_panels is not None and max_panels >= 0:
+            panels = panels[:max_panels]
+        return panels
+
+    def _draw_right_summary_bars(
+        self,
+        fig: Any,
+        ax: Any,
+        df: pd.DataFrame,
+        x_values: list[Any],
+        genes_ordered: list[Any],
+        row_positions: list[float],
+    ) -> list[Any]:
+        cfg = getattr(self.config, "right_summary_bars", None)
+        if cfg is None:
+            return []
+
+        panels = self._build_right_summary_panels(df, x_values, genes_ordered)
+        if not panels:
+            return []
+
+        bar_colors = dict(
+            getattr(cfg, "colors", None) or getattr(self.heatmap_annotation, "colors", {})
+        )
+        if not bar_colors:
+            return []
+
+        panel_width = float(getattr(cfg, "panel_width", 0.12))
+        panel_gap = float(getattr(cfg, "panel_gap", 0.015))
+        heatmap_gap = getattr(cfg, "heatmap_gap", None)
+        heatmap_gap = panel_gap if heatmap_gap is None else float(heatmap_gap)
+        main_pos = ax.get_position()
+        required_width = (
+            heatmap_gap + len(panels) * panel_width + max(0, len(panels) - 1) * panel_gap
+        )
+        legend_reserve = 0.18
+        available_right = max(0.0, 0.98 - main_pos.x1 - legend_reserve)
+        if required_width > available_right and required_width > 0:
+            shrink = min(main_pos.width * 0.45, required_width - available_right + 0.02)
+            if shrink > 0:
+                ax.set_position((
+                    main_pos.x0,
+                    main_pos.y0,
+                    main_pos.width - shrink,
+                    main_pos.height,
+                ))
+                main_pos = ax.get_position()
+
+            start_x = main_pos.x1 + heatmap_gap
+            available_width = max(0.01, 0.98 - main_pos.x1 - legend_reserve - heatmap_gap)
+        if required_width > available_width and len(panels) > 0:
+            total_gap = max(0, len(panels) - 1) * panel_gap
+            panel_width = max(0.06, (available_width - total_gap) / len(panels))
+
+        plot_df = df[df[self.x_col].isin(x_values)].copy()
+        if plot_df.empty:
+            return []
+
+        gene_order_map = {gene: idx for idx, gene in enumerate(genes_ordered)}
+        plot_df = plot_df[plot_df[self.y_col].isin(gene_order_map)]
+        if plot_df.empty:
+            return []
+
+        summary_value_col = self.value_col
+        if summary_value_col not in plot_df.columns:
+            if isinstance(self.heatmap_annotation.values, str):
+                summary_value_col = self.heatmap_annotation.values
+            else:
+                summary_value_col = "__right_summary_value__"
+                value_series = pd.Series(self.heatmap_annotation.values)
+                plot_df[summary_value_col] = plot_df[self.x_col].map(value_series)
+
+        event_types = [
+            str(v) for v in getattr(self.heatmap_annotation, "legend_value_order", None) or []
+        ]
+        if not event_types:
+            observed = [str(v) for v in plot_df[summary_value_col].dropna().unique().tolist()]
+            event_types = [v for v in bar_colors if str(v) in observed]
+            remaining = [v for v in observed if v not in event_types]
+            event_types.extend(remaining)
+
+        y_centers = [y + 0.5 for y in row_positions]
+        axes: list[Any] = []
+
+        for idx, panel in enumerate(panels):
+            panel_samples = panel["samples"]
+            denom = len(pd.Index(panel_samples).drop_duplicates())
+            if denom == 0:
+                continue
+
+            panel_df = plot_df[plot_df[self.x_col].isin(panel_samples)].copy()
+            left = start_x + idx * (panel_width + panel_gap)
+            bar_ax = fig.add_axes((left, main_pos.y0, panel_width, main_pos.height), sharey=ax)
+            bar_ax.set_facecolor("none")
+
+            any_counts = (
+                panel_df[[self.y_col, self.x_col]]
+                .drop_duplicates()
+                .groupby(self.y_col)
+                .size()
+                .reindex(genes_ordered, fill_value=0)
+            )
+            counts_by_type = (
+                panel_df[[self.y_col, self.x_col, summary_value_col]]
+                .drop_duplicates()
+                .assign(_value=lambda d: d[summary_value_col].astype(str))
+                .groupby([self.y_col, "_value"])
+                .size()
+                .unstack(fill_value=0)
+                .reindex(index=genes_ordered, fill_value=0)
+            )
+
+            left_counts = np.zeros(len(genes_ordered), dtype=float)
+            max_total = 0.0
+            for event_type in event_types:
+                counts = counts_by_type.get(event_type)
+                if counts is None:
+                    continue
+                values = counts.to_numpy(dtype=float)
+                if np.any(values > 0):
+                    color = bar_colors.get(str(event_type), bar_colors.get(event_type, "#808080"))
+                    bar_ax.barh(
+                        y_centers,
+                        values,
+                        left=left_counts,
+                        height=0.8,
+                        color=color,
+                        edgecolor="none",
+                    )
+                    left_counts = left_counts + values
+                    max_total = max(
+                        max_total, float(left_counts.max() if len(left_counts) else 0.0)
+                    )
+
+            if max_total <= 0:
+                max_total = 1.0
+            x_text = max_total + max_total * float(getattr(cfg, "label_padding", 0.02))
+            decimals = int(getattr(cfg, "percent_decimals", 0))
+            show_percent = bool(getattr(cfg, "show_percent_labels", True))
+            if show_percent:
+                for gene, y in zip(genes_ordered, y_centers, strict=True):
+                    pct = 100.0 * float(any_counts.loc[gene]) / float(denom)
+                    fmt = f"{{:.{decimals}f}}%"
+                    bar_ax.text(
+                        x_text,
+                        y,
+                        fmt.format(pct),
+                        ha="left",
+                        va="center",
+                        fontsize=getattr(cfg, "percent_fontsize", 10),
+                    )
+
+            bar_ax.set_title(
+                str(panel["title"]), fontsize=getattr(cfg, "title_fontsize", 11), pad=8
+            )
+            if idx == 0 or len(panels) == 1:
+                bar_ax.set_xlabel(
+                    getattr(cfg, "xlabel", "No. of alterations"),
+                    fontsize=getattr(cfg, "tick_fontsize", 9),
+                )
+            else:
+                bar_ax.set_xlabel("")
+            bar_ax.set_xlim(0, x_text + max_total * 0.05)
+            bar_ax.set_ylim(ax.get_ylim())
+            bar_ax.xaxis.set_major_locator(MaxNLocator(nbins=3, integer=True))
+            bar_ax.grid(axis="x", alpha=0.15)
+            bar_ax.tick_params(axis="y", which="both", left=False, labelleft=False, length=0)
+            bar_ax.tick_params(axis="x", labelsize=getattr(cfg, "tick_fontsize", 9))
+            bar_ax.spines["top"].set_visible(False)
+            bar_ax.spines["right"].set_visible(False)
+            bar_ax.spines["left"].set_visible(False)
+            axes.append(bar_ax)
+
+        return axes
+
+    def _sync_right_summary_axes(self, ax: Any, right_summary_axes: list[Any]) -> None:
+        if not right_summary_axes:
+            return
+
+        main_pos = ax.get_position()
+        main_ylim = ax.get_ylim()
+        for bar_ax in right_summary_axes:
+            pos = bar_ax.get_position()
+            bar_ax.set_position((pos.x0, main_pos.y0, pos.width, main_pos.height))
+            bar_ax.set_ylim(main_ylim)
 
     def plot(self) -> plt.Figure:
         """
@@ -1132,7 +1358,10 @@ class OncoPlotter:
             top_padding_in = 0.35 + top_blocks_in + top_spacers_in + title_padding_in
 
             # Leave space for rotated xtick labels and bottom gutter.
-            bottom_padding_in = max(0.4, (column_label_fontsize / 72.0) * 1.6)
+            if self.show_column_labels:
+                bottom_padding_in = max(0.4, (column_label_fontsize / 72.0) * 1.6)
+            else:
+                bottom_padding_in = 0.25
 
             # For small grids, scale padding down so that cells maintain a
             # consistent physical size relative to labels.  Without this,
@@ -1209,7 +1438,7 @@ class OncoPlotter:
             fig_top_margin = max(0.0, fig_top_margin - 0.02)
         bottom_margin = self.fig_bottom_margin
         aspect_ratio = getattr(self.config, "aspect", 1.0)
-        if aspect_ratio < 1.0 and nrows <= 10:
+        if self.axes_aspect_mode == "equal" and aspect_ratio < 1.0 and nrows <= 10:
             bottom_margin = max(
                 self.fig_bottom_margin, self.fig_bottom_margin + (10 - nrows) * 0.02
             )
@@ -1228,8 +1457,13 @@ class OncoPlotter:
         max_x = (max(col_positions) + cell_aspect) if col_positions else 0
         ax.set_xlim(-1, max(ncols, max_x))
         ax.set_ylim(-1, nrows)
-        # Use configured aspect on the axes; cell geometry stays constant.
-        ax.set_aspect(getattr(self.config, "aspect", 1.0) or 1.0)
+        # Equal aspect keeps x/y data units locked together. Auto aspect lets the
+        # heatmap fill the allotted axes box so narrow columns do not collapse the
+        # entire plot body.
+        if self.axes_aspect_mode == "auto":
+            ax.set_aspect("auto")
+        else:
+            ax.set_aspect(getattr(self.config, "aspect", 1.0) or 1.0)
         # Keep the axes facecolor opaque for correct cell rendering
         ax.set_facecolor("white")
 
@@ -1620,6 +1854,15 @@ class OncoPlotter:
 
         fig.canvas.draw()
 
+        right_summary_axes = self._draw_right_summary_bars(
+            fig,
+            ax,
+            df,
+            x_values,
+            genes_ordered,
+            row_positions,
+        )
+
         legend_kwargs = {}
         if self.legend_bbox_to_anchor is not None:
             bbox_to_anchor = self.legend_bbox_to_anchor
@@ -1629,11 +1872,13 @@ class OncoPlotter:
                 translate = mtransforms.ScaledTranslation(
                     offset_pts / 72.0, 0.0, fig.dpi_scale_trans
                 )
-                legend_kwargs["bbox_transform"] = ax.transAxes + translate
+                anchor_ax = right_summary_axes[-1] if right_summary_axes else ax
+                legend_kwargs["bbox_transform"] = anchor_ax.transAxes + translate
                 bbox_to_anchor = (1.0, 0.5)
             else:
+                anchor_ax = right_summary_axes[-1] if right_summary_axes else ax
                 bbox_to_anchor = (1 + self.legend_offset, 0.5)
-                legend_kwargs["bbox_transform"] = ax.transAxes
+                legend_kwargs["bbox_transform"] = anchor_ax.transAxes
 
         gene_labels = []
         text_transform = rowlabel_text_transform
@@ -1652,40 +1897,43 @@ class OncoPlotter:
             text._is_row_label = True
             gene_labels.append(text)
 
-        use_point_offset = getattr(self.config, "xticklabel_use_points", False)
-        offset_val = float(self.xticklabel_yoffset)
-        if use_point_offset:
-            # Point-based offset: interpret xticklabel_yoffset directly as points.
-            offset_pts = offset_val
-            base_transform = ax.get_xaxis_transform()
-            translate = mtransforms.ScaledTranslation(0, -offset_pts / 72.0, fig.dpi_scale_trans)
-            xtick_transform = base_transform + translate
-            for x, p in zip(col_positions, x_values, strict=True):
-                ax.text(
-                    x + cell_aspect / 2,
-                    0.0,
-                    p,
-                    ha="center",
-                    va="top",
-                    fontsize=column_label_fontsize,
-                    rotation=90,
-                    clip_on=False,
-                    transform=xtick_transform,
+        if self.show_column_labels:
+            use_point_offset = getattr(self.config, "xticklabel_use_points", False)
+            offset_val = float(self.xticklabel_yoffset)
+            if use_point_offset:
+                # Point-based offset: interpret xticklabel_yoffset directly as points.
+                offset_pts = offset_val
+                base_transform = ax.get_xaxis_transform()
+                translate = mtransforms.ScaledTranslation(
+                    0, -offset_pts / 72.0, fig.dpi_scale_trans
                 )
-        else:
-            # Data-unit offset: use raw offset.
-            y_xtick = nrows + offset_val
-            for x, p in zip(col_positions, x_values, strict=True):
-                ax.text(
-                    x + cell_aspect / 2,
-                    y_xtick,
-                    p,
-                    ha="center",
-                    va="top",
-                    fontsize=column_label_fontsize,
-                    rotation=90,
-                    clip_on=False,
-                )
+                xtick_transform = base_transform + translate
+                for x, p in zip(col_positions, x_values, strict=True):
+                    ax.text(
+                        x + cell_aspect / 2,
+                        0.0,
+                        p,
+                        ha="center",
+                        va="top",
+                        fontsize=column_label_fontsize,
+                        rotation=90,
+                        clip_on=False,
+                        transform=xtick_transform,
+                    )
+            else:
+                # Data-unit offset: use raw offset.
+                y_xtick = nrows + offset_val
+                for x, p in zip(col_positions, x_values, strict=True):
+                    ax.text(
+                        x + cell_aspect / 2,
+                        y_xtick,
+                        p,
+                        ha="center",
+                        va="top",
+                        fontsize=column_label_fontsize,
+                        rotation=90,
+                        clip_on=False,
+                    )
 
         # Ensure newly added text objects have up-to-date extents before measuring spacing
         fig.canvas.draw()
@@ -1807,6 +2055,8 @@ class OncoPlotter:
         if margin > 0 and yrange > 0:
             ax.set_ylim(ymin, ymax + yrange * margin)
 
+        self._sync_right_summary_axes(ax, right_summary_axes)
+
         if col_positions and row_positions:
             bottom_y = max(row_positions) + 1
             block_starts = [col_positions[0]]
@@ -1862,6 +2112,14 @@ class OncoPlotter:
                 self.row_group_post_label_shift_points,
                 self.row_group_post_shift_use_points,
             )
+            fig.canvas.draw_idle()
+
+        # Axes with fixed aspect finalize their drawable box at draw time. Resync the
+        # right-side summary panels after the final draw so their rows stay aligned
+        # with the heatmap cells regardless of labels, margins, or aspect changes.
+        if right_summary_axes:
+            fig.canvas.draw()
+            self._sync_right_summary_axes(ax, right_summary_axes)
             fig.canvas.draw_idle()
         return fig
 

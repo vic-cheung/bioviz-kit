@@ -11,7 +11,12 @@ from .forest_cfg import ForestPlotConfig
 from .grouped_bar_cfg import GroupedBarConfig
 from .km_cfg import KMPlotConfig
 from .line_cfg import LinePlotConfig
-from .oncoplot_cfg import HeatmapAnnotationConfig, OncoplotConfig, TopAnnotationConfig
+from .oncoplot_cfg import (
+    HeatmapAnnotationConfig,
+    OncoplotConfig,
+    RightSummaryBarsConfig,
+    TopAnnotationConfig,
+)
 from .table_cfg import StyledTableConfig
 from .volcano_cfg import VolcanoConfig
 from .waterfall_cfg import ThresholdLine, WaterfallConfig
@@ -24,6 +29,7 @@ __all__ = [
     "OncoplotConfig",
     "TopAnnotationConfig",
     "HeatmapAnnotationConfig",
+    "RightSummaryBarsConfig",
     "DistributionConfig",
     "VolcanoConfig",
     "GroupedBarConfig",
