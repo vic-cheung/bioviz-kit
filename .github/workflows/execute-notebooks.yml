@@ -38,7 +38,12 @@ jobs:
         run: |
           mkdir -p /tmp/notebooks_out
           for nb in examples/*.ipynb; do
-            jupyter nbconvert --to notebook --inplace --execute "$nb" --ExecutePreprocessor.timeout=600
+            jupyter nbconvert \
+              --to notebook \
+              --inplace \
+              --execute "$nb" \
+              --ExecutePreprocessor.timeout=600 \
+              --ExecutePreprocessor.kernel_name=python3
           done
 
       - name: Commit executed notebooks
