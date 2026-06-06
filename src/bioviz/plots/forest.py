@@ -111,7 +111,8 @@ class ForestPlotter:
         # Reverse for matplotlib (y=0 at bottom)
         if cfg.variable_col and cfg.variable_col in df.columns:
             df = (
-                df.groupby(cfg.variable_col, sort=False, group_keys=False)
+                df
+                .groupby(cfg.variable_col, sort=False, group_keys=False)
                 .apply(lambda g: g.iloc[::-1])
                 .reset_index(drop=True)
             )
@@ -292,23 +293,22 @@ class ForestPlotter:
             indices = info["indices"]
             min_y = y_positions[min(indices, key=lambda x: y_positions[x])]
             max_y = y_positions[max(indices, key=lambda x: y_positions[x])]
+            label_offset = max(0.45, min(0.7, 0.45 + cfg.section_gap))
             var_ranges[var]["min_y"] = min_y
             var_ranges[var]["max_y"] = max_y
-            var_ranges[var]["label_y"] = max_y
+            var_ranges[var]["label_y"] = max_y + label_offset
             section_bounds.append((min_y, var))
 
         section_bounds.sort(key=lambda x: x[0])
 
-        # Separator lines
-        if cfg.show_section_separators:
-            for i in range(1, len(section_bounds)):
-                cur_min = section_bounds[i][0]
-                prev_var = section_bounds[i - 1][1]
-                prev_max = var_ranges[prev_var]["max_y"]
-                sep_y = (cur_min + prev_max) / 2
+        # Section labels
+        for var, info in var_ranges.items():
+            label = (cfg.section_labels or {}).get(var, str(var))
+            line_start_x = min(cfg.section_label_x_position + 0.03, 0.98)
+            if cfg.show_section_separators:
                 ax.plot(
-                    [cfg.section_label_x_position, 1.0],
-                    [sep_y, sep_y],
+                    [line_start_x, 1.0],
+                    [info["label_y"], info["label_y"]],
                     transform=ax.get_yaxis_transform(),
                     color=cfg.section_separator_color,
                     linestyle="-",
@@ -316,10 +316,6 @@ class ForestPlotter:
                     alpha=cfg.section_separator_alpha,
                     clip_on=False,
                 )
-
-        # Section labels
-        for var, info in var_ranges.items():
-            label = (cfg.section_labels or {}).get(var, str(var))
             ax.text(
                 cfg.section_label_x_position,
                 info["label_y"],
