@@ -259,11 +259,6 @@ See the [`examples/`](examples/) directory for complete, runnable examples:
 
 Full documentation is available at [bioviz-kit.readthedocs.io](https://bioviz-kit.readthedocs.io/).
 
-## Integration with tm-modeling
-
-bioviz-kit serves as the visualization backend for tm-modeling.
-Users of tm-modeling can continue using the existing API (`KMPlotConfig`, `generate_km_plot_and_risk_table`)
-while benefiting from bioviz-kit's improved rendering.
 
 ## License
 
