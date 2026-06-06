@@ -10,6 +10,7 @@ __all__ = [
     "waterfall",
     "volcano",
     "oncoplot",
+    "onco_summary",
     "lineplot",
     "table",
     "grouped_bar",
@@ -25,6 +26,8 @@ __all__ = [
     "plot_grouped_boxplots",
     "plot_oncoplot",
     "OncoPlotter",
+    "OncoPrevalencePlotter",
+    "OncoGeneBarPlotter",
     "TablePlotter",
     "GroupedBarPlotter",
     "plot_grouped_bars",
@@ -53,6 +56,8 @@ _PUBLIC_FUNCS = {
     # oncoplot exports
     "plot_oncoplot": ("bioviz.plots.oncoplot", "plot_oncoplot"),
     "OncoPlotter": ("bioviz.plots.oncoplot", "OncoPlotter"),
+    "OncoPrevalencePlotter": ("bioviz.plots.onco_summary", "OncoPrevalencePlotter"),
+    "OncoGeneBarPlotter": ("bioviz.plots.onco_summary", "OncoGeneBarPlotter"),
     # volcano class wrapper
     "VolcanoPlotter": ("bioviz.plots.volcano", "VolcanoPlotter"),
     # lineplot / table helpers

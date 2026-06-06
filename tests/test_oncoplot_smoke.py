@@ -4,8 +4,13 @@ import matplotlib.text as mtext
 import numpy as np
 import pandas as pd
 
-from bioviz.configs import HeatmapAnnotationConfig, OncoplotConfig, RightSummaryBarsConfig
-from bioviz.plots import OncoPlotter
+from bioviz.configs import (
+    HeatmapAnnotationConfig,
+    OncoplotConfig,
+    RightSummaryBarsConfig,
+    TopAnnotationConfig,
+)
+from bioviz.plots import OncoGeneBarPlotter, OncoPlotter, OncoPrevalencePlotter
 
 
 # %%
@@ -343,6 +348,391 @@ def test_oncoplot_right_summary_uses_panel_gap_for_first_gap_by_default_and_allo
     assert default_first_gap == default_panel_gap == 0.03
     assert override_first_gap == 0.07
     assert override_panel_gap == 0.03
+
+
+def test_onco_prevalence_plotter_aggregates_groups_and_preserves_annotations():
+    pdf = pd.DataFrame([
+        {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV", "arm": "A", "dose": "100 mg"},
+        {"patient_id": "P1", "gene": "KRAS", "mut_type": "CNV", "arm": "A", "dose": "100 mg"},
+        {"patient_id": "P2", "gene": "TP53", "mut_type": "CNV", "arm": "A", "dose": "100 mg"},
+        {"patient_id": "P3", "gene": "TP53", "mut_type": "SNV", "arm": "B", "dose": "200 mg"},
+        {"patient_id": "P4", "gene": "KRAS", "mut_type": "Fusion", "arm": "B", "dose": "200 mg"},
+    ])
+    row_groups = pd.DataFrame({"Pathway": {"TP53": "DNA Repair", "KRAS": "RAS"}}).rename_axis(
+        "gene"
+    )
+
+    heat = HeatmapAnnotationConfig(
+        values="mut_type",
+        colors={"SNV": "#EC745C", "CNV": "#44A9CC", "Fusion": "#FFB600"},
+    )
+    cfg = OncoplotConfig(
+        heatmap_annotation=heat,
+        x_col="patient_id",
+        y_col="gene",
+        row_group_col="Pathway",
+        top_annotations={
+            "Dose": TopAnnotationConfig(
+                values="dose",
+                colors={"100 mg": "#007352", "200 mg": "#860F0F"},
+                legend_title="Dose",
+            )
+        },
+        show_column_labels=True,
+    )
+
+    fig = OncoPrevalencePlotter(
+        pdf,
+        cfg,
+        row_groups=row_groups,
+        row_groups_color_dict={"DNA Repair": "#000000", "RAS": "#000000"},
+        group_by=["arm"],
+        include_overall=True,
+    ).plot()
+    ax = fig.axes[0]
+
+    xticklabels = [tick.get_text() for tick in ax.get_xticklabels()]
+    assert xticklabels == ["All", "A", "B"]
+    texts = {text.get_text() for text in ax.texts}
+    assert {"100%", "50%", "Dose", "DNA Repair", "RAS"}.issubset(texts)
+    assert ax.yaxis_inverted()
+    assert len(fig.axes) >= 2
+
+
+def test_onco_prevalence_plotter_adds_gap_only_after_all_column():
+    pdf = pd.DataFrame([
+        {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV", "arm": "A"},
+        {"patient_id": "P2", "gene": "TP53", "mut_type": "CNV", "arm": "B"},
+    ])
+
+    heat = HeatmapAnnotationConfig(
+        values="mut_type",
+        colors={"SNV": "#EC745C", "CNV": "#44A9CC"},
+    )
+    cfg = OncoplotConfig(
+        heatmap_annotation=heat,
+        x_col="patient_id",
+        y_col="gene",
+        show_column_labels=True,
+        cell_aspect=1.0,
+    )
+
+    fig = OncoPrevalencePlotter(
+        pdf,
+        cfg,
+        group_by=["arm"],
+        include_overall=True,
+        all_column_gap=0.35,
+    ).plot()
+    ax = fig.axes[0]
+
+    xticks = [round(float(value), 2) for value in ax.get_xticks()]
+    assert xticks == [0.5, 1.85, 2.85]
+    assert round(xticks[1] - xticks[0], 2) == 1.35
+    assert round(xticks[2] - xticks[1], 2) == 1.00
+
+
+def test_onco_prevalence_plotter_show_all_alias_hides_overall_column():
+    pdf = pd.DataFrame([
+        {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV", "arm": "A"},
+        {"patient_id": "P2", "gene": "TP53", "mut_type": "CNV", "arm": "B"},
+    ])
+
+    heat = HeatmapAnnotationConfig(
+        values="mut_type",
+        colors={"SNV": "#EC745C", "CNV": "#44A9CC"},
+    )
+    cfg = OncoplotConfig(
+        heatmap_annotation=heat,
+        x_col="patient_id",
+        y_col="gene",
+        show_column_labels=True,
+    )
+
+    fig = OncoPrevalencePlotter(
+        pdf, cfg, group_by=["arm"], include_overall=True, show_all=False
+    ).plot()
+    ax = fig.axes[0]
+
+    xticklabels = [tick.get_text() for tick in ax.get_xticklabels()]
+    assert xticklabels == ["A", "B"]
+
+
+def test_onco_prevalence_plotter_splits_mixed_top_annotations_by_membership():
+    pdf = pd.DataFrame([
+        {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV", "dose": "100 mg", "cohort": "A"},
+        {"patient_id": "P2", "gene": "TP53", "mut_type": "CNV", "dose": "100 mg", "cohort": "B"},
+        {"patient_id": "P3", "gene": "TP53", "mut_type": "SNV", "dose": "200 mg", "cohort": "A"},
+    ])
+
+    heat = HeatmapAnnotationConfig(
+        values="mut_type",
+        colors={"SNV": "#EC745C", "CNV": "#44A9CC"},
+    )
+    cfg = OncoplotConfig(
+        heatmap_annotation=heat,
+        x_col="patient_id",
+        y_col="gene",
+        top_annotations={
+            "Cohort": TopAnnotationConfig(
+                values="cohort",
+                colors={"A": "#003975", "B": "#9d0ca2"},
+                legend_title="Cohort",
+                legend_value_order=["A", "B"],
+            ),
+            "Dose": TopAnnotationConfig(
+                values="dose",
+                colors={"100 mg": "#007352", "200 mg": "#860F0F"},
+                legend_title="Dose",
+                legend_value_order=["100 mg", "200 mg"],
+            ),
+        },
+        top_annotation_order=["Cohort", "Dose"],
+        show_column_labels=True,
+    )
+
+    fig = OncoPrevalencePlotter(pdf, cfg, group_by=["dose"], include_overall=False).plot()
+    ax = fig.axes[0]
+
+    top_patch_colors = {
+        mcolors.to_hex(patch.get_facecolor(), keep_alpha=False)
+        for patch in ax.patches
+        if hasattr(patch, "get_y")
+        and round(float(patch.get_y()), 2) < 0
+        and hasattr(patch, "get_height")
+        and round(float(patch.get_height()), 2) == 1.0
+    }
+    assert "#003975" in top_patch_colors
+    assert "#9d0ca2" in top_patch_colors
+    legend = ax.get_legend()
+    legend_labels = [text.get_text() for text in legend.get_texts()] if legend else []
+    assert "Mixed" not in legend_labels
+
+
+def test_onco_gene_bar_plotter_draws_grouped_in_cell_bars():
+    pdf = pd.DataFrame([
+        {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV", "arm": "A", "cohort": "X"},
+        {"patient_id": "P2", "gene": "TP53", "mut_type": "CNV", "arm": "A", "cohort": "X"},
+        {"patient_id": "P3", "gene": "TP53", "mut_type": "SNV", "arm": "B", "cohort": "Y"},
+        {"patient_id": "P4", "gene": "KRAS", "mut_type": "Fusion", "arm": "B", "cohort": "Y"},
+    ])
+
+    heat = HeatmapAnnotationConfig(
+        values="mut_type",
+        colors={"SNV": "#EC745C", "CNV": "#44A9CC", "Fusion": "#FFB600"},
+        legend_title="Mutation Type",
+        legend_value_order=["SNV", "CNV", "Fusion"],
+    )
+    cfg = OncoplotConfig(
+        heatmap_annotation=heat,
+        x_col="patient_id",
+        y_col="gene",
+        top_annotations={
+            "Cohort": TopAnnotationConfig(
+                values="cohort",
+                colors={"X": "#003975", "Y": "#9d0ca2"},
+                legend_title="Cohort",
+            )
+        },
+        show_column_labels=True,
+    )
+
+    fig = OncoGeneBarPlotter(pdf, cfg, group_by=["arm"], include_overall=False).plot()
+    ax = fig.axes[0]
+
+    xticklabels = [tick.get_text() for tick in ax.get_xticklabels()]
+    assert xticklabels == ["A", "B"]
+    texts = {text.get_text() for text in ax.texts}
+    assert {"100%", "50%", "0%", "Cohort"}.issubset(texts)
+    positive_widths = [
+        round(float(patch.get_width()), 3)
+        for patch in ax.patches
+        if hasattr(patch, "get_width") and round(float(patch.get_width()), 3) > 0
+    ]
+    positive_bar_heights = [
+        round(float(patch.get_height()), 2)
+        for patch in ax.patches
+        if hasattr(patch, "get_width")
+        and hasattr(patch, "get_height")
+        and round(float(patch.get_width()), 3) > 0
+        and mcolors.to_hex(patch.get_facecolor(), keep_alpha=False) != "#ffffff"
+    ]
+    assert any(width < 1.0 for width in positive_widths)
+    assert 1.0 in positive_bar_heights
+
+
+def test_onco_gene_bar_plotter_can_show_total_and_category_counts_in_labels():
+    pdf = pd.DataFrame([
+        {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV", "arm": "A"},
+        {"patient_id": "P2", "gene": "TP53", "mut_type": "CNV", "arm": "A"},
+        {"patient_id": "P3", "gene": "TP53", "mut_type": "Fusion", "arm": "A"},
+    ])
+
+    heat = HeatmapAnnotationConfig(
+        values="mut_type",
+        colors={"SNV": "#EC745C", "CNV": "#44A9CC", "Fusion": "#FFB600"},
+        legend_value_order=["SNV", "CNV", "Fusion"],
+    )
+    cfg = OncoplotConfig(
+        heatmap_annotation=heat,
+        x_col="patient_id",
+        y_col="gene",
+        show_column_labels=True,
+    )
+
+    fig = OncoGeneBarPlotter(
+        pdf,
+        cfg,
+        group_by=["arm"],
+        include_overall=False,
+        percent_decimals=0,
+        show_total_counts=True,
+        show_category_breakdown=True,
+        show_category_counts=True,
+    ).plot()
+    ax = fig.axes[0]
+
+    labels = [text.get_text() for text in ax.texts if isinstance(text, mtext.Text)]
+    assert any("100% (3/3)" in label for label in labels)
+    assert any("SNV: 33% (1), CNV: 33% (1)" in label for label in labels)
+    assert any("Fusion: 33% (1)" in label for label in labels)
+
+
+def test_onco_gene_bar_plotter_omits_zero_breakdown_categories_from_labels():
+    pdf = pd.DataFrame([
+        {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV", "arm": "A"},
+        {"patient_id": "P2", "gene": "TP53", "mut_type": "CNV", "arm": "A"},
+    ])
+
+    heat = HeatmapAnnotationConfig(
+        values="mut_type",
+        colors={"SNV": "#EC745C", "CNV": "#44A9CC", "Fusion": "#FFB600"},
+        legend_value_order=["SNV", "CNV", "Fusion"],
+    )
+    cfg = OncoplotConfig(
+        heatmap_annotation=heat,
+        x_col="patient_id",
+        y_col="gene",
+        show_column_labels=True,
+    )
+
+    fig = OncoGeneBarPlotter(
+        pdf,
+        cfg,
+        group_by=["arm"],
+        include_overall=False,
+        percent_decimals=0,
+        show_total_counts=True,
+        show_category_breakdown=True,
+        show_category_counts=True,
+    ).plot()
+    ax = fig.axes[0]
+
+    labels = [text.get_text() for text in ax.texts if isinstance(text, mtext.Text)]
+    assert any("SNV: 50% (1), CNV: 50% (1)" in label for label in labels)
+    assert all("Fusion: 0% (0)" not in label for label in labels)
+
+
+def test_onco_prevalence_plotter_can_override_label_text_color():
+    pdf = pd.DataFrame([
+        {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV", "arm": "A"},
+        {"patient_id": "P2", "gene": "TP53", "mut_type": "CNV", "arm": "A"},
+    ])
+
+    heat = HeatmapAnnotationConfig(
+        values="mut_type",
+        colors={"SNV": "#EC745C", "CNV": "#44A9CC"},
+    )
+    cfg = OncoplotConfig(
+        heatmap_annotation=heat,
+        x_col="patient_id",
+        y_col="gene",
+        show_column_labels=True,
+    )
+
+    fig = OncoPrevalencePlotter(
+        pdf,
+        cfg,
+        group_by=["arm"],
+        include_overall=False,
+        show_total_counts=True,
+        label_text_color="#ff00aa",
+    ).plot()
+    ax = fig.axes[0]
+
+    percent_texts = [text for text in ax.texts if text.get_text() == "100% (2/2)"]
+    assert percent_texts
+    assert mcolors.to_hex(percent_texts[0].get_color()) == "#ff00aa"
+
+
+def test_onco_gene_bar_plotter_can_customize_empty_cell_color_and_disable_border():
+    pdf = pd.DataFrame([
+        {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV", "arm": "A"},
+        {"patient_id": "P2", "gene": "KRAS", "mut_type": "CNV", "arm": "B"},
+    ])
+
+    heat = HeatmapAnnotationConfig(
+        values="mut_type",
+        colors={"SNV": "#EC745C", "CNV": "#44A9CC"},
+    )
+    cfg = OncoplotConfig(
+        heatmap_annotation=heat,
+        x_col="patient_id",
+        y_col="gene",
+        show_column_labels=True,
+    )
+
+    fig = OncoGeneBarPlotter(
+        pdf,
+        cfg,
+        group_by=["arm"],
+        include_overall=False,
+        empty_cell_color="gainsboro",
+        cell_border_color=None,
+    ).plot()
+    ax = fig.axes[0]
+
+    background_patches = [
+        patch
+        for patch in ax.patches
+        if hasattr(patch, "get_height")
+        and hasattr(patch, "get_width")
+        and round(float(patch.get_height()), 2) == 1.0
+        and round(float(patch.get_width()), 2) == 1.0
+    ]
+    assert background_patches
+    assert any(
+        mcolors.to_hex(patch.get_facecolor(), keep_alpha=False) == "#dcdcdc"
+        for patch in background_patches
+    )
+    assert all(
+        mcolors.to_rgba(patch.get_edgecolor())[3] == 0 or patch.get_linewidth() == 0
+        for patch in background_patches
+    )
+
+
+def test_onco_gene_bar_plotter_show_all_alias_hides_overall_column():
+    pdf = pd.DataFrame([
+        {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV", "arm": "A"},
+        {"patient_id": "P2", "gene": "KRAS", "mut_type": "CNV", "arm": "B"},
+    ])
+
+    heat = HeatmapAnnotationConfig(
+        values="mut_type",
+        colors={"SNV": "#EC745C", "CNV": "#44A9CC"},
+    )
+    cfg = OncoplotConfig(
+        heatmap_annotation=heat,
+        x_col="patient_id",
+        y_col="gene",
+        show_column_labels=True,
+    )
+
+    fig = OncoGeneBarPlotter(pdf, cfg, group_by=["arm"], show_all=False).plot()
+    ax = fig.axes[0]
+
+    xticklabels = [tick.get_text() for tick in ax.get_xticklabels()]
+    assert xticklabels == ["A", "B"]
 
 
 # %%
