@@ -111,7 +111,8 @@ class ForestPlotter:
         # Reverse for matplotlib (y=0 at bottom)
         if cfg.variable_col and cfg.variable_col in df.columns:
             df = (
-                df.groupby(cfg.variable_col, sort=False, group_keys=False)
+                df
+                .groupby(cfg.variable_col, sort=False, group_keys=False)
                 .apply(lambda g: g.iloc[::-1])
                 .reset_index(drop=True)
             )
@@ -143,11 +144,11 @@ class ForestPlotter:
         if cfg.variable_col and cfg.variable_col in df.columns and cfg.section_gap != 0.0:
             current_var = None
             cumulative = 0.0
-            for i, row in df.iterrows():
+            for position, (_, row) in enumerate(df.iterrows()):
                 var = row[cfg.variable_col]
                 if var != current_var and current_var is not None:
                     cumulative += cfg.section_gap
-                y_positions[i] += cumulative
+                y_positions[position] += cumulative
                 current_var = var
 
         return y_positions
@@ -306,8 +307,10 @@ class ForestPlotter:
                 prev_var = section_bounds[i - 1][1]
                 prev_max = var_ranges[prev_var]["max_y"]
                 sep_y = (cur_min + prev_max) / 2
-                ax.axhline(
-                    y=sep_y,
+                ax.plot(
+                    [cfg.section_label_x_position, 1.0],
+                    [sep_y, sep_y],
+                    transform=ax.get_yaxis_transform(),
                     color=cfg.section_separator_color,
                     linestyle="-",
                     linewidth=1,

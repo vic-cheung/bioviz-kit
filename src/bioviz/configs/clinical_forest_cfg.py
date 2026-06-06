@@ -46,6 +46,10 @@ class ClinicalForestPlotConfig(BaseModel):
         str,
         Field(default="hr_ci_upper", description="Column name for upper CI bound"),
     ]
+    variable_col: Annotated[
+        str | None,
+        Field(default=None, description="Optional column for section/category grouping."),
+    ]
 
     # ==========================================================================
     # Reference arm columns (Events/Patients left table)
@@ -289,6 +293,38 @@ class ClinicalForestPlotConfig(BaseModel):
     show_pvalue_column: Annotated[
         bool,
         Field(default=True, description="Show p-value column"),
+    ]
+
+    # ==========================================================================
+    # Section/category grouping
+    # ==========================================================================
+    section_labels: Annotated[
+        dict[str, str] | None,
+        Field(default=None, description="Optional display labels for section groups."),
+    ]
+    show_section_separators: Annotated[
+        bool,
+        Field(default=False, description="Show separator lines between grouped sections."),
+    ]
+    section_separator_color: Annotated[
+        str,
+        Field(default="#9A9A9A", description="Color of section separator lines."),
+    ]
+    section_separator_alpha: Annotated[
+        float,
+        Field(default=0.45, ge=0.0, le=1.0, description="Alpha of section separator lines."),
+    ]
+    section_gap: Annotated[
+        float,
+        Field(default=0.0, description="Extra vertical spacing between grouped sections."),
+    ]
+    section_label_x_position: Annotated[
+        float,
+        Field(default=-0.90, description="X-position for section labels in axes coords."),
+    ]
+    category_order: Annotated[
+        dict[str, list[str]] | None,
+        Field(default=None, description="Optional per-section row ordering."),
     ]
 
     # ==========================================================================
