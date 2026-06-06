@@ -114,11 +114,13 @@ class _OncoAggregatePlotterBase(OncoPlotter):
                 label_parts.append(display if len(valid_group_by) == 1 else f"{col}={display}")
             samples = subset[self.x_col].drop_duplicates().tolist()
             if samples:
-                columns.append({
-                    "title": " | ".join(label_parts),
-                    "samples": samples,
-                    "meta": meta,
-                })
+                columns.append(
+                    {
+                        "title": " | ".join(label_parts),
+                        "samples": samples,
+                        "meta": meta,
+                    }
+                )
         return columns, sample_meta
 
     def _resolve_aggregate_annotation_values(
@@ -196,7 +198,7 @@ class _OncoAggregatePlotterBase(OncoPlotter):
         breakdowns: dict[str, dict[str, int]],
     ) -> list[str]:
         ordered = [str(value) for value in (ann_config.legend_value_order or [])]
-        color_keys = [str(value) for value in ann_config.colors.keys()]
+        color_keys = [str(value) for value in ann_config.colors]
         observed = [
             str(value)
             for counts in breakdowns.values()

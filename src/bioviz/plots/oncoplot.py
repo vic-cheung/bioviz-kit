@@ -1036,12 +1036,14 @@ class OncoPlotter:
         if required_width > available_right and required_width > 0:
             shrink = min(main_pos.width * 0.45, required_width - available_right + 0.02)
             if shrink > 0:
-                ax.set_position((
-                    main_pos.x0,
-                    main_pos.y0,
-                    main_pos.width - shrink,
-                    main_pos.height,
-                ))
+                ax.set_position(
+                    (
+                        main_pos.x0,
+                        main_pos.y0,
+                        main_pos.width - shrink,
+                        main_pos.height,
+                    )
+                )
                 main_pos = ax.get_position()
 
             start_x = main_pos.x1 + heatmap_gap

@@ -111,8 +111,7 @@ class ForestPlotter:
         # Reverse for matplotlib (y=0 at bottom)
         if cfg.variable_col and cfg.variable_col in df.columns:
             df = (
-                df
-                .groupby(cfg.variable_col, sort=False, group_keys=False)
+                df.groupby(cfg.variable_col, sort=False, group_keys=False)
                 .apply(lambda g: g.iloc[::-1])
                 .reset_index(drop=True)
             )

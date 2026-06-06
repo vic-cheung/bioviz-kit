@@ -15,11 +15,13 @@ from bioviz.plots import OncoGeneBarPlotter, OncoPlotter, OncoPrevalencePlotter
 
 # %%
 def test_oncoplot_shapes_centered():
-    pdf = pd.DataFrame([
-        {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV"},
-        {"patient_id": "P1", "gene": "KRAS", "mut_type": "CNV"},
-        {"patient_id": "P2", "gene": "TP53", "mut_type": "Fusion"},
-    ])
+    pdf = pd.DataFrame(
+        [
+            {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV"},
+            {"patient_id": "P1", "gene": "KRAS", "mut_type": "CNV"},
+            {"patient_id": "P2", "gene": "TP53", "mut_type": "Fusion"},
+        ]
+    )
 
     heat = HeatmapAnnotationConfig(
         values="mut_type",
@@ -62,11 +64,13 @@ def test_oncoplot_shapes_centered():
 
 
 def test_oncoplot_cell_alignment(tmp_path):
-    pdf = pd.DataFrame([
-        {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV"},
-        {"patient_id": "P1", "gene": "KRAS", "mut_type": "CNV"},
-        {"patient_id": "P2", "gene": "TP53", "mut_type": "SV"},
-    ])
+    pdf = pd.DataFrame(
+        [
+            {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV"},
+            {"patient_id": "P1", "gene": "KRAS", "mut_type": "CNV"},
+            {"patient_id": "P2", "gene": "TP53", "mut_type": "SV"},
+        ]
+    )
 
     heat = HeatmapAnnotationConfig(
         values="mut_type", colors={"SNV": "#ff0000", "CNV": "#00ff00", "SV": "#0000ff"}
@@ -104,10 +108,12 @@ def test_oncoplot_cell_alignment(tmp_path):
 
 
 def test_oncoplot_transparent_figure_patch():
-    pdf = pd.DataFrame([
-        {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV"},
-        {"patient_id": "P2", "gene": "TP53", "mut_type": "SNV"},
-    ])
+    pdf = pd.DataFrame(
+        [
+            {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV"},
+            {"patient_id": "P2", "gene": "TP53", "mut_type": "SNV"},
+        ]
+    )
 
     heat = HeatmapAnnotationConfig(values="mut_type", colors={"SNV": "#EC745C"})
     cfg = OncoplotConfig(
@@ -127,10 +133,12 @@ def test_oncoplot_transparent_figure_patch():
 
 
 def test_oncoplot_forces_opaque_cell_colors():
-    pdf = pd.DataFrame([
-        {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV"},
-        {"patient_id": "P1", "gene": "KRAS", "mut_type": "CNV"},
-    ])
+    pdf = pd.DataFrame(
+        [
+            {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV"},
+            {"patient_id": "P1", "gene": "KRAS", "mut_type": "CNV"},
+        ]
+    )
 
     # Provide fully transparent colors; renderer should coerce to opaque fills
     heat = HeatmapAnnotationConfig(
@@ -157,10 +165,12 @@ def test_oncoplot_forces_opaque_cell_colors():
 
 
 def test_oncoplot_can_hide_column_labels():
-    pdf = pd.DataFrame([
-        {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV"},
-        {"patient_id": "P2", "gene": "KRAS", "mut_type": "CNV"},
-    ])
+    pdf = pd.DataFrame(
+        [
+            {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV"},
+            {"patient_id": "P2", "gene": "KRAS", "mut_type": "CNV"},
+        ]
+    )
 
     heat = HeatmapAnnotationConfig(
         values="mut_type",
@@ -188,12 +198,14 @@ def test_oncoplot_can_hide_column_labels():
 
 
 def test_oncoplot_auto_axes_aspect_preserves_plot_body_width_for_skinny_cells():
-    pdf = pd.DataFrame([
-        {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV"},
-        {"patient_id": "P2", "gene": "KRAS", "mut_type": "CNV"},
-        {"patient_id": "P3", "gene": "EGFR", "mut_type": "Fusion"},
-        {"patient_id": "P4", "gene": "PIK3CA", "mut_type": "SNV"},
-    ])
+    pdf = pd.DataFrame(
+        [
+            {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV"},
+            {"patient_id": "P2", "gene": "KRAS", "mut_type": "CNV"},
+            {"patient_id": "P3", "gene": "EGFR", "mut_type": "Fusion"},
+            {"patient_id": "P4", "gene": "PIK3CA", "mut_type": "SNV"},
+        ]
+    )
 
     heat = HeatmapAnnotationConfig(
         values="mut_type",
@@ -228,14 +240,16 @@ def test_oncoplot_auto_axes_aspect_preserves_plot_body_width_for_skinny_cells():
 
 
 def test_oncoplot_adds_right_summary_bars_with_overall_counts():
-    pdf = pd.DataFrame([
-        {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV", "arm": "A"},
-        {"patient_id": "P1", "gene": "TP53", "mut_type": "CNV", "arm": "A"},
-        {"patient_id": "P2", "gene": "TP53", "mut_type": "SNV", "arm": "A"},
-        {"patient_id": "P2", "gene": "KRAS", "mut_type": "Fusion", "arm": "A"},
-        {"patient_id": "P3", "gene": "TP53", "mut_type": "CNV", "arm": "B"},
-        {"patient_id": "P4", "gene": "KRAS", "mut_type": "SNV", "arm": "B"},
-    ])
+    pdf = pd.DataFrame(
+        [
+            {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV", "arm": "A"},
+            {"patient_id": "P1", "gene": "TP53", "mut_type": "CNV", "arm": "A"},
+            {"patient_id": "P2", "gene": "TP53", "mut_type": "SNV", "arm": "A"},
+            {"patient_id": "P2", "gene": "KRAS", "mut_type": "Fusion", "arm": "A"},
+            {"patient_id": "P3", "gene": "TP53", "mut_type": "CNV", "arm": "B"},
+            {"patient_id": "P4", "gene": "KRAS", "mut_type": "SNV", "arm": "B"},
+        ]
+    )
 
     heat = HeatmapAnnotationConfig(
         values="mut_type",
@@ -262,21 +276,25 @@ def test_oncoplot_adds_right_summary_bars_with_overall_counts():
     assert "75%" in summary_text
     assert "50%" in summary_text
 
-    widths = sorted([
-        round(float(p.get_width()), 3)
-        for p in all_axis.patches
-        if round(float(p.get_width()), 3) > 0
-    ])
+    widths = sorted(
+        [
+            round(float(p.get_width()), 3)
+            for p in all_axis.patches
+            if round(float(p.get_width()), 3) > 0
+        ]
+    )
     assert widths == [1.0, 1.0, 2.0, 2.0]
 
 
 def test_oncoplot_right_summary_bars_respect_split_panels():
-    pdf = pd.DataFrame([
-        {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV", "arm": "A"},
-        {"patient_id": "P2", "gene": "TP53", "mut_type": "CNV", "arm": "A"},
-        {"patient_id": "P3", "gene": "TP53", "mut_type": "SNV", "arm": "B"},
-        {"patient_id": "P4", "gene": "KRAS", "mut_type": "Fusion", "arm": "B"},
-    ])
+    pdf = pd.DataFrame(
+        [
+            {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV", "arm": "A"},
+            {"patient_id": "P2", "gene": "TP53", "mut_type": "CNV", "arm": "A"},
+            {"patient_id": "P3", "gene": "TP53", "mut_type": "SNV", "arm": "B"},
+            {"patient_id": "P4", "gene": "KRAS", "mut_type": "Fusion", "arm": "B"},
+        ]
+    )
 
     heat = HeatmapAnnotationConfig(
         values="mut_type",
@@ -297,10 +315,12 @@ def test_oncoplot_right_summary_bars_respect_split_panels():
 
 
 def test_oncoplot_right_summary_uses_panel_gap_for_first_gap_by_default_and_allows_override():
-    pdf = pd.DataFrame([
-        {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV", "arm": "A"},
-        {"patient_id": "P2", "gene": "KRAS", "mut_type": "CNV", "arm": "B"},
-    ])
+    pdf = pd.DataFrame(
+        [
+            {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV", "arm": "A"},
+            {"patient_id": "P2", "gene": "KRAS", "mut_type": "CNV", "arm": "B"},
+        ]
+    )
 
     heat = HeatmapAnnotationConfig(
         values="mut_type",
@@ -351,13 +371,21 @@ def test_oncoplot_right_summary_uses_panel_gap_for_first_gap_by_default_and_allo
 
 
 def test_onco_prevalence_plotter_aggregates_groups_and_preserves_annotations():
-    pdf = pd.DataFrame([
-        {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV", "arm": "A", "dose": "100 mg"},
-        {"patient_id": "P1", "gene": "KRAS", "mut_type": "CNV", "arm": "A", "dose": "100 mg"},
-        {"patient_id": "P2", "gene": "TP53", "mut_type": "CNV", "arm": "A", "dose": "100 mg"},
-        {"patient_id": "P3", "gene": "TP53", "mut_type": "SNV", "arm": "B", "dose": "200 mg"},
-        {"patient_id": "P4", "gene": "KRAS", "mut_type": "Fusion", "arm": "B", "dose": "200 mg"},
-    ])
+    pdf = pd.DataFrame(
+        [
+            {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV", "arm": "A", "dose": "100 mg"},
+            {"patient_id": "P1", "gene": "KRAS", "mut_type": "CNV", "arm": "A", "dose": "100 mg"},
+            {"patient_id": "P2", "gene": "TP53", "mut_type": "CNV", "arm": "A", "dose": "100 mg"},
+            {"patient_id": "P3", "gene": "TP53", "mut_type": "SNV", "arm": "B", "dose": "200 mg"},
+            {
+                "patient_id": "P4",
+                "gene": "KRAS",
+                "mut_type": "Fusion",
+                "arm": "B",
+                "dose": "200 mg",
+            },
+        ]
+    )
     row_groups = pd.DataFrame({"Pathway": {"TP53": "DNA Repair", "KRAS": "RAS"}}).rename_axis(
         "gene"
     )
@@ -400,10 +428,12 @@ def test_onco_prevalence_plotter_aggregates_groups_and_preserves_annotations():
 
 
 def test_onco_prevalence_plotter_adds_gap_only_after_all_column():
-    pdf = pd.DataFrame([
-        {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV", "arm": "A"},
-        {"patient_id": "P2", "gene": "TP53", "mut_type": "CNV", "arm": "B"},
-    ])
+    pdf = pd.DataFrame(
+        [
+            {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV", "arm": "A"},
+            {"patient_id": "P2", "gene": "TP53", "mut_type": "CNV", "arm": "B"},
+        ]
+    )
 
     heat = HeatmapAnnotationConfig(
         values="mut_type",
@@ -433,10 +463,12 @@ def test_onco_prevalence_plotter_adds_gap_only_after_all_column():
 
 
 def test_onco_prevalence_plotter_show_all_alias_hides_overall_column():
-    pdf = pd.DataFrame([
-        {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV", "arm": "A"},
-        {"patient_id": "P2", "gene": "TP53", "mut_type": "CNV", "arm": "B"},
-    ])
+    pdf = pd.DataFrame(
+        [
+            {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV", "arm": "A"},
+            {"patient_id": "P2", "gene": "TP53", "mut_type": "CNV", "arm": "B"},
+        ]
+    )
 
     heat = HeatmapAnnotationConfig(
         values="mut_type",
@@ -459,11 +491,13 @@ def test_onco_prevalence_plotter_show_all_alias_hides_overall_column():
 
 
 def test_onco_prevalence_plotter_can_apply_gap_between_all_group_columns():
-    pdf = pd.DataFrame([
-        {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV", "arm": "A"},
-        {"patient_id": "P2", "gene": "TP53", "mut_type": "CNV", "arm": "B"},
-        {"patient_id": "P3", "gene": "TP53", "mut_type": "SNV", "arm": "C"},
-    ])
+    pdf = pd.DataFrame(
+        [
+            {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV", "arm": "A"},
+            {"patient_id": "P2", "gene": "TP53", "mut_type": "CNV", "arm": "B"},
+            {"patient_id": "P3", "gene": "TP53", "mut_type": "SNV", "arm": "C"},
+        ]
+    )
 
     heat = HeatmapAnnotationConfig(
         values="mut_type",
@@ -495,11 +529,31 @@ def test_onco_prevalence_plotter_can_apply_gap_between_all_group_columns():
 
 
 def test_onco_prevalence_plotter_splits_mixed_top_annotations_by_membership():
-    pdf = pd.DataFrame([
-        {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV", "dose": "100 mg", "cohort": "A"},
-        {"patient_id": "P2", "gene": "TP53", "mut_type": "CNV", "dose": "100 mg", "cohort": "B"},
-        {"patient_id": "P3", "gene": "TP53", "mut_type": "SNV", "dose": "200 mg", "cohort": "A"},
-    ])
+    pdf = pd.DataFrame(
+        [
+            {
+                "patient_id": "P1",
+                "gene": "TP53",
+                "mut_type": "SNV",
+                "dose": "100 mg",
+                "cohort": "A",
+            },
+            {
+                "patient_id": "P2",
+                "gene": "TP53",
+                "mut_type": "CNV",
+                "dose": "100 mg",
+                "cohort": "B",
+            },
+            {
+                "patient_id": "P3",
+                "gene": "TP53",
+                "mut_type": "SNV",
+                "dose": "200 mg",
+                "cohort": "A",
+            },
+        ]
+    )
 
     heat = HeatmapAnnotationConfig(
         values="mut_type",
@@ -546,12 +600,14 @@ def test_onco_prevalence_plotter_splits_mixed_top_annotations_by_membership():
 
 
 def test_onco_gene_bar_plotter_draws_grouped_in_cell_bars():
-    pdf = pd.DataFrame([
-        {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV", "arm": "A", "cohort": "X"},
-        {"patient_id": "P2", "gene": "TP53", "mut_type": "CNV", "arm": "A", "cohort": "X"},
-        {"patient_id": "P3", "gene": "TP53", "mut_type": "SNV", "arm": "B", "cohort": "Y"},
-        {"patient_id": "P4", "gene": "KRAS", "mut_type": "Fusion", "arm": "B", "cohort": "Y"},
-    ])
+    pdf = pd.DataFrame(
+        [
+            {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV", "arm": "A", "cohort": "X"},
+            {"patient_id": "P2", "gene": "TP53", "mut_type": "CNV", "arm": "A", "cohort": "X"},
+            {"patient_id": "P3", "gene": "TP53", "mut_type": "SNV", "arm": "B", "cohort": "Y"},
+            {"patient_id": "P4", "gene": "KRAS", "mut_type": "Fusion", "arm": "B", "cohort": "Y"},
+        ]
+    )
 
     heat = HeatmapAnnotationConfig(
         values="mut_type",
@@ -598,11 +654,13 @@ def test_onco_gene_bar_plotter_draws_grouped_in_cell_bars():
 
 
 def test_onco_gene_bar_plotter_can_show_total_and_category_counts_in_labels():
-    pdf = pd.DataFrame([
-        {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV", "arm": "A"},
-        {"patient_id": "P2", "gene": "TP53", "mut_type": "CNV", "arm": "A"},
-        {"patient_id": "P3", "gene": "TP53", "mut_type": "Fusion", "arm": "A"},
-    ])
+    pdf = pd.DataFrame(
+        [
+            {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV", "arm": "A"},
+            {"patient_id": "P2", "gene": "TP53", "mut_type": "CNV", "arm": "A"},
+            {"patient_id": "P3", "gene": "TP53", "mut_type": "Fusion", "arm": "A"},
+        ]
+    )
 
     heat = HeatmapAnnotationConfig(
         values="mut_type",
@@ -635,10 +693,12 @@ def test_onco_gene_bar_plotter_can_show_total_and_category_counts_in_labels():
 
 
 def test_onco_gene_bar_plotter_omits_zero_breakdown_categories_from_labels():
-    pdf = pd.DataFrame([
-        {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV", "arm": "A"},
-        {"patient_id": "P2", "gene": "TP53", "mut_type": "CNV", "arm": "A"},
-    ])
+    pdf = pd.DataFrame(
+        [
+            {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV", "arm": "A"},
+            {"patient_id": "P2", "gene": "TP53", "mut_type": "CNV", "arm": "A"},
+        ]
+    )
 
     heat = HeatmapAnnotationConfig(
         values="mut_type",
@@ -670,10 +730,12 @@ def test_onco_gene_bar_plotter_omits_zero_breakdown_categories_from_labels():
 
 
 def test_onco_prevalence_plotter_can_override_label_text_color():
-    pdf = pd.DataFrame([
-        {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV", "arm": "A"},
-        {"patient_id": "P2", "gene": "TP53", "mut_type": "CNV", "arm": "A"},
-    ])
+    pdf = pd.DataFrame(
+        [
+            {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV", "arm": "A"},
+            {"patient_id": "P2", "gene": "TP53", "mut_type": "CNV", "arm": "A"},
+        ]
+    )
 
     heat = HeatmapAnnotationConfig(
         values="mut_type",
@@ -702,10 +764,12 @@ def test_onco_prevalence_plotter_can_override_label_text_color():
 
 
 def test_onco_gene_bar_plotter_can_customize_empty_cell_color_and_disable_border():
-    pdf = pd.DataFrame([
-        {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV", "arm": "A"},
-        {"patient_id": "P2", "gene": "KRAS", "mut_type": "CNV", "arm": "B"},
-    ])
+    pdf = pd.DataFrame(
+        [
+            {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV", "arm": "A"},
+            {"patient_id": "P2", "gene": "KRAS", "mut_type": "CNV", "arm": "B"},
+        ]
+    )
 
     heat = HeatmapAnnotationConfig(
         values="mut_type",
@@ -746,10 +810,12 @@ def test_onco_gene_bar_plotter_can_customize_empty_cell_color_and_disable_border
 
 
 def test_onco_gene_bar_plotter_can_override_empty_label_text_color():
-    pdf = pd.DataFrame([
-        {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV", "arm": "A"},
-        {"patient_id": "P2", "gene": "KRAS", "mut_type": "CNV", "arm": "B"},
-    ])
+    pdf = pd.DataFrame(
+        [
+            {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV", "arm": "A"},
+            {"patient_id": "P2", "gene": "KRAS", "mut_type": "CNV", "arm": "B"},
+        ]
+    )
 
     heat = HeatmapAnnotationConfig(
         values="mut_type",
@@ -785,11 +851,13 @@ def test_onco_gene_bar_plotter_can_override_empty_label_text_color():
 
 
 def test_onco_gene_bar_plotter_label_bbox_mode_controls_background_box():
-    pdf = pd.DataFrame([
-        {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV", "arm": "A"},
-        {"patient_id": "P2", "gene": "TP53", "mut_type": "CNV", "arm": "A"},
-        {"patient_id": "P3", "gene": "TP53", "mut_type": "Fusion", "arm": "A"},
-    ])
+    pdf = pd.DataFrame(
+        [
+            {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV", "arm": "A"},
+            {"patient_id": "P2", "gene": "TP53", "mut_type": "CNV", "arm": "A"},
+            {"patient_id": "P3", "gene": "TP53", "mut_type": "Fusion", "arm": "A"},
+        ]
+    )
 
     heat = HeatmapAnnotationConfig(
         values="mut_type",
@@ -837,10 +905,12 @@ def test_onco_gene_bar_plotter_label_bbox_mode_controls_background_box():
 
 
 def test_onco_gene_bar_plotter_show_all_alias_hides_overall_column():
-    pdf = pd.DataFrame([
-        {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV", "arm": "A"},
-        {"patient_id": "P2", "gene": "KRAS", "mut_type": "CNV", "arm": "B"},
-    ])
+    pdf = pd.DataFrame(
+        [
+            {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV", "arm": "A"},
+            {"patient_id": "P2", "gene": "KRAS", "mut_type": "CNV", "arm": "B"},
+        ]
+    )
 
     heat = HeatmapAnnotationConfig(
         values="mut_type",
@@ -861,11 +931,13 @@ def test_onco_gene_bar_plotter_show_all_alias_hides_overall_column():
 
 
 def test_onco_gene_bar_plotter_can_apply_gap_between_all_group_columns():
-    pdf = pd.DataFrame([
-        {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV", "arm": "A"},
-        {"patient_id": "P2", "gene": "TP53", "mut_type": "CNV", "arm": "B"},
-        {"patient_id": "P3", "gene": "TP53", "mut_type": "SNV", "arm": "C"},
-    ])
+    pdf = pd.DataFrame(
+        [
+            {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV", "arm": "A"},
+            {"patient_id": "P2", "gene": "TP53", "mut_type": "CNV", "arm": "B"},
+            {"patient_id": "P3", "gene": "TP53", "mut_type": "SNV", "arm": "C"},
+        ]
+    )
 
     heat = HeatmapAnnotationConfig(
         values="mut_type",
