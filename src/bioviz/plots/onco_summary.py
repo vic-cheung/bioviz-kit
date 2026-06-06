@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 import matplotlib.cm as cm
 import matplotlib.colors as mcolors
@@ -36,6 +36,7 @@ class _OncoAggregatePlotterBase(OncoPlotter):
         include_overall: bool = True,
         show_all: bool | None = None,
         all_column_gap: float = 0.18,
+        separate_all_columns: bool = False,
         percent_decimals: int = 0,
         annotate_values: bool = True,
         show_total_counts: bool = False,
@@ -43,6 +44,11 @@ class _OncoAggregatePlotterBase(OncoPlotter):
         show_category_counts: bool = False,
         label_fontsize: float | int | None = None,
         label_text_color: str | None = None,
+        label_bbox_mode: Literal["auto", "always", "multiline-only", "never"] = "auto",
+        label_bbox_facecolor: str = "white",
+        label_bbox_alpha: float = 0.78,
+        label_bbox_edgecolor: str = "none",
+        label_bbox_boxstyle: str = "round,pad=0.18",
     ) -> None:
         super().__init__(
             df=df,
@@ -54,6 +60,7 @@ class _OncoAggregatePlotterBase(OncoPlotter):
         self.group_by = list(group_by or config.col_split_by or [])
         self.include_overall = include_overall if show_all is None else bool(show_all)
         self.all_column_gap = max(float(all_column_gap), 0.0)
+        self.separate_all_columns = bool(separate_all_columns)
         self.percent_decimals = percent_decimals
         self.annotate_values = annotate_values
         self.show_total_counts = show_total_counts
@@ -61,6 +68,11 @@ class _OncoAggregatePlotterBase(OncoPlotter):
         self.show_category_counts = show_category_counts
         self.aggregate_label_fontsize = label_fontsize
         self.aggregate_label_text_color = label_text_color
+        self.aggregate_label_bbox_mode = label_bbox_mode
+        self.aggregate_label_bbox_facecolor = label_bbox_facecolor
+        self.aggregate_label_bbox_alpha = float(label_bbox_alpha)
+        self.aggregate_label_bbox_edgecolor = label_bbox_edgecolor
+        self.aggregate_label_bbox_boxstyle = label_bbox_boxstyle
 
     def _build_aggregate_columns(self) -> tuple[list[dict[str, Any]], pd.DataFrame]:
         valid_group_by = [col for col in self.group_by if col in self.df.columns]
@@ -338,35 +350,35 @@ class _OncoAggregatePlotterBase(OncoPlotter):
         return "\n".join(lines)
 
     def _get_label_style(self, facecolor: Any, label: str) -> tuple[str, dict[str, Any]]:
-        if self.aggregate_label_text_color is not None:
-            multiline = "\n" in label
-            if multiline:
-                return (
-                    str(self.aggregate_label_text_color),
-                    {
-                        "bbox": {
-                            "facecolor": "white",
-                            "alpha": 0.78,
-                            "edgecolor": "none",
-                            "boxstyle": "round,pad=0.18",
-                        }
-                    },
-                )
-            return (str(self.aggregate_label_text_color), {})
-
         multiline = "\n" in label
-        if multiline:
-            return (
-                "black",
-                {
-                    "bbox": {
-                        "facecolor": "white",
-                        "alpha": 0.78,
-                        "edgecolor": "none",
-                        "boxstyle": "round,pad=0.18",
-                    }
-                },
-            )
+
+        bbox_mode = self.aggregate_label_bbox_mode
+        use_bbox = False
+        if bbox_mode == "always":
+            use_bbox = True
+        elif bbox_mode in {"auto", "multiline-only"}:
+            use_bbox = multiline
+        elif bbox_mode == "never":
+            use_bbox = False
+
+        bbox_kwargs = (
+            {
+                "bbox": {
+                    "facecolor": self.aggregate_label_bbox_facecolor,
+                    "alpha": self.aggregate_label_bbox_alpha,
+                    "edgecolor": self.aggregate_label_bbox_edgecolor,
+                    "boxstyle": self.aggregate_label_bbox_boxstyle,
+                }
+            }
+            if use_bbox
+            else {}
+        )
+
+        if self.aggregate_label_text_color is not None:
+            return (str(self.aggregate_label_text_color), bbox_kwargs)
+
+        if use_bbox:
+            return ("black", bbox_kwargs)
 
         rgb = mcolors.to_rgb(facecolor)
         luminance = 0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2]
@@ -822,13 +834,14 @@ class _OncoAggregatePlotterBase(OncoPlotter):
         for idx, column in enumerate(columns):
             col_positions.append(current_x)
             current_x += self.cell_aspect
-            if (
+            is_all_boundary = (
                 idx == 0
                 and column.get("title") == "All"
                 and len(columns) > 1
                 and self.include_overall
-                and self.all_column_gap > 0
-            ):
+            )
+            is_group_boundary = self.separate_all_columns and idx < len(columns) - 1
+            if self.all_column_gap > 0 and (is_all_boundary or is_group_boundary):
                 current_x += self.all_column_gap
         return (
             plot_df,
@@ -854,6 +867,7 @@ class OncoPrevalencePlotter(_OncoAggregatePlotterBase):
         include_overall: bool = True,
         show_all: bool | None = None,
         all_column_gap: float = 0.18,
+        separate_all_columns: bool = False,
         percent_decimals: int = 0,
         annotate_values: bool = True,
         show_total_counts: bool = False,
@@ -861,6 +875,11 @@ class OncoPrevalencePlotter(_OncoAggregatePlotterBase):
         show_category_counts: bool = False,
         label_fontsize: float | int | None = None,
         label_text_color: str | None = None,
+        label_bbox_mode: Literal["auto", "always", "multiline-only", "never"] = "auto",
+        label_bbox_facecolor: str = "white",
+        label_bbox_alpha: float = 0.78,
+        label_bbox_edgecolor: str = "none",
+        label_bbox_boxstyle: str = "round,pad=0.18",
         cmap: str = "Blues",
         vmin: float = 0.0,
         vmax: float = 100.0,
@@ -876,6 +895,7 @@ class OncoPrevalencePlotter(_OncoAggregatePlotterBase):
             include_overall=include_overall,
             show_all=show_all,
             all_column_gap=all_column_gap,
+            separate_all_columns=separate_all_columns,
             percent_decimals=percent_decimals,
             annotate_values=annotate_values,
             show_total_counts=show_total_counts,
@@ -883,6 +903,11 @@ class OncoPrevalencePlotter(_OncoAggregatePlotterBase):
             show_category_counts=show_category_counts,
             label_fontsize=label_fontsize,
             label_text_color=label_text_color,
+            label_bbox_mode=label_bbox_mode,
+            label_bbox_facecolor=label_bbox_facecolor,
+            label_bbox_alpha=label_bbox_alpha,
+            label_bbox_edgecolor=label_bbox_edgecolor,
+            label_bbox_boxstyle=label_bbox_boxstyle,
         )
         self.cmap = plt.get_cmap(cmap)
         self.norm = Normalize(vmin=vmin, vmax=vmax)
@@ -998,6 +1023,7 @@ class OncoGeneBarPlotter(_OncoAggregatePlotterBase):
         include_overall: bool = True,
         show_all: bool | None = None,
         all_column_gap: float = 0.18,
+        separate_all_columns: bool = False,
         percent_decimals: int = 0,
         annotate_values: bool = True,
         show_total_counts: bool = False,
@@ -1005,8 +1031,14 @@ class OncoGeneBarPlotter(_OncoAggregatePlotterBase):
         show_category_counts: bool = False,
         label_fontsize: float | int | None = None,
         label_text_color: str | None = None,
+        label_bbox_mode: Literal["auto", "always", "multiline-only", "never"] = "auto",
+        label_bbox_facecolor: str = "white",
+        label_bbox_alpha: float = 0.78,
+        label_bbox_edgecolor: str = "none",
+        label_bbox_boxstyle: str = "round,pad=0.18",
         bar_height_fraction: float = 1.0,
         empty_cell_color: str = "white",
+        empty_label_text_color: str | None = None,
         cell_border_color: str | None = "#D9D9D9",
         cell_border_linewidth: float = 0.8,
     ) -> None:
@@ -1020,6 +1052,7 @@ class OncoGeneBarPlotter(_OncoAggregatePlotterBase):
             include_overall=include_overall,
             show_all=show_all,
             all_column_gap=all_column_gap,
+            separate_all_columns=separate_all_columns,
             percent_decimals=percent_decimals,
             annotate_values=annotate_values,
             show_total_counts=show_total_counts,
@@ -1027,9 +1060,15 @@ class OncoGeneBarPlotter(_OncoAggregatePlotterBase):
             show_category_counts=show_category_counts,
             label_fontsize=label_fontsize,
             label_text_color=label_text_color,
+            label_bbox_mode=label_bbox_mode,
+            label_bbox_facecolor=label_bbox_facecolor,
+            label_bbox_alpha=label_bbox_alpha,
+            label_bbox_edgecolor=label_bbox_edgecolor,
+            label_bbox_boxstyle=label_bbox_boxstyle,
         )
         self.bar_height_fraction = max(0.2, min(bar_height_fraction, 1.0))
         self.empty_cell_color = empty_cell_color
+        self.empty_label_text_color = empty_label_text_color
         self.cell_border_color = cell_border_color
         self.cell_border_linewidth = max(float(cell_border_linewidth), 0.0)
 
@@ -1068,18 +1107,30 @@ class OncoGeneBarPlotter(_OncoAggregatePlotterBase):
                     facecolor=_ensure_opaque_color(self.empty_cell_color, default="white"),
                     edgecolor=border_color,
                     linewidth=border_width,
+                    clip_on=False,
                 )
                 ax.add_patch(background)
                 if denom == 0 or gene_df.empty:
                     if self.annotate_values:
+                        label = f"{0:.{self.percent_decimals}f}%"
+                        if self.empty_label_text_color is not None:
+                            text_color = str(self.empty_label_text_color)
+                            extra_kwargs: dict[str, Any] = {}
+                        else:
+                            text_color, extra_kwargs = self._get_label_style(
+                                _ensure_opaque_color(self.empty_cell_color, default="white"),
+                                label,
+                            )
                         ax.text(
                             col_positions[x_idx] + self.cell_aspect / 2,
                             y + 0.5,
-                            f"{0:.{self.percent_decimals}f}%",
+                            label,
                             ha="center",
                             va="center",
-                            fontsize=max(self.row_label_fontsize - 2, 8),
-                            color="#666666",
+                            fontsize=self._label_font_size(),
+                            color=text_color,
+                            linespacing=1.15,
+                            **extra_kwargs,
                         )
                     continue
 

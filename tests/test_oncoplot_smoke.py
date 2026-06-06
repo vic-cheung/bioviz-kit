@@ -458,6 +458,42 @@ def test_onco_prevalence_plotter_show_all_alias_hides_overall_column():
     assert xticklabels == ["A", "B"]
 
 
+def test_onco_prevalence_plotter_can_apply_gap_between_all_group_columns():
+    pdf = pd.DataFrame([
+        {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV", "arm": "A"},
+        {"patient_id": "P2", "gene": "TP53", "mut_type": "CNV", "arm": "B"},
+        {"patient_id": "P3", "gene": "TP53", "mut_type": "SNV", "arm": "C"},
+    ])
+
+    heat = HeatmapAnnotationConfig(
+        values="mut_type",
+        colors={"SNV": "#EC745C", "CNV": "#44A9CC"},
+    )
+    cfg = OncoplotConfig(
+        heatmap_annotation=heat,
+        x_col="patient_id",
+        y_col="gene",
+        show_column_labels=True,
+        cell_aspect=1.0,
+    )
+
+    fig = OncoPrevalencePlotter(
+        pdf,
+        cfg,
+        group_by=["arm"],
+        include_overall=True,
+        all_column_gap=0.35,
+        separate_all_columns=True,
+    ).plot()
+    ax = fig.axes[0]
+
+    xticks = [round(float(value), 2) for value in ax.get_xticks()]
+    assert xticks == [0.5, 1.85, 3.2, 4.55]
+    assert round(xticks[1] - xticks[0], 2) == 1.35
+    assert round(xticks[2] - xticks[1], 2) == 1.35
+    assert round(xticks[3] - xticks[2], 2) == 1.35
+
+
 def test_onco_prevalence_plotter_splits_mixed_top_annotations_by_membership():
     pdf = pd.DataFrame([
         {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV", "dose": "100 mg", "cohort": "A"},
@@ -699,15 +735,104 @@ def test_onco_gene_bar_plotter_can_customize_empty_cell_color_and_disable_border
         and hasattr(patch, "get_width")
         and round(float(patch.get_height()), 2) == 1.0
         and round(float(patch.get_width()), 2) == 1.0
+        and mcolors.to_hex(patch.get_facecolor(), keep_alpha=False) == "#dcdcdc"
     ]
     assert background_patches
-    assert any(
-        mcolors.to_hex(patch.get_facecolor(), keep_alpha=False) == "#dcdcdc"
-        for patch in background_patches
-    )
+    assert all(not patch.get_clip_on() for patch in background_patches)
     assert all(
         mcolors.to_rgba(patch.get_edgecolor())[3] == 0 or patch.get_linewidth() == 0
         for patch in background_patches
+    )
+
+
+def test_onco_gene_bar_plotter_can_override_empty_label_text_color():
+    pdf = pd.DataFrame([
+        {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV", "arm": "A"},
+        {"patient_id": "P2", "gene": "KRAS", "mut_type": "CNV", "arm": "B"},
+    ])
+
+    heat = HeatmapAnnotationConfig(
+        values="mut_type",
+        colors={"SNV": "#EC745C", "CNV": "#44A9CC"},
+    )
+    cfg = OncoplotConfig(
+        heatmap_annotation=heat,
+        x_col="patient_id",
+        y_col="gene",
+        show_column_labels=True,
+    )
+
+    fig = OncoGeneBarPlotter(
+        pdf,
+        cfg,
+        group_by=["arm"],
+        include_overall=False,
+        empty_label_text_color="#aa3377",
+    ).plot()
+    ax = fig.axes[0]
+
+    zero_texts = [text for text in ax.texts if text.get_text() == "0%"]
+    assert zero_texts
+    expected_fontsize = OncoGeneBarPlotter(
+        pdf,
+        cfg,
+        group_by=["arm"],
+        include_overall=False,
+        empty_label_text_color="#aa3377",
+    )._label_font_size()
+    assert all(text.get_fontsize() == expected_fontsize for text in zero_texts)
+    assert all(mcolors.to_hex(text.get_color()) == "#aa3377" for text in zero_texts)
+
+
+def test_onco_gene_bar_plotter_label_bbox_mode_controls_background_box():
+    pdf = pd.DataFrame([
+        {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV", "arm": "A"},
+        {"patient_id": "P2", "gene": "TP53", "mut_type": "CNV", "arm": "A"},
+        {"patient_id": "P3", "gene": "TP53", "mut_type": "Fusion", "arm": "A"},
+    ])
+
+    heat = HeatmapAnnotationConfig(
+        values="mut_type",
+        colors={"SNV": "#EC745C", "CNV": "#44A9CC", "Fusion": "#FFB600"},
+        legend_value_order=["SNV", "CNV", "Fusion"],
+    )
+    cfg = OncoplotConfig(
+        heatmap_annotation=heat,
+        x_col="patient_id",
+        y_col="gene",
+        show_column_labels=True,
+    )
+
+    fig_never = OncoGeneBarPlotter(
+        pdf,
+        cfg,
+        group_by=["arm"],
+        include_overall=False,
+        show_total_counts=True,
+        show_category_breakdown=True,
+        show_category_counts=True,
+        label_bbox_mode="never",
+    ).plot()
+    never_labels = [text for text in fig_never.axes[0].texts if "100% (3/3)" in text.get_text()]
+    assert never_labels
+    assert never_labels[0].get_bbox_patch() is None
+
+    fig_always = OncoGeneBarPlotter(
+        pdf,
+        cfg,
+        group_by=["arm"],
+        include_overall=False,
+        show_total_counts=True,
+        show_category_breakdown=False,
+        label_bbox_mode="always",
+        label_bbox_facecolor="gainsboro",
+    ).plot()
+    always_labels = [text for text in fig_always.axes[0].texts if text.get_text() == "100% (3/3)"]
+    assert always_labels
+    assert always_labels[0].get_bbox_patch() is not None
+    assert (
+        mcolors.to_hex(always_labels[0].get_bbox_patch().get_facecolor(), keep_alpha=False)
+        == "#dcdcdc"
     )
 
 
@@ -733,6 +858,42 @@ def test_onco_gene_bar_plotter_show_all_alias_hides_overall_column():
 
     xticklabels = [tick.get_text() for tick in ax.get_xticklabels()]
     assert xticklabels == ["A", "B"]
+
+
+def test_onco_gene_bar_plotter_can_apply_gap_between_all_group_columns():
+    pdf = pd.DataFrame([
+        {"patient_id": "P1", "gene": "TP53", "mut_type": "SNV", "arm": "A"},
+        {"patient_id": "P2", "gene": "TP53", "mut_type": "CNV", "arm": "B"},
+        {"patient_id": "P3", "gene": "TP53", "mut_type": "SNV", "arm": "C"},
+    ])
+
+    heat = HeatmapAnnotationConfig(
+        values="mut_type",
+        colors={"SNV": "#EC745C", "CNV": "#44A9CC"},
+    )
+    cfg = OncoplotConfig(
+        heatmap_annotation=heat,
+        x_col="patient_id",
+        y_col="gene",
+        show_column_labels=True,
+        cell_aspect=1.0,
+    )
+
+    fig = OncoGeneBarPlotter(
+        pdf,
+        cfg,
+        group_by=["arm"],
+        include_overall=True,
+        all_column_gap=0.35,
+        separate_all_columns=True,
+    ).plot()
+    ax = fig.axes[0]
+
+    xticks = [round(float(value), 2) for value in ax.get_xticks()]
+    assert xticks == [0.5, 1.85, 3.2, 4.55]
+    assert round(xticks[1] - xticks[0], 2) == 1.35
+    assert round(xticks[2] - xticks[1], 2) == 1.35
+    assert round(xticks[3] - xticks[2], 2) == 1.35
 
 
 # %%
