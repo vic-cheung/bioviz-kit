@@ -314,6 +314,7 @@ class ForestPlotter:
                     linestyle="-",
                     linewidth=1,
                     alpha=cfg.section_separator_alpha,
+                    clip_on=False,
                 )
 
         # Section labels
@@ -328,6 +329,7 @@ class ForestPlotter:
                 fontweight="bold",
                 va="center",
                 ha="right",
+                clip_on=False,
             )
 
     def plot(
