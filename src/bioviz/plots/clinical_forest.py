@@ -135,7 +135,10 @@ class ClinicalForestPlotter:
         """Generate tick positions based on axis range."""
         tick_step = 0.5 if x_upper <= 4.0 else 1.0
         xticks = []
-        current = 0.5
+        if x_lower <= 0.0:
+            current = 0.0
+        else:
+            current = round(float(np.ceil(x_lower / tick_step) * tick_step), 2)
         # Include ticks up to and slightly beyond x_upper for a cleaner axis
         while current <= x_upper + 0.01:
             xticks.append(round(current, 2))
@@ -166,47 +169,45 @@ class ClinicalForestPlotter:
         else:
             capsize = 6
 
-        return ForestPlotConfig.model_validate(
-            {
-                "hr_col": cfg.hr_col,
-                "ci_lower_col": cfg.ci_lower_col,
-                "ci_upper_col": cfg.ci_upper_col,
-                "label_col": "display_label",
-                "pvalue_col": cfg.pvalue_col,
-                "reference_col": None,
-                "variable_col": None,
-                "title": None,
-                "xlabel": cfg.xlabel,
-                "figsize": figsize,
-                "log_scale": False,
-                "show_reference_line": cfg.show_reference_line,
-                "reference_line_color": cfg.reference_line_color,
-                "reference_line_style": cfg.reference_line_style,
-                "reference_line_width": cfg.reference_line_width,
-                "color_significant": cfg.marker_color,
-                "color_nonsignificant": cfg.marker_color,
-                "marker_color_significant": cfg.marker_color,
-                "marker_color_nonsignificant": cfg.marker_color,
-                "show_stats_table": False,
-                "show_section_separators": False,
-                "marker_style": cfg.marker_style,
-                "marker_size": cfg.marker_size,
-                "linewidth": cfg.linewidth,
-                "show_caps": cfg.show_caps,
-                "capsize": capsize,
-                "show_grid": False,
-                "center_around_null": False,
-                "xlim": xlim,
-                "xticks": xticks,
-                "show_y_spine": False,
-                "show_yticks": False,
-                "ytick_fontsize": int(cfg.axis_fontsize),
-                "xtick_fontsize": int(cfg.axis_fontsize),
-                "xlabel_fontsize": int(cfg.xlabel_fontsize),
-                "title_fontsize": int(cfg.title_fontsize) if cfg.title_fontsize else 12,
-                "stats_fontsize": int(cfg.cell_fontsize),
-            }
-        )
+        return ForestPlotConfig.model_validate({
+            "hr_col": cfg.hr_col,
+            "ci_lower_col": cfg.ci_lower_col,
+            "ci_upper_col": cfg.ci_upper_col,
+            "label_col": "display_label",
+            "pvalue_col": cfg.pvalue_col,
+            "reference_col": None,
+            "variable_col": None,
+            "title": None,
+            "xlabel": cfg.xlabel,
+            "figsize": figsize,
+            "log_scale": False,
+            "show_reference_line": cfg.show_reference_line,
+            "reference_line_color": cfg.reference_line_color,
+            "reference_line_style": cfg.reference_line_style,
+            "reference_line_width": cfg.reference_line_width,
+            "color_significant": cfg.marker_color,
+            "color_nonsignificant": cfg.marker_color,
+            "marker_color_significant": cfg.marker_color,
+            "marker_color_nonsignificant": cfg.marker_color,
+            "show_stats_table": False,
+            "show_section_separators": False,
+            "marker_style": cfg.marker_style,
+            "marker_size": cfg.marker_size,
+            "linewidth": cfg.linewidth,
+            "show_caps": cfg.show_caps,
+            "capsize": capsize,
+            "show_grid": False,
+            "center_around_null": False,
+            "xlim": xlim,
+            "xticks": xticks,
+            "show_y_spine": False,
+            "show_yticks": False,
+            "ytick_fontsize": int(cfg.axis_fontsize),
+            "xtick_fontsize": int(cfg.axis_fontsize),
+            "xlabel_fontsize": int(cfg.xlabel_fontsize),
+            "title_fontsize": int(cfg.title_fontsize) if cfg.title_fontsize else 12,
+            "stats_fontsize": int(cfg.cell_fontsize),
+        })
 
     # ==========================================================================
     # Layout and rendering
@@ -262,11 +263,8 @@ class ClinicalForestPlotter:
                 bottom_padding = 0.24
                 top_padding = 0.32
             else:
-                bottom_padding = 0.45
-                # Keep the header-to-first-row gap visually stable on tall plots.
-                # Padding tied to total row count creates a huge empty band above
-                # the data block once the figure height grows.
-                top_padding = 0.72 + (0.1 * max(title_line_count - 1, 0))
+                bottom_padding = 0.36
+                top_padding = 0.6 + (0.08 * max(title_line_count - 1, 0))
             ax.set_ylim(y_positions.min() - bottom_padding, y_positions.max() + top_padding)
 
         if n_rows <= 1:
@@ -274,9 +272,9 @@ class ClinicalForestPlotter:
             top_margin_in = 1.35 + (0.18 * max(title_line_count - 2, 0))
             title_gap_in = 0.28
         else:
-            bottom_margin_in = 1.05
-            top_margin_in = 1.25 + (0.16 * max(title_line_count - 2, 0))
-            title_gap_in = 0.22
+            bottom_margin_in = 0.82
+            top_margin_in = 1.08 + (0.14 * max(title_line_count - 2, 0))
+            title_gap_in = 0.18
 
         bottom_margin = min(0.3, bottom_margin_in / max(fig_height_in, 1.0))
         top_margin = max(0.72, 1.0 - (top_margin_in / max(fig_height_in, 1.0)))
