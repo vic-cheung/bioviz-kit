@@ -175,6 +175,39 @@ def resolve_labels(df: pd.DataFrame, cfg: VolcanoConfig) -> list[str]:
     return base
 
 
+def _resolve_marker_sizes(df: pd.DataFrame, cfg: VolcanoConfig) -> pd.Series:
+    marker_size = getattr(cfg, "marker_size", 50.0)
+    default_sizes = pd.Series(50.0, index=df.index, dtype=float)
+
+    if isinstance(marker_size, str):
+        if marker_size not in df.columns:
+            return default_sizes
+        return pd.to_numeric(df[marker_size], errors="coerce").reindex(df.index).fillna(50.0)
+
+    if isinstance(marker_size, Mapping):
+        if cfg.label_col and cfg.label_col in df.columns:
+            labels = df[cfg.label_col].astype(str)
+        else:
+            labels = pd.Series(df.index.astype(str), index=df.index)
+        resolved = labels.map(lambda value: marker_size.get(value, 50.0))
+        return pd.to_numeric(resolved, errors="coerce").reindex(df.index).fillna(50.0)
+
+    if isinstance(marker_size, pd.Series):
+        return pd.to_numeric(marker_size, errors="coerce").reindex(df.index).fillna(50.0)
+
+    if isinstance(marker_size, (list, tuple, np.ndarray)):
+        try:
+            return pd.Series(marker_size, index=df.index, dtype=float)
+        except Exception:
+            return default_sizes
+
+    try:
+        value = float(marker_size)
+    except Exception:
+        value = 50.0
+    return pd.Series(value, index=df.index, dtype=float)
+
+
 def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> tuple[plt.Figure, plt.Axes]:
     """Plot a volcano using the provided `VolcanoConfig`.
 
@@ -199,6 +232,8 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> tuple[plt.Figure, plt.
     # - `cfg.log_transform_ycol` True -> perform transform
     # - False -> do not transform
     do_transform = bool(getattr(cfg, "log_transform_ycol", False))
+    marker_sizes = _resolve_marker_sizes(df, cfg)
+    max_marker_size = float(marker_sizes.max()) if not marker_sizes.empty else 50.0
 
     # Perform the -log10 transform only when explicitly requested.
     if do_transform and cfg.y_col and cfg.y_col in df.columns:
@@ -239,7 +274,7 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> tuple[plt.Figure, plt.
             # estimate marker radius in display pixels. `cfg.marker_size` is
             # passed to scatter as `s` (points^2); approximate radius in
             # points as sqrt(s)/2, then convert to pixels: pixels = points * dpi/72.
-            r_points = math.sqrt(max(cfg.marker_size, 1.0)) / 2.0
+            r_points = math.sqrt(max(max_marker_size, 1.0)) / 2.0
             r_pixels = r_points * fig.dpi / 72.0
             edge_disp = (center_disp[0] + ux * r_pixels, center_disp[1] + uy * r_pixels)
             edge_data = ax.transData.inverted().transform(edge_disp)
@@ -286,7 +321,7 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> tuple[plt.Figure, plt.
             renderer = fig.canvas.get_renderer()
             bbox = text_obj.get_window_extent(renderer=renderer)
             if marker_radius_pixels is None:
-                r_points = math.sqrt(max(cfg.marker_size, 1.0)) / 2.0
+                r_points = math.sqrt(max(max_marker_size, 1.0)) / 2.0
                 marker_radius_pixels = r_points * fig.dpi / 72.0
             # Use bbox center to detect overlap, but shift the text anchor
             # (respecting its horizontal/vertical alignment) in display
@@ -333,9 +368,10 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> tuple[plt.Figure, plt.
                 # limit vertical movement so labels remain horizontally aligned
                 uy = uy * 0.25
                 text_anchor_data = text_obj.get_position()
-                text_anchor_disp = ax.transData.transform(
-                    (text_anchor_data[0], text_anchor_data[1])
-                )
+                text_anchor_disp = ax.transData.transform((
+                    text_anchor_data[0],
+                    text_anchor_data[1],
+                ))
                 new_anchor_disp = (
                     text_anchor_disp[0] + ux * shift_pixels,
                     text_anchor_disp[1] + uy * shift_pixels,
@@ -526,14 +562,14 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> tuple[plt.Figure, plt.
             zorder=1,
         )
 
-    # scatter (use explicit cfg.marker_size)
+    # scatter (supports scalar, column-name, iterable, or mapping marker sizes)
     sc = ax.scatter(
         df[cfg.x_col],
         y_vals,
         c=colors,
         edgecolor="black",
         linewidths=0.5,
-        s=cfg.marker_size,
+        s=marker_sizes.to_numpy(dtype=float),
         zorder=3,
     )
     with contextlib.suppress(Exception):
@@ -717,12 +753,10 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> tuple[plt.Figure, plt.
                 adjustable_texts.append(t)
                 try:
                     if matched_idx is not None:
-                        adjustable_points.append(
-                            (
-                                float(df.loc[matched_idx, cfg.x_col]),
-                                float(y_vals.loc[matched_idx]),
-                            )
-                        )
+                        adjustable_points.append((
+                            float(df.loc[matched_idx, cfg.x_col]),
+                            float(y_vals.loc[matched_idx]),
+                        ))
                     else:
                         adjustable_points.append((lx, ly))
                 except Exception:
@@ -1286,7 +1320,7 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> tuple[plt.Figure, plt.
         do_pad_y = getattr(cfg, "ylim", None) is None
         # Respect the caller's preference via cfg.pad_by_marker
         if (do_pad_x or do_pad_y) and getattr(cfg, "pad_by_marker", True):
-            r_points = math.sqrt(max(cfg.marker_size, 1.0)) / 2.0
+            r_points = math.sqrt(max(max_marker_size, 1.0)) / 2.0
             r_pixels = r_points * fig.dpi / 72.0
             # Convert pixel deltas to data-space deltas
             zero_data = ax.transData.inverted().transform((0.0, 0.0))

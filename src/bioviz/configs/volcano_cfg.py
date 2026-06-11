@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from typing import Any, Literal
 
 import matplotlib.pyplot as plt
@@ -274,7 +274,7 @@ class VolcanoConfig(BaseModel):
     group_label_kwargs: dict | None = None
 
     # ------ Marker & Connectors ------
-    marker_size: float = 50.0
+    marker_size: float | str | list[float] | tuple[float, ...] | Mapping[Any, float] = 50.0
     attach_to_marker_edge: bool = True
     pad_by_marker: bool = Field(
         True,
