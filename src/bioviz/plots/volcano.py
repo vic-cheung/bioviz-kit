@@ -488,6 +488,12 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> tuple[plt.Figure, plt.
                     xv = 0.0
                 color = cfg.palette.get("sig_up") if xv >= 0 else cfg.palette.get("sig_down")
             colors.append(color)
+    point_color_by_index = pd.Series(colors, index=df.index, dtype=object)
+    plot_order = marker_sizes.sort_values(ascending=False, kind="mergesort").index
+    plot_df = df.loc[plot_order]
+    plot_y_vals = y_vals.reindex(plot_order)
+    plot_marker_sizes = marker_sizes.reindex(plot_order)
+    plot_colors = point_color_by_index.reindex(plot_order).tolist()
 
     # axis limits: compute sensible defaults but allow caller overrides via cfg.xlim/cfg.ylim
     x_data_min, x_data_max = df[cfg.x_col].min(), df[cfg.x_col].max()
@@ -564,12 +570,12 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> tuple[plt.Figure, plt.
 
     # scatter (supports scalar, column-name, iterable, or mapping marker sizes)
     sc = ax.scatter(
-        df[cfg.x_col],
-        y_vals,
-        c=colors,
+        plot_df[cfg.x_col],
+        plot_y_vals,
+        c=plot_colors,
         edgecolor="black",
         linewidths=0.5,
-        s=marker_sizes.to_numpy(dtype=float),
+        s=plot_marker_sizes.to_numpy(dtype=float),
         zorder=3,
     )
     with contextlib.suppress(Exception):
@@ -586,7 +592,11 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> tuple[plt.Figure, plt.
     coord_to_labels = {}
     for i, row in df.iterrows():
         try:
-            coord = (float(row[cfg.x_col]), float(y_vals.loc[i]))
+            coord = (
+                float(row[cfg.x_col]),
+                float(y_vals.loc[i]),
+                round(float(marker_sizes.loc[i]), 6),
+            )
         except Exception:
             continue
         dir_val = (
@@ -822,7 +832,7 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> tuple[plt.Figure, plt.
         group_side_color = {}
 
     for coord, items in coord_to_labels.items():
-        x, y = coord
+        x, y, _marker_size = coord
         if not (x_min <= x <= x_max and y_min <= y <= y_max):
             continue
         items = [it for it in items if it[1] in values_to_label_resolved]
@@ -843,9 +853,7 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> tuple[plt.Figure, plt.
         point_color = None
         try:
             rep_idx = stacked[0][0]
-            # map index to position in colors list
-            pos = list(df.index).index(rep_idx)
-            point_color = colors[pos]
+            point_color = point_color_by_index.loc[rep_idx]
         except Exception:
             point_color = None
 
