@@ -368,10 +368,12 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> tuple[plt.Figure, plt.
                 # limit vertical movement so labels remain horizontally aligned
                 uy = uy * 0.25
                 text_anchor_data = text_obj.get_position()
-                text_anchor_disp = ax.transData.transform((
-                    text_anchor_data[0],
-                    text_anchor_data[1],
-                ))
+                text_anchor_disp = ax.transData.transform(
+                    (
+                        text_anchor_data[0],
+                        text_anchor_data[1],
+                    )
+                )
                 new_anchor_disp = (
                     text_anchor_disp[0] + ux * shift_pixels,
                     text_anchor_disp[1] + uy * shift_pixels,
@@ -763,10 +765,12 @@ def plot_volcano(cfg: VolcanoConfig, df: pd.DataFrame) -> tuple[plt.Figure, plt.
                 adjustable_texts.append(t)
                 try:
                     if matched_idx is not None:
-                        adjustable_points.append((
-                            float(df.loc[matched_idx, cfg.x_col]),
-                            float(y_vals.loc[matched_idx]),
-                        ))
+                        adjustable_points.append(
+                            (
+                                float(df.loc[matched_idx, cfg.x_col]),
+                                float(y_vals.loc[matched_idx]),
+                            )
+                        )
                     else:
                         adjustable_points.append((lx, ly))
                 except Exception:
