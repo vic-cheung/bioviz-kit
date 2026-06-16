@@ -169,53 +169,51 @@ class ClinicalForestPlotter:
         else:
             capsize = 6
 
-        return ForestPlotConfig.model_validate(
-            {
-                "hr_col": cfg.hr_col,
-                "ci_lower_col": cfg.ci_lower_col,
-                "ci_upper_col": cfg.ci_upper_col,
-                "label_col": "display_label",
-                "pvalue_col": cfg.pvalue_col,
-                "reference_col": None,
-                "variable_col": cfg.variable_col,
-                "title": None,
-                "xlabel": cfg.xlabel,
-                "figsize": figsize,
-                "log_scale": False,
-                "show_reference_line": cfg.show_reference_line,
-                "reference_line_color": cfg.reference_line_color,
-                "reference_line_style": cfg.reference_line_style,
-                "reference_line_width": cfg.reference_line_width,
-                "color_significant": cfg.marker_color,
-                "color_nonsignificant": cfg.marker_color,
-                "marker_color_significant": cfg.marker_color,
-                "marker_color_nonsignificant": cfg.marker_color,
-                "show_stats_table": False,
-                "section_labels": cfg.section_labels,
-                "show_section_separators": cfg.show_section_separators,
-                "section_separator_color": cfg.section_separator_color,
-                "section_separator_alpha": cfg.section_separator_alpha,
-                "section_gap": cfg.section_gap,
-                "section_label_x_position": cfg.section_label_x_position,
-                "category_order": cfg.category_order,
-                "marker_style": cfg.marker_style,
-                "marker_size": cfg.marker_size,
-                "linewidth": cfg.linewidth,
-                "show_caps": cfg.show_caps,
-                "capsize": capsize,
-                "show_grid": False,
-                "center_around_null": False,
-                "xlim": xlim,
-                "xticks": xticks,
-                "show_y_spine": False,
-                "show_yticks": False,
-                "ytick_fontsize": int(cfg.axis_fontsize),
-                "xtick_fontsize": int(cfg.axis_fontsize),
-                "xlabel_fontsize": int(cfg.xlabel_fontsize),
-                "title_fontsize": int(cfg.title_fontsize) if cfg.title_fontsize else 12,
-                "stats_fontsize": int(cfg.cell_fontsize),
-            }
-        )
+        return ForestPlotConfig.model_validate({
+            "hr_col": cfg.hr_col,
+            "ci_lower_col": cfg.ci_lower_col,
+            "ci_upper_col": cfg.ci_upper_col,
+            "label_col": "display_label",
+            "pvalue_col": cfg.pvalue_col,
+            "reference_col": None,
+            "variable_col": cfg.variable_col,
+            "title": None,
+            "xlabel": cfg.xlabel,
+            "figsize": figsize,
+            "log_scale": False,
+            "show_reference_line": cfg.show_reference_line,
+            "reference_line_color": cfg.reference_line_color,
+            "reference_line_style": cfg.reference_line_style,
+            "reference_line_width": cfg.reference_line_width,
+            "color_significant": cfg.marker_color,
+            "color_nonsignificant": cfg.marker_color,
+            "marker_color_significant": cfg.marker_color,
+            "marker_color_nonsignificant": cfg.marker_color,
+            "show_stats_table": False,
+            "section_labels": cfg.section_labels,
+            "show_section_separators": cfg.show_section_separators,
+            "section_separator_color": cfg.section_separator_color,
+            "section_separator_alpha": cfg.section_separator_alpha,
+            "section_gap": cfg.section_gap,
+            "section_label_x_position": cfg.section_label_x_position,
+            "category_order": cfg.category_order,
+            "marker_style": cfg.marker_style,
+            "marker_size": cfg.marker_size,
+            "linewidth": cfg.linewidth,
+            "show_caps": cfg.show_caps,
+            "capsize": capsize,
+            "show_grid": False,
+            "center_around_null": False,
+            "xlim": xlim,
+            "xticks": xticks,
+            "show_y_spine": False,
+            "show_yticks": False,
+            "ytick_fontsize": int(cfg.axis_fontsize),
+            "xtick_fontsize": int(cfg.axis_fontsize),
+            "xlabel_fontsize": int(cfg.xlabel_fontsize),
+            "title_fontsize": int(cfg.title_fontsize) if cfg.title_fontsize else 12,
+            "stats_fontsize": int(cfg.cell_fontsize),
+        })
 
     # ==========================================================================
     # Layout and rendering
@@ -590,9 +588,12 @@ class ClinicalForestPlotter:
         hr_col = cfg.hr_col
         ci_lower_col = cfg.ci_lower_col
         ci_upper_col = cfg.ci_upper_col
+        raw_hr = row.get("__raw_hr", row.get(hr_col))
+        raw_ci_lower = row.get("__raw_ci_lower", row.get(ci_lower_col))
+        raw_ci_upper = row.get("__raw_ci_upper", row.get(ci_upper_col))
 
         x_min, x_max = ax.get_xlim()
-        marker_x = float(row[hr_col])
+        marker_x = float(raw_hr)
 
         if marker_x > x_max:
             ax.scatter(x_max, y_pos, marker="o", s=28, color=cfg.marker_color, zorder=4)
@@ -606,13 +607,13 @@ class ClinicalForestPlotter:
         else:
             truncation_scale = 1.0
 
-        ci_hi = float(row[ci_upper_col])
+        ci_hi = float(raw_ci_upper)
         if ci_hi > x_max:
             self._draw_truncation_cap(
                 ax, x_max, y_pos, direction="right", size_scale=truncation_scale
             )
 
-        ci_lo = float(row[ci_lower_col])
+        ci_lo = float(raw_ci_lower)
         if ci_lo < x_min:
             self._draw_truncation_cap(
                 ax, x_min, y_pos, direction="left", size_scale=truncation_scale
@@ -794,9 +795,9 @@ class ClinicalForestPlotter:
     def _format_hr_ci(self, row: pd.Series) -> str:
         """Format HR with 95% CI."""
         cfg = self.config
-        hr = row.get(cfg.hr_col)
-        ci_lo = row.get(cfg.ci_lower_col)
-        ci_hi = row.get(cfg.ci_upper_col)
+        hr = row.get("__raw_hr", row.get(cfg.hr_col))
+        ci_lo = row.get("__raw_ci_lower", row.get(cfg.ci_lower_col))
+        ci_hi = row.get("__raw_ci_upper", row.get(cfg.ci_upper_col))
         if pd.isna(hr) or pd.isna(ci_lo) or pd.isna(ci_hi):
             return ""
         return f"{hr:.2f} ({ci_lo:.2f} - {ci_hi:.2f})"
