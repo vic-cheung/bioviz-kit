@@ -114,13 +114,11 @@ class _OncoAggregatePlotterBase(OncoPlotter):
                 label_parts.append(display if len(valid_group_by) == 1 else f"{col}={display}")
             samples = subset[self.x_col].drop_duplicates().tolist()
             if samples:
-                columns.append(
-                    {
-                        "title": " | ".join(label_parts),
-                        "samples": samples,
-                        "meta": meta,
-                    }
-                )
+                columns.append({
+                    "title": " | ".join(label_parts),
+                    "samples": samples,
+                    "meta": meta,
+                })
         return columns, sample_meta
 
     def _resolve_aggregate_annotation_values(
@@ -236,6 +234,7 @@ class _OncoAggregatePlotterBase(OncoPlotter):
         return pd.Series(aggregated)
 
     def _compute_gene_rows(self) -> tuple[list[Any], list[float], dict[Any, float]]:
+        observed_genes = self.df[self.y_col].dropna().drop_duplicates().tolist()
         genes_ordered: list[Any] = []
         row_positions: list[float] = []
         pos = 0.0
@@ -266,11 +265,7 @@ class _OncoAggregatePlotterBase(OncoPlotter):
                     genes_ordered.append(gene)
                     row_positions.append(pos)
                     pos += 1.0
-            missing_genes = [
-                gene
-                for gene in self.df[self.y_col].drop_duplicates().tolist()
-                if gene not in genes_ordered
-            ]
+            missing_genes = [gene for gene in observed_genes if gene not in genes_ordered]
             if missing_genes and genes_ordered:
                 pos += self.row_split_gap
             for gene in missing_genes:
@@ -278,7 +273,7 @@ class _OncoAggregatePlotterBase(OncoPlotter):
                 row_positions.append(pos)
                 pos += 1.0
         else:
-            for gene in self.df[self.y_col].drop_duplicates().tolist():
+            for gene in observed_genes:
                 genes_ordered.append(gene)
                 row_positions.append(pos)
                 pos += 1.0
