@@ -1172,8 +1172,16 @@ class OncoPrevalenceRasterPlotter(_OncoAggregatePlotterBase):
                         altered_samples.add(sample)
                         slot_left = float(slot_edges[sample_idx])
                         slot_right = float(slot_edges[sample_idx + 1])
-                        draw_left = max(heatmap_left, slot_left - seam_overlap)
-                        draw_right = min(heatmap_right, slot_right + seam_overlap)
+                        slot_width = max(slot_right - slot_left, 0.0)
+                        slot_padding = min(
+                            heatmap_width * self.slot_padding_fraction,
+                            slot_width / 2.0,
+                        )
+                        effective_overlap = min(seam_overlap, slot_padding)
+                        inner_left = min(slot_left + slot_padding, slot_right)
+                        inner_right = max(slot_right - slot_padding, inner_left)
+                        draw_left = max(heatmap_left, inner_left - effective_overlap)
+                        draw_right = min(heatmap_right, inner_right + effective_overlap)
                         draw_width = max(draw_right - draw_left, 0.0)
                         for band_idx, event_type in enumerate(event_types):
                             if str(event_type) not in present_types:
