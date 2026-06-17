@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from itertools import pairwise
 from typing import Any, Literal
 
 import matplotlib.cm as cm
@@ -1282,7 +1283,7 @@ class OncoPrevalenceRasterPlotter(_OncoAggregatePlotterBase):
             return
 
         separator_ys: list[float] = []
-        for current_y, next_y in zip(row_positions, row_positions[1:], strict=True):
+        for current_y, next_y in pairwise(row_positions):
             if np.isclose(next_y - current_y, 1.0):
                 separator_ys.append(current_y + 1.0)
 
