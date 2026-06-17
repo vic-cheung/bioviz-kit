@@ -114,13 +114,11 @@ class _OncoAggregatePlotterBase(OncoPlotter):
                 label_parts.append(display if len(valid_group_by) == 1 else f"{col}={display}")
             samples = subset[self.x_col].drop_duplicates().tolist()
             if samples:
-                columns.append(
-                    {
-                        "title": " | ".join(label_parts),
-                        "samples": samples,
-                        "meta": meta,
-                    }
-                )
+                columns.append({
+                    "title": " | ".join(label_parts),
+                    "samples": samples,
+                    "meta": meta,
+                })
         return columns, sample_meta
 
     def _resolve_aggregate_annotation_values(
@@ -1158,18 +1156,14 @@ class OncoPrevalenceRasterPlotter(_OncoAggregatePlotterBase):
                     ):
                         sample_event_lookup.setdefault(str(sample), set()).add(str(event_type))
 
-                    slot_width = heatmap_width / max(denom, 1)
+                    slot_edges = np.linspace(heatmap_left, heatmap_right, denom + 1)
                     for sample_idx, sample in enumerate(samples):
                         present_types = sample_event_lookup.get(sample, set())
                         if not present_types:
                             continue
                         altered_samples.add(sample)
-                        slot_left = heatmap_left + sample_idx * slot_width
-                        slot_right = (
-                            heatmap_right
-                            if sample_idx == denom - 1
-                            else heatmap_left + (sample_idx + 1) * slot_width
-                        )
+                        slot_left = float(slot_edges[sample_idx])
+                        slot_right = float(slot_edges[sample_idx + 1])
                         draw_width = max(slot_right - slot_left, 0.0)
                         for band_idx, event_type in enumerate(event_types):
                             if str(event_type) not in present_types:
