@@ -970,7 +970,7 @@ class OncoPrevalencePlotter(_OncoAggregatePlotterBase):
                         **extra_kwargs,
                     )
 
-        resolved_top_annotations = self._draw_top_annotations(
+        resolved_top_annotations = self._draw_raster_top_annotations(
             ax,
             columns,
             col_positions,
@@ -1042,6 +1042,7 @@ class OncoPrevalenceRasterPlotter(_OncoAggregatePlotterBase):
         cell_border_color: str | None = "#D9D9D9",
         cell_border_linewidth: float = 0.8,
         slot_padding_fraction: float = 0.04,
+        label_offset_fraction: float = 0.14,
     ) -> None:
         super().__init__(
             df=df,
@@ -1070,13 +1071,14 @@ class OncoPrevalenceRasterPlotter(_OncoAggregatePlotterBase):
         self.event_band_order = (
             [str(value) for value in event_band_order] if event_band_order else []
         )
-        self.heatmap_width_fraction = min(max(float(heatmap_width_fraction), 0.35), 0.95)
+        self.heatmap_width_fraction = min(max(float(heatmap_width_fraction), 0.35), 1.0)
         self.empty_cell_color = _ensure_opaque_color(empty_cell_color, default="#D9D9D9")
         fallback_band = empty_band_color if empty_band_color is not None else empty_cell_color
         self.empty_band_color = _ensure_opaque_color(fallback_band, default=self.empty_cell_color)
         self.cell_border_color = cell_border_color
         self.cell_border_linewidth = max(float(cell_border_linewidth), 0.0)
         self.slot_padding_fraction = min(max(float(slot_padding_fraction), 0.0), 0.3)
+        self.label_offset_fraction = min(max(float(label_offset_fraction), 0.0), 0.8)
 
     def plot(self) -> plt.Figure:
         plot_df, columns, sample_meta, genes_ordered, row_positions, gene_to_idx, col_positions = (
@@ -1104,7 +1106,8 @@ class OncoPrevalenceRasterPlotter(_OncoAggregatePlotterBase):
 
         bar_colors = dict(getattr(self.heatmap_annotation, "colors", {}) or {})
         heatmap_width = self.cell_aspect * self.heatmap_width_fraction
-        label_width = self.cell_aspect - heatmap_width
+        label_width = max(self.cell_aspect - heatmap_width, 0.0)
+        heatmap_width = self.cell_aspect - label_width
         slot_pad = heatmap_width * self.slot_padding_fraction
         band_height = 1.0 / max(len(event_types), 1)
 
@@ -1124,29 +1127,18 @@ class OncoPrevalenceRasterPlotter(_OncoAggregatePlotterBase):
                 border_width = (
                     self.cell_border_linewidth if self.cell_border_color is not None else 0.0
                 )
+                heatmap_left = col_positions[x_idx]
+                heatmap_right = heatmap_left + heatmap_width
                 cell_patch = plt.Rectangle(
-                    (col_positions[x_idx], y),
-                    self.cell_aspect,
+                    (heatmap_left, y),
+                    heatmap_width,
                     1.0,
-                    facecolor=self.empty_cell_color,
+                    facecolor=self.empty_band_color,
                     edgecolor=border_color,
                     linewidth=border_width,
                     clip_on=False,
                 )
                 ax.add_patch(cell_patch)
-
-                heatmap_left = col_positions[x_idx]
-                heatmap_right = heatmap_left + heatmap_width
-                heatmap_patch = plt.Rectangle(
-                    (heatmap_left, y),
-                    heatmap_width,
-                    1.0,
-                    facecolor=self.empty_band_color,
-                    edgecolor="none",
-                    linewidth=0,
-                    clip_on=False,
-                )
-                ax.add_patch(heatmap_patch)
 
                 counts_by_type: dict[str, float] = {}
                 altered_samples: set[str] = set()
@@ -1167,7 +1159,7 @@ class OncoPrevalenceRasterPlotter(_OncoAggregatePlotterBase):
                         sample_event_lookup.setdefault(str(sample), set()).add(str(event_type))
 
                     slot_width = heatmap_width / max(denom, 1)
-                    draw_width = max(slot_width - slot_pad, slot_width * 0.1)
+                    draw_width = max(slot_width - slot_pad, slot_width * 0.35)
                     for sample_idx, sample in enumerate(samples):
                         present_types = sample_event_lookup.get(sample, set())
                         if not present_types:
@@ -1209,10 +1201,10 @@ class OncoPrevalenceRasterPlotter(_OncoAggregatePlotterBase):
                     )
                     text_color, extra_kwargs = self._get_label_style(dominant_face, label)
                     ax.text(
-                        heatmap_right + label_width / 2,
+                        heatmap_right + max(label_width * self.label_offset_fraction, 0.09),
                         y + 0.5,
                         label,
-                        ha="center",
+                        ha="left",
                         va="center",
                         fontsize=self._label_font_size(),
                         color=text_color,
@@ -1220,7 +1212,7 @@ class OncoPrevalenceRasterPlotter(_OncoAggregatePlotterBase):
                         **extra_kwargs,
                     )
 
-        resolved_top_annotations = self._draw_top_annotations(
+        resolved_top_annotations = self._draw_raster_top_annotations(
             ax,
             columns,
             col_positions,
@@ -1263,6 +1255,322 @@ class OncoPrevalenceRasterPlotter(_OncoAggregatePlotterBase):
         self._draw_legend(fig, ax, resolved_top_annotations, mutation_handles, mutation_title)
         fig.canvas.draw()
         return fig
+
+    def _draw_raster_top_annotations(
+        self,
+        ax: plt.Axes,
+        columns: list[dict[str, Any]],
+        col_positions: list[float],
+        sample_meta: pd.DataFrame,
+        rowlabel_text_transform,
+        rowlabel_base_x: float,
+    ) -> dict[str, TopAnnotationConfig]:
+        if not self.top_annotations:
+            return {}
+
+        annotation_y = self.top_annotation_inter_spacer * -1
+        annotation_order = (
+            [name for name in self.config.top_annotation_order if name in self.top_annotations][
+                ::-1
+            ]
+            if self.config.top_annotation_order
+            else list(self.top_annotations.keys())
+        )
+        for name in self.top_annotations:
+            if name not in annotation_order:
+                annotation_order.append(name)
+
+        heatmap_width = self.cell_aspect * self.heatmap_width_fraction
+        heatmap_left = min(col_positions) if col_positions else 0.0
+        if self.top_annotation_label_use_points:
+            label_transform = rowlabel_text_transform
+            label_x = rowlabel_base_x
+        else:
+            label_transform = ax.transData
+            label_x = heatmap_left - float(self.top_annotation_label_offset)
+
+        resolved: dict[str, TopAnnotationConfig] = {}
+        for ann_name in annotation_order:
+            ann_config = self.top_annotations[ann_name]
+            sample_series = self._resolve_annotation_sample_series(ann_config, sample_meta)
+            self._draw_patient_aligned_top_annotation(
+                ax=ax,
+                columns=columns,
+                col_positions=col_positions,
+                annotation_y=annotation_y,
+                ann_config=ann_config,
+                ann_name=ann_name,
+                sample_series=sample_series,
+                label_x=label_x,
+                label_transform=label_transform,
+                heatmap_width=heatmap_width,
+            )
+            resolved[ann_name] = ann_config
+            annotation_y -= ann_config.height + self.top_annotation_intra_spacer
+        return resolved
+
+    def _draw_patient_aligned_top_annotation(
+        self,
+        *,
+        ax: plt.Axes,
+        columns: list[dict[str, Any]],
+        col_positions: list[float],
+        annotation_y: float,
+        ann_config: TopAnnotationConfig,
+        ann_name: str,
+        sample_series: pd.Series,
+        label_x: float,
+        label_transform,
+        heatmap_width: float,
+    ) -> None:
+        if not col_positions:
+            return
+
+        display_name = ann_config.display_name or ann_name
+        height = ann_config.height
+        border_color = getattr(ann_config, "border_color", "black")
+        border_width = getattr(ann_config, "border_width", 0.5)
+        sample_series = pd.Series(sample_series)
+        if not sample_series.empty:
+            sample_series.index = sample_series.index.astype(str)
+
+        for column, x in zip(columns, col_positions, strict=True):
+            samples = [
+                str(sample) for sample in pd.Index(column["samples"]).drop_duplicates().tolist()
+            ]
+            if ann_config.na_color not in {None, "none", "None", "transparent"}:
+                ax.add_patch(
+                    plt.Rectangle(
+                        (x, annotation_y),
+                        heatmap_width,
+                        height,
+                        facecolor=ann_config.na_color,
+                        edgecolor="none",
+                        linewidth=0,
+                        clip_on=False,
+                        zorder=10,
+                    )
+                )
+
+            if samples:
+                slot_width = heatmap_width / max(len(samples), 1)
+                run_start = None
+                run_color = None
+                for sample_idx, sample in enumerate(samples):
+                    value = sample_series.get(sample)
+                    color = None
+                    if not pd.isna(value) and str(value).strip() != "":
+                        color = ann_config.colors.get(str(value), ann_config.na_color)
+
+                    if color == run_color:
+                        continue
+
+                    if (
+                        run_color not in {None, "none", "None", "transparent"}
+                        and run_start is not None
+                    ):
+                        ax.add_patch(
+                            plt.Rectangle(
+                                (x + run_start * slot_width, annotation_y),
+                                (sample_idx - run_start) * slot_width,
+                                height,
+                                facecolor=run_color,
+                                edgecolor="none",
+                                linewidth=0,
+                                antialiased=False,
+                                clip_on=False,
+                                zorder=11,
+                            )
+                        )
+
+                    run_start = sample_idx
+                    run_color = color
+
+                if run_color not in {None, "none", "None", "transparent"} and run_start is not None:
+                    ax.add_patch(
+                        plt.Rectangle(
+                            (x + run_start * slot_width, annotation_y),
+                            (len(samples) - run_start) * slot_width,
+                            height,
+                            facecolor=run_color,
+                            edgecolor="none",
+                            linewidth=0,
+                            antialiased=False,
+                            clip_on=False,
+                            zorder=11,
+                        )
+                    )
+
+            if ann_config.draw_border:
+                ax.add_patch(
+                    plt.Rectangle(
+                        (x, annotation_y),
+                        heatmap_width,
+                        height,
+                        fill=False,
+                        edgecolor=border_color,
+                        linewidth=border_width,
+                        clip_on=False,
+                        zorder=12,
+                    )
+                )
+
+        ax.text(
+            label_x,
+            annotation_y + height / 2,
+            display_name,
+            ha="right",
+            va="center",
+            fontsize=ann_config.fontsize,
+            fontweight="normal",
+            clip_on=False,
+            zorder=13,
+            transform=label_transform,
+        )
+
+    def _draw_raster_top_annotations(
+        self,
+        ax: plt.Axes,
+        columns: list[dict[str, Any]],
+        col_positions: list[float],
+        sample_meta: pd.DataFrame,
+        rowlabel_text_transform,
+        rowlabel_base_x: float,
+    ) -> dict[str, TopAnnotationConfig]:
+        if not self.top_annotations:
+            return {}
+
+        annotation_y = self.top_annotation_inter_spacer * -1
+        annotation_order = (
+            [name for name in self.config.top_annotation_order if name in self.top_annotations][
+                ::-1
+            ]
+            if self.config.top_annotation_order
+            else list(self.top_annotations.keys())
+        )
+        for name in self.top_annotations:
+            if name not in annotation_order:
+                annotation_order.append(name)
+
+        heatmap_width = self.cell_aspect * self.heatmap_width_fraction
+        label_transform = (
+            rowlabel_text_transform if self.top_annotation_label_use_points else ax.transData
+        )
+        label_x = (
+            rowlabel_base_x
+            if self.top_annotation_label_use_points
+            else (min(col_positions) if col_positions else 0.0)
+            - float(self.top_annotation_label_offset)
+        )
+
+        resolved: dict[str, TopAnnotationConfig] = {}
+        for ann_name in annotation_order:
+            ann_config = self.top_annotations[ann_name]
+            series = self._resolve_annotation_sample_series(ann_config, sample_meta)
+            resolved[ann_name] = ann_config
+            self._draw_patient_aligned_top_annotation(
+                ax=ax,
+                columns=columns,
+                col_positions=col_positions,
+                annotation_y=annotation_y,
+                ann_config=ann_config,
+                ann_name=ann_name,
+                sample_series=series,
+                label_x=label_x,
+                label_transform=label_transform,
+                heatmap_width=heatmap_width,
+            )
+            annotation_y -= ann_config.height + self.top_annotation_intra_spacer
+        return resolved
+
+    def _draw_patient_aligned_top_annotation(
+        self,
+        *,
+        ax: plt.Axes,
+        columns: list[dict[str, Any]],
+        col_positions: list[float],
+        annotation_y: float,
+        ann_config: TopAnnotationConfig,
+        ann_name: str,
+        sample_series: pd.Series,
+        label_x: float,
+        label_transform,
+        heatmap_width: float,
+    ) -> None:
+        if not col_positions:
+            return
+
+        display_name = ann_config.display_name or ann_name
+        height = ann_config.height
+        border_color = getattr(ann_config, "border_color", "black")
+        border_width = getattr(ann_config, "border_width", 0.5)
+        sample_series = pd.Series(sample_series)
+        if not sample_series.empty:
+            sample_series.index = sample_series.index.astype(str)
+
+        for column, x in zip(columns, col_positions, strict=True):
+            samples = [
+                str(sample) for sample in pd.Index(column["samples"]).drop_duplicates().tolist()
+            ]
+            ax.add_patch(
+                plt.Rectangle(
+                    (x, annotation_y),
+                    heatmap_width,
+                    height,
+                    facecolor=ann_config.na_color,
+                    edgecolor="none",
+                    linewidth=0,
+                    clip_on=False,
+                    zorder=10,
+                )
+            )
+            if samples:
+                slot_width = heatmap_width / max(len(samples), 1)
+                for sample_idx, sample in enumerate(samples):
+                    value = sample_series.get(sample)
+                    color = _ensure_opaque_color(
+                        ann_config.colors.get(str(value), ann_config.na_color),
+                        default=ann_config.na_color,
+                    )
+                    ax.add_patch(
+                        plt.Rectangle(
+                            (x + sample_idx * slot_width, annotation_y),
+                            slot_width,
+                            height,
+                            facecolor=color,
+                            edgecolor="none",
+                            linewidth=0,
+                            clip_on=False,
+                            zorder=11,
+                        )
+                    )
+
+            if ann_config.draw_border:
+                ax.add_patch(
+                    plt.Rectangle(
+                        (x, annotation_y),
+                        heatmap_width,
+                        height,
+                        fill=False,
+                        edgecolor=border_color,
+                        linewidth=border_width,
+                        clip_on=False,
+                        zorder=12,
+                    )
+                )
+
+        ax.text(
+            label_x,
+            annotation_y + height / 2,
+            display_name,
+            ha="right",
+            va="center",
+            fontsize=ann_config.fontsize,
+            fontweight="normal",
+            clip_on=False,
+            zorder=13,
+            transform=label_transform,
+        )
 
 
 class OncoGeneBarPlotter(_OncoAggregatePlotterBase):
