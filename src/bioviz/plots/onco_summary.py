@@ -1135,6 +1135,7 @@ class OncoPrevalenceRasterPlotter(_OncoAggregatePlotterBase):
                     facecolor=self.empty_band_color,
                     edgecolor=border_color,
                     linewidth=border_width,
+                    antialiased=False,
                     clip_on=False,
                 )
                 ax.add_patch(cell_patch)
@@ -1158,13 +1159,18 @@ class OncoPrevalenceRasterPlotter(_OncoAggregatePlotterBase):
                         sample_event_lookup.setdefault(str(sample), set()).add(str(event_type))
 
                     slot_width = heatmap_width / max(denom, 1)
-                    draw_width = slot_width
                     for sample_idx, sample in enumerate(samples):
                         present_types = sample_event_lookup.get(sample, set())
                         if not present_types:
                             continue
                         altered_samples.add(sample)
                         slot_left = heatmap_left + sample_idx * slot_width
+                        slot_right = (
+                            heatmap_right
+                            if sample_idx == denom - 1
+                            else heatmap_left + (sample_idx + 1) * slot_width
+                        )
+                        draw_width = max(slot_right - slot_left, 0.0)
                         for band_idx, event_type in enumerate(event_types):
                             if str(event_type) not in present_types:
                                 continue
@@ -1180,6 +1186,7 @@ class OncoPrevalenceRasterPlotter(_OncoAggregatePlotterBase):
                                 ),
                                 edgecolor="none",
                                 linewidth=0,
+                                antialiased=False,
                                 clip_on=False,
                             )
                             ax.add_patch(band_patch)
