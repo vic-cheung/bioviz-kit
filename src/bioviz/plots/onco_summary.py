@@ -114,11 +114,13 @@ class _OncoAggregatePlotterBase(OncoPlotter):
                 label_parts.append(display if len(valid_group_by) == 1 else f"{col}={display}")
             samples = subset[self.x_col].drop_duplicates().tolist()
             if samples:
-                columns.append({
-                    "title": " | ".join(label_parts),
-                    "samples": samples,
-                    "meta": meta,
-                })
+                columns.append(
+                    {
+                        "title": " | ".join(label_parts),
+                        "samples": samples,
+                        "meta": meta,
+                    }
+                )
         return columns, sample_meta
 
     def _resolve_aggregate_annotation_values(
@@ -1107,6 +1109,7 @@ class OncoPrevalenceRasterPlotter(_OncoAggregatePlotterBase):
         label_width = max(self.cell_aspect - heatmap_width, 0.0)
         heatmap_width = self.cell_aspect - label_width
         band_height = 1.0 / max(len(event_types), 1)
+        seam_overlap = min(max(heatmap_width * 0.002, 0.0015), 0.01)
 
         for x_idx, column in enumerate(columns):
             samples = [
@@ -1127,8 +1130,8 @@ class OncoPrevalenceRasterPlotter(_OncoAggregatePlotterBase):
                 heatmap_left = col_positions[x_idx]
                 heatmap_right = heatmap_left + heatmap_width
                 cell_patch = plt.Rectangle(
-                    (heatmap_left, y),
-                    heatmap_width,
+                    (heatmap_left - seam_overlap, y),
+                    heatmap_width + (2.0 * seam_overlap),
                     1.0,
                     facecolor=self.empty_band_color,
                     edgecolor=border_color,
@@ -1164,7 +1167,9 @@ class OncoPrevalenceRasterPlotter(_OncoAggregatePlotterBase):
                         altered_samples.add(sample)
                         slot_left = float(slot_edges[sample_idx])
                         slot_right = float(slot_edges[sample_idx + 1])
-                        draw_width = max(slot_right - slot_left, 0.0)
+                        draw_left = max(heatmap_left, slot_left - seam_overlap)
+                        draw_right = min(heatmap_right, slot_right + seam_overlap)
+                        draw_width = max(draw_right - draw_left, 0.0)
                         for band_idx, event_type in enumerate(event_types):
                             if str(event_type) not in present_types:
                                 continue
@@ -1172,7 +1177,7 @@ class OncoPrevalenceRasterPlotter(_OncoAggregatePlotterBase):
                                 counts_by_type.get(str(event_type), 0.0) + 1.0
                             )
                             band_patch = plt.Rectangle(
-                                (slot_left, y + band_idx * band_height),
+                                (draw_left, y + band_idx * band_height),
                                 draw_width,
                                 band_height,
                                 facecolor=_ensure_opaque_color(
