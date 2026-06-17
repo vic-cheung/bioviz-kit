@@ -38,6 +38,7 @@ class _OncoAggregatePlotterBase(OncoPlotter):
         show_all: bool | None = None,
         all_column_gap: float = 0.18,
         separate_all_columns: bool = False,
+        column_width_scale_reference: Literal["equal", "mean", "max"] = "max",
         percent_decimals: int = 0,
         annotate_values: bool = True,
         show_total_counts: bool = False,
@@ -62,6 +63,7 @@ class _OncoAggregatePlotterBase(OncoPlotter):
         self.include_overall = include_overall if show_all is None else bool(show_all)
         self.all_column_gap = max(float(all_column_gap), 0.0)
         self.separate_all_columns = bool(separate_all_columns)
+        self.column_width_scale_reference = column_width_scale_reference
         self.percent_decimals = percent_decimals
         self.annotate_values = annotate_values
         self.show_total_counts = show_total_counts
@@ -123,6 +125,9 @@ class _OncoAggregatePlotterBase(OncoPlotter):
                     }
                 )
         return columns, sample_meta
+
+    def _column_width(self, column: dict[str, Any]) -> float:
+        return float(column.get("__display_width", self.cell_aspect))
 
     def _resolve_aggregate_annotation_values(
         self,
@@ -686,7 +691,10 @@ class _OncoAggregatePlotterBase(OncoPlotter):
         if not self.show_column_labels:
             ax.set_xticks([])
             return
-        centers = [position + self.cell_aspect / 2 for position in col_positions]
+        centers = [
+            position + self._column_width(column) / 2
+            for column, position in zip(columns, col_positions, strict=True)
+        ]
         ax.set_xticks(centers)
         ax.set_xticklabels(
             [column["title"] for column in columns], fontsize=self.column_label_fontsize
@@ -829,11 +837,30 @@ class _OncoAggregatePlotterBase(OncoPlotter):
         plot_df = self._prepare_plot_df()
         columns, sample_meta = self._build_aggregate_columns()
         genes_ordered, row_positions, gene_to_idx = self._compute_gene_rows()
+        sample_counts = [
+            len(pd.Index(column.get("samples", [])).drop_duplicates()) for column in columns
+        ]
+        positive_counts = [count for count in sample_counts if count > 0]
+        if self.column_width_scale_reference == "max" and positive_counts:
+            reference_count = float(max(positive_counts))
+        elif self.column_width_scale_reference == "mean" and positive_counts:
+            reference_count = float(np.mean(positive_counts))
+        else:
+            reference_count = float(self.cell_aspect)
+        for column, sample_count in zip(columns, sample_counts, strict=True):
+            if (
+                self.column_width_scale_reference != "equal"
+                and sample_count > 0
+                and reference_count > 0
+            ):
+                column["__display_width"] = self.cell_aspect * (sample_count / reference_count)
+            else:
+                column["__display_width"] = self.cell_aspect
         col_positions: list[float] = []
         current_x = 0.0
         for idx, column in enumerate(columns):
             col_positions.append(current_x)
-            current_x += self.cell_aspect
+            current_x += self._column_width(column)
             is_all_boundary = (
                 idx == 0
                 and column.get("title") == "All"
@@ -868,6 +895,7 @@ class OncoPrevalencePlotter(_OncoAggregatePlotterBase):
         show_all: bool | None = None,
         all_column_gap: float = 0.18,
         separate_all_columns: bool = False,
+        column_width_scale_reference: Literal["equal", "mean", "max"] = "equal",
         percent_decimals: int = 0,
         annotate_values: bool = True,
         show_total_counts: bool = False,
@@ -896,6 +924,7 @@ class OncoPrevalencePlotter(_OncoAggregatePlotterBase):
             show_all=show_all,
             all_column_gap=all_column_gap,
             separate_all_columns=separate_all_columns,
+            column_width_scale_reference=column_width_scale_reference,
             percent_decimals=percent_decimals,
             annotate_values=annotate_values,
             show_total_counts=show_total_counts,
@@ -917,8 +946,16 @@ class OncoPrevalencePlotter(_OncoAggregatePlotterBase):
         plot_df, columns, sample_meta, genes_ordered, row_positions, gene_to_idx, col_positions = (
             self._base_plot_state()
         )
+        column_widths = [self._column_width(column) for column in columns]
         nrows = int(np.ceil(max(row_positions) + 1 if row_positions else 1))
-        max_x = (max(col_positions) + self.cell_aspect) if col_positions else self.cell_aspect
+        max_x = (
+            max(
+                position + width
+                for position, width in zip(col_positions, column_widths, strict=True)
+            )
+            if col_positions
+            else self.cell_aspect
+        )
         fig, ax, rowlabel_transform, rowlabel_base_x = self._setup_axes(
             len(columns),
             nrows,
@@ -928,6 +965,7 @@ class OncoPrevalencePlotter(_OncoAggregatePlotterBase):
         )
 
         for x_idx, column in enumerate(columns):
+            column_width = column_widths[x_idx]
             denom = len(pd.Index(column["samples"]).drop_duplicates())
             column_df = plot_df[plot_df[self.x_col].isin(column["samples"])]
             for gene, y in zip(genes_ordered, row_positions, strict=True):
@@ -937,7 +975,7 @@ class OncoPrevalencePlotter(_OncoAggregatePlotterBase):
                 face = self.cmap(self.norm(percent))
                 rect = plt.Rectangle(
                     (col_positions[x_idx], y),
-                    self.cell_aspect,
+                    column_width,
                     1.0,
                     facecolor=face,
                     edgecolor="#D9D9D9",
@@ -960,7 +998,7 @@ class OncoPrevalencePlotter(_OncoAggregatePlotterBase):
                 if label is not None:
                     text_color, extra_kwargs = self._get_label_style(face, label)
                     ax.text(
-                        col_positions[x_idx] + self.cell_aspect / 2,
+                        col_positions[x_idx] + column_width / 2,
                         y + 0.5,
                         label,
                         ha="center",
@@ -1024,6 +1062,7 @@ class OncoPrevalenceRasterPlotter(_OncoAggregatePlotterBase):
         show_all: bool | None = None,
         all_column_gap: float = 0.18,
         separate_all_columns: bool = False,
+        column_width_scale_reference: Literal["equal", "mean", "max"] = "equal",
         percent_decimals: int = 0,
         annotate_values: bool = True,
         show_total_counts: bool = True,
@@ -1058,6 +1097,7 @@ class OncoPrevalenceRasterPlotter(_OncoAggregatePlotterBase):
             show_all=show_all,
             all_column_gap=all_column_gap,
             separate_all_columns=separate_all_columns,
+            column_width_scale_reference=column_width_scale_reference,
             percent_decimals=percent_decimals,
             annotate_values=annotate_values,
             show_total_counts=show_total_counts,
@@ -1089,6 +1129,7 @@ class OncoPrevalenceRasterPlotter(_OncoAggregatePlotterBase):
         plot_df, columns, sample_meta, genes_ordered, row_positions, gene_to_idx, col_positions = (
             self._base_plot_state()
         )
+        column_widths = [self._column_width(column) for column in columns]
         ordered_event_types = self.event_band_order or self._event_types(plot_df)
         seen_event_types = {str(value) for value in ordered_event_types}
         event_types = list(ordered_event_types)
@@ -1100,7 +1141,14 @@ class OncoPrevalenceRasterPlotter(_OncoAggregatePlotterBase):
             event_types = ["Altered"]
 
         nrows = int(np.ceil(max(row_positions) + 1 if row_positions else 1))
-        max_x = (max(col_positions) + self.cell_aspect) if col_positions else self.cell_aspect
+        max_x = (
+            max(
+                position + width
+                for position, width in zip(col_positions, column_widths, strict=True)
+            )
+            if col_positions
+            else self.cell_aspect
+        )
         fig, ax, rowlabel_transform, rowlabel_base_x = self._setup_axes(
             len(columns),
             nrows,
@@ -1110,13 +1158,14 @@ class OncoPrevalenceRasterPlotter(_OncoAggregatePlotterBase):
         )
 
         bar_colors = dict(getattr(self.heatmap_annotation, "colors", {}) or {})
-        heatmap_width = self.cell_aspect * self.heatmap_width_fraction
-        label_width = max(self.cell_aspect - heatmap_width, 0.0)
-        heatmap_width = self.cell_aspect - label_width
         band_height = 1.0 / max(len(event_types), 1)
-        seam_overlap = min(max(heatmap_width * 0.002, 0.0015), 0.01)
 
         for x_idx, column in enumerate(columns):
+            column_width = column_widths[x_idx]
+            heatmap_width = column_width * self.heatmap_width_fraction
+            label_width = max(column_width - heatmap_width, 0.0)
+            heatmap_width = column_width - label_width
+            seam_overlap = min(max(heatmap_width * 0.002, 0.0015), 0.01)
             samples = [
                 str(sample) for sample in pd.Index(column["samples"]).drop_duplicates().tolist()
             ]
@@ -1165,11 +1214,13 @@ class OncoPrevalenceRasterPlotter(_OncoAggregatePlotterBase):
                         sample_event_lookup.setdefault(str(sample), set()).add(str(event_type))
 
                     slot_edges = np.linspace(heatmap_left, heatmap_right, denom + 1)
+                    occupied_by_event: dict[str, list[bool]] = {
+                        str(event_type): [] for event_type in event_types
+                    }
                     for sample_idx, sample in enumerate(samples):
                         present_types = sample_event_lookup.get(sample, set())
-                        if not present_types:
-                            continue
-                        altered_samples.add(sample)
+                        if present_types:
+                            altered_samples.add(sample)
                         slot_left = float(slot_edges[sample_idx])
                         slot_right = float(slot_edges[sample_idx + 1])
                         slot_width = max(slot_right - slot_left, 0.0)
@@ -1178,30 +1229,76 @@ class OncoPrevalenceRasterPlotter(_OncoAggregatePlotterBase):
                             slot_width / 2.0,
                         )
                         effective_overlap = min(seam_overlap, slot_padding)
-                        inner_left = min(slot_left + slot_padding, slot_right)
-                        inner_right = max(slot_right - slot_padding, inner_left)
-                        draw_left = max(heatmap_left, inner_left - effective_overlap)
-                        draw_right = min(heatmap_right, inner_right + effective_overlap)
-                        draw_width = max(draw_right - draw_left, 0.0)
-                        for band_idx, event_type in enumerate(event_types):
-                            if str(event_type) not in present_types:
+                        for event_type in event_types:
+                            present = str(event_type) in present_types
+                            occupied_by_event[str(event_type)].append(present)
+                            if present:
+                                counts_by_type[str(event_type)] = (
+                                    counts_by_type.get(str(event_type), 0.0) + 1.0
+                                )
+
+                    for band_idx, event_type in enumerate(event_types):
+                        occupied = occupied_by_event.get(str(event_type), [])
+                        run_start: int | None = None
+                        for sample_idx, is_present in enumerate(occupied):
+                            if is_present and run_start is None:
+                                run_start = sample_idx
+                            if is_present:
                                 continue
-                            counts_by_type[str(event_type)] = (
-                                counts_by_type.get(str(event_type), 0.0) + 1.0
+                            if run_start is None:
+                                continue
+                            start_left = float(slot_edges[run_start])
+                            end_right = float(slot_edges[sample_idx])
+                            draw_left = max(
+                                heatmap_left, start_left + slot_padding - effective_overlap
                             )
-                            band_patch = plt.Rectangle(
-                                (draw_left, y + band_idx * band_height),
-                                draw_width,
-                                band_height,
-                                facecolor=_ensure_opaque_color(
-                                    bar_colors.get(str(event_type), "#808080"), default="#808080"
-                                ),
-                                edgecolor="none",
-                                linewidth=0,
-                                antialiased=False,
-                                clip_on=False,
+                            draw_right = min(
+                                heatmap_right,
+                                end_right - slot_padding + effective_overlap,
                             )
-                            ax.add_patch(band_patch)
+                            draw_width = max(draw_right - draw_left, 0.0)
+                            if draw_width > 0.0:
+                                band_patch = plt.Rectangle(
+                                    (draw_left, y + band_idx * band_height),
+                                    draw_width,
+                                    band_height,
+                                    facecolor=_ensure_opaque_color(
+                                        bar_colors.get(str(event_type), "#808080"),
+                                        default="#808080",
+                                    ),
+                                    edgecolor="none",
+                                    linewidth=0,
+                                    antialiased=False,
+                                    clip_on=False,
+                                )
+                                ax.add_patch(band_patch)
+                            run_start = None
+                        if run_start is not None:
+                            start_left = float(slot_edges[run_start])
+                            end_right = float(slot_edges[len(occupied)])
+                            draw_left = max(
+                                heatmap_left, start_left + slot_padding - effective_overlap
+                            )
+                            draw_right = min(
+                                heatmap_right,
+                                end_right - slot_padding + effective_overlap,
+                            )
+                            draw_width = max(draw_right - draw_left, 0.0)
+                            if draw_width > 0.0:
+                                band_patch = plt.Rectangle(
+                                    (draw_left, y + band_idx * band_height),
+                                    draw_width,
+                                    band_height,
+                                    facecolor=_ensure_opaque_color(
+                                        bar_colors.get(str(event_type), "#808080"),
+                                        default="#808080",
+                                    ),
+                                    edgecolor="none",
+                                    linewidth=0,
+                                    antialiased=False,
+                                    clip_on=False,
+                                )
+                                ax.add_patch(band_patch)
 
                 label = self._build_cell_label(
                     total_count=len(altered_samples),
@@ -1221,14 +1318,16 @@ class OncoPrevalenceRasterPlotter(_OncoAggregatePlotterBase):
                         y + 0.5,
                         label,
                         ha="left",
+                        multialignment="left",
                         va="center",
                         fontsize=self._label_font_size(),
                         color=text_color,
                         linespacing=1.15,
+                        clip_on=False,
                         **extra_kwargs,
                     )
 
-        self._draw_row_separators(ax, col_positions, heatmap_width, row_positions, seam_overlap)
+        self._draw_row_separators(ax, columns, col_positions, row_positions)
 
         resolved_top_annotations = self._draw_raster_top_annotations(
             ax,
@@ -1277,10 +1376,9 @@ class OncoPrevalenceRasterPlotter(_OncoAggregatePlotterBase):
     def _draw_row_separators(
         self,
         ax: plt.Axes,
+        columns: list[dict[str, Any]],
         col_positions: list[float],
-        heatmap_width: float,
         row_positions: list[float],
-        seam_overlap: float,
     ) -> None:
         if (
             self.row_separator_color is None
@@ -1298,7 +1396,9 @@ class OncoPrevalenceRasterPlotter(_OncoAggregatePlotterBase):
         if not separator_ys:
             return
 
-        for heatmap_left in col_positions:
+        for column, heatmap_left in zip(columns, col_positions, strict=True):
+            heatmap_width = self._column_width(column) * self.heatmap_width_fraction
+            seam_overlap = min(max(heatmap_width * 0.002, 0.0015), 0.01)
             heatmap_right = heatmap_left + heatmap_width
             for separator_y in separator_ys:
                 ax.plot(
@@ -1336,7 +1436,6 @@ class OncoPrevalenceRasterPlotter(_OncoAggregatePlotterBase):
             if name not in annotation_order:
                 annotation_order.append(name)
 
-        heatmap_width = self.cell_aspect * self.heatmap_width_fraction
         heatmap_left = min(col_positions) if col_positions else 0.0
         if self.top_annotation_label_use_points:
             label_transform = rowlabel_text_transform
@@ -1359,7 +1458,6 @@ class OncoPrevalenceRasterPlotter(_OncoAggregatePlotterBase):
                 sample_series=sample_series,
                 label_x=label_x,
                 label_transform=label_transform,
-                heatmap_width=heatmap_width,
             )
             resolved[ann_name] = ann_config
             annotation_y -= ann_config.height + self.top_annotation_intra_spacer
@@ -1377,7 +1475,6 @@ class OncoPrevalenceRasterPlotter(_OncoAggregatePlotterBase):
         sample_series: pd.Series,
         label_x: float,
         label_transform,
-        heatmap_width: float,
     ) -> None:
         if not col_positions:
             return
@@ -1391,6 +1488,7 @@ class OncoPrevalenceRasterPlotter(_OncoAggregatePlotterBase):
             sample_series.index = sample_series.index.astype(str)
 
         for column, x in zip(columns, col_positions, strict=True):
+            heatmap_width = self._column_width(column) * self.heatmap_width_fraction
             samples = [
                 str(sample) for sample in pd.Index(column["samples"]).drop_duplicates().tolist()
             ]
