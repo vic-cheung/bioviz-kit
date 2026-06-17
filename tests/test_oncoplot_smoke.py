@@ -10,7 +10,12 @@ from bioviz.configs import (
     RightSummaryBarsConfig,
     TopAnnotationConfig,
 )
-from bioviz.plots import OncoGeneBarPlotter, OncoPlotter, OncoPrevalencePlotter
+from bioviz.plots import (
+    OncoGeneBarPlotter,
+    OncoPlotter,
+    OncoPrevalencePlotter,
+    OncoPrevalenceRasterPlotter,
+)
 
 
 # %%
@@ -651,6 +656,67 @@ def test_onco_gene_bar_plotter_draws_grouped_in_cell_bars():
     ]
     assert any(width < 1.0 for width in positive_widths)
     assert 1.0 in positive_bar_heights
+
+
+def test_onco_prevalence_raster_plotter_draws_split_event_bands_and_count_labels():
+    pdf = pd.DataFrame(
+        [
+            {"patient_id": "P1", "gene": "TP53", "mut_type": "SV", "arm": "G12D"},
+            {"patient_id": "P1", "gene": "TP53", "mut_type": "CNV", "arm": "G12D"},
+            {"patient_id": "P2", "gene": "TP53", "mut_type": "SV", "arm": "G12D"},
+            {"patient_id": "P2", "gene": "KRAS", "mut_type": "CNV", "arm": "G12D"},
+            {"patient_id": "P3", "gene": "TP53", "mut_type": "CNV", "arm": "G12R"},
+            {"patient_id": "P4", "gene": "TP53", "mut_type": "SV", "arm": "G12R"},
+        ]
+    )
+
+    heat = HeatmapAnnotationConfig(
+        values="mut_type",
+        colors={"SV": "#7A4DA3", "CNV": "#F1222A"},
+        legend_title="Genetic alteration",
+        legend_value_order=["SV", "CNV"],
+    )
+    cfg = OncoplotConfig(
+        heatmap_annotation=heat,
+        x_col="patient_id",
+        y_col="gene",
+        show_column_labels=True,
+        cell_aspect=1.4,
+    )
+
+    fig = OncoPrevalenceRasterPlotter(
+        pdf,
+        cfg,
+        group_by=["arm"],
+        include_overall=False,
+        event_band_order=["SV", "CNV"],
+        show_total_counts=True,
+        percent_decimals=0,
+    ).plot()
+    ax = fig.axes[0]
+
+    xticklabels = [tick.get_text() for tick in ax.get_xticklabels()]
+    assert xticklabels == ["G12D", "G12R"]
+    texts = {text.get_text() for text in ax.texts}
+    assert "100% (2/2)" in texts
+    assert "50% (1/2)" in texts
+
+    sv_patches = [
+        patch
+        for patch in ax.patches
+        if hasattr(patch, "get_facecolor")
+        and mcolors.to_hex(patch.get_facecolor(), keep_alpha=False) == "#7a4da3"
+    ]
+    cnv_patches = [
+        patch
+        for patch in ax.patches
+        if hasattr(patch, "get_facecolor")
+        and mcolors.to_hex(patch.get_facecolor(), keep_alpha=False) == "#f1222a"
+    ]
+    assert sv_patches
+    assert cnv_patches
+    assert any(round(float(patch.get_height()), 2) == 0.5 for patch in sv_patches)
+    assert any(round(float(patch.get_height()), 2) == 0.5 for patch in cnv_patches)
 
 
 def test_onco_gene_bar_plotter_can_show_total_and_category_counts_in_labels():

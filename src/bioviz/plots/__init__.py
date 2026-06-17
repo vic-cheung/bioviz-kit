@@ -27,6 +27,7 @@ __all__ = [
     "plot_oncoplot",
     "OncoPlotter",
     "OncoPrevalencePlotter",
+    "OncoPrevalenceRasterPlotter",
     "OncoGeneBarPlotter",
     "TablePlotter",
     "GroupedBarPlotter",
@@ -57,6 +58,10 @@ _PUBLIC_FUNCS = {
     "plot_oncoplot": ("bioviz.plots.oncoplot", "plot_oncoplot"),
     "OncoPlotter": ("bioviz.plots.oncoplot", "OncoPlotter"),
     "OncoPrevalencePlotter": ("bioviz.plots.onco_summary", "OncoPrevalencePlotter"),
+    "OncoPrevalenceRasterPlotter": (
+        "bioviz.plots.onco_summary",
+        "OncoPrevalenceRasterPlotter",
+    ),
     "OncoGeneBarPlotter": ("bioviz.plots.onco_summary", "OncoGeneBarPlotter"),
     # volcano class wrapper
     "VolcanoPlotter": ("bioviz.plots.volcano", "VolcanoPlotter"),

@@ -20,7 +20,7 @@ from bioviz.plots.oncoplot import (
 )
 from bioviz.utils.plotting import resolve_font_family
 
-__all__ = ["OncoPrevalencePlotter", "OncoGeneBarPlotter"]
+__all__ = ["OncoPrevalencePlotter", "OncoPrevalenceRasterPlotter", "OncoGeneBarPlotter"]
 
 
 class _OncoAggregatePlotterBase(OncoPlotter):
@@ -1005,6 +1005,262 @@ class OncoPrevalencePlotter(_OncoAggregatePlotterBase):
         self._draw_legend(
             fig, ax, resolved_top_annotations, anchor_ax=colorbar.ax, extra_offset_points=34.0
         )
+        fig.canvas.draw()
+        return fig
+
+
+class OncoPrevalenceRasterPlotter(_OncoAggregatePlotterBase):
+    def __init__(
+        self,
+        df: pd.DataFrame,
+        config: OncoplotConfig,
+        row_groups: pd.DataFrame | None = None,
+        row_groups_color_dict: dict[str, str] | None = None,
+        style=None,
+        *,
+        group_by: list[str] | None = None,
+        include_overall: bool = True,
+        show_all: bool | None = None,
+        all_column_gap: float = 0.18,
+        separate_all_columns: bool = False,
+        percent_decimals: int = 0,
+        annotate_values: bool = True,
+        show_total_counts: bool = True,
+        show_category_breakdown: bool = False,
+        show_category_counts: bool = False,
+        label_fontsize: float | int | None = None,
+        label_text_color: str | None = None,
+        label_bbox_mode: Literal["auto", "always", "multiline-only", "never"] = "auto",
+        label_bbox_facecolor: str = "white",
+        label_bbox_alpha: float = 0.78,
+        label_bbox_edgecolor: str = "none",
+        label_bbox_boxstyle: str = "round,pad=0.18",
+        event_band_order: list[str] | None = None,
+        heatmap_width_fraction: float = 0.74,
+        empty_cell_color: str = "#D9D9D9",
+        empty_band_color: str | None = None,
+        cell_border_color: str | None = "#D9D9D9",
+        cell_border_linewidth: float = 0.8,
+        slot_padding_fraction: float = 0.04,
+    ) -> None:
+        super().__init__(
+            df=df,
+            config=config,
+            row_groups=row_groups,
+            row_groups_color_dict=row_groups_color_dict,
+            style=style,
+            group_by=group_by,
+            include_overall=include_overall,
+            show_all=show_all,
+            all_column_gap=all_column_gap,
+            separate_all_columns=separate_all_columns,
+            percent_decimals=percent_decimals,
+            annotate_values=annotate_values,
+            show_total_counts=show_total_counts,
+            show_category_breakdown=show_category_breakdown,
+            show_category_counts=show_category_counts,
+            label_fontsize=label_fontsize,
+            label_text_color=label_text_color,
+            label_bbox_mode=label_bbox_mode,
+            label_bbox_facecolor=label_bbox_facecolor,
+            label_bbox_alpha=label_bbox_alpha,
+            label_bbox_edgecolor=label_bbox_edgecolor,
+            label_bbox_boxstyle=label_bbox_boxstyle,
+        )
+        self.event_band_order = (
+            [str(value) for value in event_band_order] if event_band_order else []
+        )
+        self.heatmap_width_fraction = min(max(float(heatmap_width_fraction), 0.35), 0.95)
+        self.empty_cell_color = _ensure_opaque_color(empty_cell_color, default="#D9D9D9")
+        fallback_band = empty_band_color if empty_band_color is not None else empty_cell_color
+        self.empty_band_color = _ensure_opaque_color(fallback_band, default=self.empty_cell_color)
+        self.cell_border_color = cell_border_color
+        self.cell_border_linewidth = max(float(cell_border_linewidth), 0.0)
+        self.slot_padding_fraction = min(max(float(slot_padding_fraction), 0.0), 0.3)
+
+    def plot(self) -> plt.Figure:
+        plot_df, columns, sample_meta, genes_ordered, row_positions, gene_to_idx, col_positions = (
+            self._base_plot_state()
+        )
+        ordered_event_types = self.event_band_order or self._event_types(plot_df)
+        seen_event_types = {str(value) for value in ordered_event_types}
+        event_types = list(ordered_event_types)
+        for value in self._event_types(plot_df):
+            if str(value) not in seen_event_types:
+                event_types.append(str(value))
+                seen_event_types.add(str(value))
+        if not event_types:
+            event_types = ["Altered"]
+
+        nrows = int(np.ceil(max(row_positions) + 1 if row_positions else 1))
+        max_x = (max(col_positions) + self.cell_aspect) if col_positions else self.cell_aspect
+        fig, ax, rowlabel_transform, rowlabel_base_x = self._setup_axes(
+            len(columns),
+            nrows,
+            max_x,
+            getattr(self.config, "fig_title", None),
+            getattr(self.config, "fig_title_fontsize", 22),
+        )
+
+        bar_colors = dict(getattr(self.heatmap_annotation, "colors", {}) or {})
+        heatmap_width = self.cell_aspect * self.heatmap_width_fraction
+        label_width = self.cell_aspect - heatmap_width
+        slot_pad = heatmap_width * self.slot_padding_fraction
+        band_height = 1.0 / max(len(event_types), 1)
+
+        for x_idx, column in enumerate(columns):
+            samples = [
+                str(sample) for sample in pd.Index(column["samples"]).drop_duplicates().tolist()
+            ]
+            denom = len(samples)
+            column_df = plot_df[plot_df[self.x_col].isin(column["samples"])].copy()
+            if self.x_col in column_df.columns:
+                column_df[self.x_col] = column_df[self.x_col].astype(str)
+            for gene, y in zip(genes_ordered, row_positions, strict=True):
+                gene_df = column_df[column_df[self.y_col] == gene]
+                border_color = (
+                    self.cell_border_color if self.cell_border_color is not None else "none"
+                )
+                border_width = (
+                    self.cell_border_linewidth if self.cell_border_color is not None else 0.0
+                )
+                cell_patch = plt.Rectangle(
+                    (col_positions[x_idx], y),
+                    self.cell_aspect,
+                    1.0,
+                    facecolor=self.empty_cell_color,
+                    edgecolor=border_color,
+                    linewidth=border_width,
+                    clip_on=False,
+                )
+                ax.add_patch(cell_patch)
+
+                heatmap_left = col_positions[x_idx]
+                heatmap_right = heatmap_left + heatmap_width
+                heatmap_patch = plt.Rectangle(
+                    (heatmap_left, y),
+                    heatmap_width,
+                    1.0,
+                    facecolor=self.empty_band_color,
+                    edgecolor="none",
+                    linewidth=0,
+                    clip_on=False,
+                )
+                ax.add_patch(heatmap_patch)
+
+                counts_by_type: dict[str, float] = {}
+                altered_samples: set[str] = set()
+                if denom > 0 and not gene_df.empty:
+                    gene_events = (
+                        gene_df[[self.x_col, self.value_col]]
+                        .dropna(subset=[self.x_col])
+                        .drop_duplicates()
+                        .assign(
+                            _sample=lambda frame: frame[self.x_col].astype(str),
+                            _value=lambda frame: frame[self.value_col].astype(str),
+                        )
+                    )
+                    sample_event_lookup: dict[str, set[str]] = {}
+                    for sample, event_type in gene_events[["_sample", "_value"]].itertuples(
+                        index=False
+                    ):
+                        sample_event_lookup.setdefault(str(sample), set()).add(str(event_type))
+
+                    slot_width = heatmap_width / max(denom, 1)
+                    draw_width = max(slot_width - slot_pad, slot_width * 0.1)
+                    for sample_idx, sample in enumerate(samples):
+                        present_types = sample_event_lookup.get(sample, set())
+                        if not present_types:
+                            continue
+                        altered_samples.add(sample)
+                        slot_left = (
+                            heatmap_left + sample_idx * slot_width + (slot_width - draw_width) / 2
+                        )
+                        for band_idx, event_type in enumerate(event_types):
+                            if str(event_type) not in present_types:
+                                continue
+                            counts_by_type[str(event_type)] = (
+                                counts_by_type.get(str(event_type), 0.0) + 1.0
+                            )
+                            band_patch = plt.Rectangle(
+                                (slot_left, y + band_idx * band_height),
+                                draw_width,
+                                band_height,
+                                facecolor=_ensure_opaque_color(
+                                    bar_colors.get(str(event_type), "#808080"), default="#808080"
+                                ),
+                                edgecolor="none",
+                                linewidth=0,
+                                clip_on=False,
+                            )
+                            ax.add_patch(band_patch)
+
+                label = self._build_cell_label(
+                    total_count=len(altered_samples),
+                    denom=denom,
+                    counts_by_type=counts_by_type,
+                    event_types=event_types,
+                )
+                if label is not None:
+                    dominant_face = (
+                        bar_colors.get(str(event_types[0]), self.empty_cell_color)
+                        if event_types
+                        else self.empty_cell_color
+                    )
+                    text_color, extra_kwargs = self._get_label_style(dominant_face, label)
+                    ax.text(
+                        heatmap_right + label_width / 2,
+                        y + 0.5,
+                        label,
+                        ha="center",
+                        va="center",
+                        fontsize=self._label_font_size(),
+                        color=text_color,
+                        linespacing=1.15,
+                        **extra_kwargs,
+                    )
+
+        resolved_top_annotations = self._draw_top_annotations(
+            ax,
+            columns,
+            col_positions,
+            sample_meta,
+            rowlabel_transform,
+            rowlabel_base_x,
+        )
+        self._draw_gene_labels(
+            fig=fig,
+            ax=ax,
+            genes_ordered=genes_ordered,
+            row_positions=row_positions,
+            rowlabel_text_transform=rowlabel_transform,
+            rowlabel_base_x=rowlabel_base_x,
+        )
+        heatmap_left = min(col_positions) if col_positions else 0.0
+        self._draw_row_groups(ax, fig, genes_ordered, gene_to_idx, heatmap_left)
+        self._draw_column_labels(ax, columns, col_positions)
+
+        mutation_handles: list[Patch] = []
+        for event_type in event_types:
+            if str(event_type) not in bar_colors:
+                continue
+            color = bar_colors[str(event_type)]
+            if is_white_color(color):
+                mutation_handles.append(
+                    Patch(facecolor=color, edgecolor="black", linewidth=0.5, label=str(event_type))
+                )
+            else:
+                mutation_handles.append(Patch(facecolor=color, label=str(event_type)))
+
+        for spine in ax.spines.values():
+            spine.set_visible(False)
+        ax.set_yticks([])
+        ax.tick_params(axis="y", left=False)
+        ax.grid(False)
+        self._finalize_layout(fig, ax)
+
+        mutation_title = getattr(self.heatmap_annotation, "legend_title", None) or "Mutation Type"
+        self._draw_legend(fig, ax, resolved_top_annotations, mutation_handles, mutation_title)
         fig.canvas.draw()
         return fig
 
