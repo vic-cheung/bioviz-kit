@@ -1041,6 +1041,8 @@ class OncoPrevalenceRasterPlotter(_OncoAggregatePlotterBase):
         empty_band_color: str | None = None,
         cell_border_color: str | None = "#D9D9D9",
         cell_border_linewidth: float = 0.8,
+        row_separator_color: str | None = None,
+        row_separator_linewidth: float = 0.0,
         slot_padding_fraction: float = 0.04,
         label_offset_fraction: float = 0.14,
     ) -> None:
@@ -1077,6 +1079,8 @@ class OncoPrevalenceRasterPlotter(_OncoAggregatePlotterBase):
         self.empty_band_color = _ensure_opaque_color(fallback_band, default=self.empty_cell_color)
         self.cell_border_color = cell_border_color
         self.cell_border_linewidth = max(float(cell_border_linewidth), 0.0)
+        self.row_separator_color = row_separator_color
+        self.row_separator_linewidth = max(float(row_separator_linewidth), 0.0)
         self.slot_padding_fraction = min(max(float(slot_padding_fraction), 0.0), 0.3)
         self.label_offset_fraction = min(max(float(label_offset_fraction), 0.0), 0.8)
 
@@ -1215,6 +1219,8 @@ class OncoPrevalenceRasterPlotter(_OncoAggregatePlotterBase):
                         **extra_kwargs,
                     )
 
+        self._draw_row_separators(ax, col_positions, heatmap_width, row_positions, seam_overlap)
+
         resolved_top_annotations = self._draw_raster_top_annotations(
             ax,
             columns,
@@ -1258,6 +1264,44 @@ class OncoPrevalenceRasterPlotter(_OncoAggregatePlotterBase):
         self._draw_legend(fig, ax, resolved_top_annotations, mutation_handles, mutation_title)
         fig.canvas.draw()
         return fig
+
+    def _draw_row_separators(
+        self,
+        ax: plt.Axes,
+        col_positions: list[float],
+        heatmap_width: float,
+        row_positions: list[float],
+        seam_overlap: float,
+    ) -> None:
+        if (
+            self.row_separator_color is None
+            or self.row_separator_linewidth <= 0.0
+            or not col_positions
+            or len(row_positions) < 2
+        ):
+            return
+
+        separator_ys: list[float] = []
+        for current_y, next_y in zip(row_positions, row_positions[1:], strict=True):
+            if np.isclose(next_y - current_y, 1.0):
+                separator_ys.append(current_y + 1.0)
+
+        if not separator_ys:
+            return
+
+        for heatmap_left in col_positions:
+            heatmap_right = heatmap_left + heatmap_width
+            for separator_y in separator_ys:
+                ax.plot(
+                    [heatmap_left - seam_overlap, heatmap_right + seam_overlap],
+                    [separator_y, separator_y],
+                    color=self.row_separator_color,
+                    linewidth=self.row_separator_linewidth,
+                    solid_capstyle="butt",
+                    antialiased=False,
+                    clip_on=False,
+                    zorder=3,
+                )
 
     def _draw_raster_top_annotations(
         self,
