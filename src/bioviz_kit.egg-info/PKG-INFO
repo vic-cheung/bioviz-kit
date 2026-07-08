@@ -40,16 +40,28 @@ Description-Content-Type: text/markdown
 License-File: LICENSE
 Requires-Dist: pandas>=2.0
 Requires-Dist: matplotlib>=3.6
-Requires-Dist: seaborn>=0.12
-Requires-Dist: adjusttext>=0.8
-Requires-Dist: loguru>=0.7
-Requires-Dist: pydantic<3,>=1.10
-Requires-Dist: ipykernel>=7.1.0
-Requires-Dist: statsmodels>=0.14.6
-Requires-Dist: lifelines>=0.29
+Requires-Dist: pydantic<3,>=2
 Requires-Dist: numpy>=1.24
+Requires-Dist: scipy>=1.10
 Provides-Extra: testing
 Requires-Dist: pytest; extra == "testing"
+Provides-Extra: volcano
+Requires-Dist: adjusttext>=0.8; extra == "volcano"
+Provides-Extra: line
+Requires-Dist: adjusttext>=0.8; extra == "line"
+Requires-Dist: seaborn>=0.12; extra == "line"
+Provides-Extra: km
+Requires-Dist: lifelines>=0.29; extra == "km"
+Provides-Extra: grouped
+Requires-Dist: seaborn>=0.12; extra == "grouped"
+Requires-Dist: statsmodels>=0.14.6; extra == "grouped"
+Provides-Extra: grouped-bar
+Requires-Dist: statsmodels>=0.14.6; extra == "grouped-bar"
+Provides-Extra: all
+Requires-Dist: adjusttext>=0.8; extra == "all"
+Requires-Dist: lifelines>=0.29; extra == "all"
+Requires-Dist: seaborn>=0.12; extra == "all"
+Requires-Dist: statsmodels>=0.14.6; extra == "all"
 Dynamic: license-file
 
 # bioviz-kit
@@ -83,16 +95,30 @@ Install from PyPI:
 pip install bioviz-kit
 ```
 
-Or using `uv`:
+Or using `uv` to install into an environment:
 
 ```bash
-uv install bioviz-kit
+uv pip install bioviz-kit
+```
+
+Or add it to a `uv` project:
+
+```bash
+uv add bioviz-kit
+```
+
+Install all optional plot backends when you want every plot family available:
+
+```bash
+pip install "bioviz-kit[all]"
+uv pip install "bioviz-kit[all]"
+uv add "bioviz-kit[all]"
 ```
 
 Or install in development mode:
 
 ```bash
-git clone https://github.com/yourusername/bioviz-kit.git
+git clone https://github.com/vic-cheung/bioviz-kit.git
 cd bioviz-kit
 pip install -e .
 ```
@@ -100,7 +126,13 @@ pip install -e .
 Or using `uv` in editable/development mode:
 
 ```bash
-uv install -e .
+uv pip install -e .
+```
+
+Or add a local editable checkout to another `uv` project:
+
+```bash
+uv add --editable ../bioviz-kit
 ```
 
 ## Requirements
@@ -108,10 +140,10 @@ uv install -e .
 - Python 3.11+
 - pandas
 - matplotlib
+- numpy
 - pydantic
-- lifelines (for KM plots)
-- adjustText (for label placement)
-- seaborn (optional, for some plot types)
+- scipy
+- optional extras: `km`, `volcano`, `line`, `grouped`, `grouped-bar`, or `all`
 
 ## Quick Start
 
@@ -313,11 +345,6 @@ See the [`examples/`](examples/) directory for complete, runnable examples:
 
 Full documentation is available at [bioviz-kit.readthedocs.io](https://bioviz-kit.readthedocs.io/).
 
-## Integration with tm-modeling
-
-bioviz-kit serves as the visualization backend for tm-modeling.
-Users of tm-modeling can continue using the existing API (`KMPlotConfig`, `generate_km_plot_and_risk_table`)
-while benefiting from bioviz-kit's improved rendering.
 
 ## License
 
