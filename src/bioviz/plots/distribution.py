@@ -108,6 +108,12 @@ def generate_histogram(
                 palette_vals = list(getattr(s, "palette", {}).values())
                 # cycle palette if not enough
                 colors = {g: palette_vals[i % len(palette_vals)] for i, g in enumerate(group_names)}
+            elif isinstance(hue_palette, dict):
+                colors = {g: hue_palette.get(g, _default_color(style)) for g in group_names}
+            elif isinstance(hue_palette, (list, tuple)) and len(hue_palette) > 0:
+                colors = {g: hue_palette[i % len(hue_palette)] for i, g in enumerate(group_names)}
+            else:
+                colors = {g: str(hue_palette) for g in group_names}
             # shared bins
             all_vals = plot_data[kwargs.get("value_col")] if kwargs.get("value_col") else plot_data
             bins_edges = np.histogram_bin_edges(all_vals.dropna(), bins=bins)
