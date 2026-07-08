@@ -1,8 +1,13 @@
 # Configuration file for the Sphinx documentation builder.
 
+from importlib.metadata import PackageNotFoundError, version
+
 project = "bioviz-kit"
 author = "Victoria Cheung"
-release = "0.2.1"
+try:
+    release = version("bioviz-kit") or "0.4.2"
+except PackageNotFoundError:
+    release = "0.4.2"
 
 extensions = [
     "sphinx.ext.autodoc",
