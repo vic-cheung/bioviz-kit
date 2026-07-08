@@ -719,6 +719,48 @@ def test_onco_prevalence_raster_plotter_draws_split_event_bands_and_count_labels
     assert any(round(float(patch.get_height()), 2) == 0.5 for patch in cnv_patches)
 
 
+def test_onco_prevalence_raster_plotter_accepts_point_label_offset():
+    pdf = pd.DataFrame(
+        [
+            {"patient_id": "P1", "gene": "TP53", "mut_type": "SV", "arm": "G12D"},
+            {"patient_id": "P2", "gene": "TP53", "mut_type": "SV", "arm": "G12D"},
+        ]
+    )
+
+    heat = HeatmapAnnotationConfig(
+        values="mut_type",
+        colors={"SV": "#7A4DA3"},
+        legend_title="Genetic alteration",
+        legend_value_order=["SV"],
+    )
+    cfg = OncoplotConfig(
+        heatmap_annotation=heat,
+        x_col="patient_id",
+        y_col="gene",
+        show_column_labels=True,
+        cell_aspect=1.4,
+    )
+
+    fig = OncoPrevalenceRasterPlotter(
+        pdf,
+        cfg,
+        group_by=["arm"],
+        include_overall=False,
+        event_band_order=["SV"],
+        show_total_counts=True,
+        percent_decimals=0,
+        heatmap_width_fraction=1.0,
+        label_offset_points=7.2,
+    ).plot()
+    ax = fig.axes[0]
+    label_text = next(text for text in ax.texts if text.get_text() == "100% (2/2)")
+    base_x = ax.transData.transform((1.4, 0.5))[0]
+    text_x = label_text.get_transform().transform(label_text.get_position())[0]
+    offset_points = (text_x - base_x) / (fig.dpi / 72.0)
+
+    assert np.isclose(offset_points, 7.2)
+
+
 def test_onco_gene_bar_plotter_can_show_total_and_category_counts_in_labels():
     pdf = pd.DataFrame(
         [
