@@ -880,6 +880,55 @@ class _OncoAggregatePlotterBase(OncoPlotter):
             col_positions,
         )
 
+    def _column_sample_index(self, column: dict[str, Any]) -> pd.Index:
+        return pd.Index(column.get("samples", [])).drop_duplicates()
+
+    def _column_gene_event_summaries(
+        self,
+        plot_df: pd.DataFrame,
+        columns: list[dict[str, Any]],
+    ) -> list[dict[Any, dict[str, Any]]]:
+        required_cols = [self.x_col, self.y_col, self.value_col]
+        if any(col not in plot_df.columns for col in required_cols):
+            return [{} for _ in columns]
+
+        summaries: list[dict[Any, dict[str, Any]]] = []
+        for column in columns:
+            samples = self._column_sample_index(column)
+            if samples.empty:
+                summaries.append({})
+                continue
+
+            column_events = plot_df.loc[plot_df[self.x_col].isin(samples), required_cols].dropna(
+                subset=[self.x_col, self.y_col]
+            )
+            if column_events.empty:
+                summaries.append({})
+                continue
+
+            column_events = column_events.drop_duplicates().copy()
+            column_events["_sample"] = column_events[self.x_col].astype(str)
+            column_events["_value"] = column_events[self.value_col].astype(str)
+
+            gene_summaries: dict[Any, dict[str, Any]] = {}
+            for gene, gene_events in column_events.groupby(self.y_col, sort=False, dropna=False):
+                counts_by_type = {
+                    str(event_type): float(count)
+                    for event_type, count in gene_events.groupby("_value").size().items()
+                }
+                sample_events: dict[str, set[str]] = {}
+                for sample, event_type in gene_events[["_sample", "_value"]].itertuples(
+                    index=False
+                ):
+                    sample_events.setdefault(str(sample), set()).add(str(event_type))
+                gene_summaries[gene] = {
+                    "altered": int(gene_events[self.x_col].drop_duplicates().nunique()),
+                    "counts_by_type": counts_by_type,
+                    "sample_events": sample_events,
+                }
+            summaries.append(gene_summaries)
+        return summaries
+
 
 class OncoPrevalencePlotter(_OncoAggregatePlotterBase):
     def __init__(
@@ -964,13 +1013,19 @@ class OncoPrevalencePlotter(_OncoAggregatePlotterBase):
             getattr(self.config, "fig_title_fontsize", 22),
         )
 
+        event_summaries = self._column_gene_event_summaries(plot_df, columns)
+        column_event_types = [
+            self._event_types(plot_df[plot_df[self.x_col].isin(self._column_sample_index(column))])
+            for column in columns
+        ]
         for x_idx, column in enumerate(columns):
             column_width = column_widths[x_idx]
-            denom = len(pd.Index(column["samples"]).drop_duplicates())
-            column_df = plot_df[plot_df[self.x_col].isin(column["samples"])]
+            denom = len(self._column_sample_index(column))
+            column_summaries = event_summaries[x_idx]
+            event_types = column_event_types[x_idx]
             for gene, y in zip(genes_ordered, row_positions, strict=True):
-                gene_df = column_df[column_df[self.y_col] == gene]
-                altered = gene_df[self.x_col].drop_duplicates().nunique()
+                gene_summary = column_summaries.get(gene, {})
+                altered = int(gene_summary.get("altered", 0))
                 percent = 100.0 * altered / denom if denom else 0.0
                 face = self.cmap(self.norm(percent))
                 rect = plt.Rectangle(
@@ -985,15 +1040,8 @@ class OncoPrevalencePlotter(_OncoAggregatePlotterBase):
                 label = self._build_cell_label(
                     total_count=altered,
                     denom=denom,
-                    counts_by_type=(
-                        gene_df[[self.x_col, self.value_col]]
-                        .drop_duplicates()
-                        .assign(_value=lambda frame: frame[self.value_col].astype(str))
-                        .groupby("_value")
-                        .size()
-                        .to_dict()
-                    ),
-                    event_types=self._event_types(column_df),
+                    counts_by_type=gene_summary.get("counts_by_type", {}),
+                    event_types=event_types,
                 )
                 if label is not None:
                     text_color, extra_kwargs = self._get_label_style(face, label)
@@ -1085,6 +1133,7 @@ class OncoPrevalenceRasterPlotter(_OncoAggregatePlotterBase):
         row_separator_linewidth: float = 0.0,
         slot_padding_fraction: float = 0.04,
         label_offset_fraction: float = 0.14,
+        label_offset_points: float | int | None = None,
     ) -> None:
         super().__init__(
             df=df,
@@ -1124,6 +1173,9 @@ class OncoPrevalenceRasterPlotter(_OncoAggregatePlotterBase):
         self.row_separator_linewidth = max(float(row_separator_linewidth), 0.0)
         self.slot_padding_fraction = min(max(float(slot_padding_fraction), 0.0), 0.3)
         self.label_offset_fraction = min(max(float(label_offset_fraction), 0.0), 0.8)
+        self.label_offset_points = (
+            None if label_offset_points is None else max(float(label_offset_points), 0.0)
+        )
 
     def plot(self) -> plt.Figure:
         plot_df, columns, sample_meta, genes_ordered, row_positions, gene_to_idx, col_positions = (
@@ -1159,6 +1211,17 @@ class OncoPrevalenceRasterPlotter(_OncoAggregatePlotterBase):
 
         bar_colors = dict(getattr(self.heatmap_annotation, "colors", {}) or {})
         band_height = 1.0 / max(len(event_types), 1)
+        event_summaries = self._column_gene_event_summaries(plot_df, columns)
+        point_label_transform = (
+            ax.transData
+            + mtransforms.ScaledTranslation(
+                self.label_offset_points / 72.0,
+                0.0,
+                fig.dpi_scale_trans,
+            )
+            if self.label_offset_points is not None
+            else None
+        )
 
         for x_idx, column in enumerate(columns):
             column_width = column_widths[x_idx]
@@ -1170,11 +1233,9 @@ class OncoPrevalenceRasterPlotter(_OncoAggregatePlotterBase):
                 str(sample) for sample in pd.Index(column["samples"]).drop_duplicates().tolist()
             ]
             denom = len(samples)
-            column_df = plot_df[plot_df[self.x_col].isin(column["samples"])].copy()
-            if self.x_col in column_df.columns:
-                column_df[self.x_col] = column_df[self.x_col].astype(str)
+            column_summaries = event_summaries[x_idx]
             for gene, y in zip(genes_ordered, row_positions, strict=True):
-                gene_df = column_df[column_df[self.y_col] == gene]
+                gene_summary = column_summaries.get(gene, {})
                 border_color = (
                     self.cell_border_color if self.cell_border_color is not None else "none"
                 )
@@ -1196,31 +1257,15 @@ class OncoPrevalenceRasterPlotter(_OncoAggregatePlotterBase):
                 ax.add_patch(cell_patch)
 
                 counts_by_type: dict[str, float] = {}
-                altered_samples: set[str] = set()
-                if denom > 0 and not gene_df.empty:
-                    gene_events = (
-                        gene_df[[self.x_col, self.value_col]]
-                        .dropna(subset=[self.x_col])
-                        .drop_duplicates()
-                        .assign(
-                            _sample=lambda frame: frame[self.x_col].astype(str),
-                            _value=lambda frame: frame[self.value_col].astype(str),
-                        )
-                    )
-                    sample_event_lookup: dict[str, set[str]] = {}
-                    for sample, event_type in gene_events[["_sample", "_value"]].itertuples(
-                        index=False
-                    ):
-                        sample_event_lookup.setdefault(str(sample), set()).add(str(event_type))
-
+                sample_event_lookup = gene_summary.get("sample_events", {})
+                if denom > 0 and sample_event_lookup:
+                    counts_by_type = gene_summary.get("counts_by_type", {})
                     slot_edges = np.linspace(heatmap_left, heatmap_right, denom + 1)
                     occupied_by_event: dict[str, list[bool]] = {
                         str(event_type): [] for event_type in event_types
                     }
                     for sample_idx, sample in enumerate(samples):
                         present_types = sample_event_lookup.get(sample, set())
-                        if present_types:
-                            altered_samples.add(sample)
                         slot_left = float(slot_edges[sample_idx])
                         slot_right = float(slot_edges[sample_idx + 1])
                         slot_width = max(slot_right - slot_left, 0.0)
@@ -1232,10 +1277,6 @@ class OncoPrevalenceRasterPlotter(_OncoAggregatePlotterBase):
                         for event_type in event_types:
                             present = str(event_type) in present_types
                             occupied_by_event[str(event_type)].append(present)
-                            if present:
-                                counts_by_type[str(event_type)] = (
-                                    counts_by_type.get(str(event_type), 0.0) + 1.0
-                                )
 
                     for band_idx, event_type in enumerate(event_types):
                         occupied = occupied_by_event.get(str(event_type), [])
@@ -1301,7 +1342,7 @@ class OncoPrevalenceRasterPlotter(_OncoAggregatePlotterBase):
                                 ax.add_patch(band_patch)
 
                 label = self._build_cell_label(
-                    total_count=len(altered_samples),
+                    total_count=len(sample_event_lookup),
                     denom=denom,
                     counts_by_type=counts_by_type,
                     event_types=event_types,
@@ -1313,8 +1354,16 @@ class OncoPrevalenceRasterPlotter(_OncoAggregatePlotterBase):
                         else self.empty_cell_color
                     )
                     text_color, extra_kwargs = self._get_label_style(dominant_face, label)
+                    label_x = heatmap_right
+                    label_transform = point_label_transform
+                    if label_transform is None:
+                        label_x = heatmap_right + max(
+                            label_width * self.label_offset_fraction,
+                            0.09,
+                        )
+                        label_transform = ax.transData
                     ax.text(
-                        heatmap_right + max(label_width * self.label_offset_fraction, 0.09),
+                        label_x,
                         y + 0.5,
                         label,
                         ha="left",
@@ -1324,6 +1373,7 @@ class OncoPrevalenceRasterPlotter(_OncoAggregatePlotterBase):
                         color=text_color,
                         linespacing=1.15,
                         clip_on=False,
+                        transform=label_transform,
                         **extra_kwargs,
                     )
 
@@ -1597,6 +1647,7 @@ class OncoGeneBarPlotter(_OncoAggregatePlotterBase):
         show_all: bool | None = None,
         all_column_gap: float = 0.18,
         separate_all_columns: bool = False,
+        column_width_scale_reference: Literal["equal", "mean", "max"] = "equal",
         percent_decimals: int = 0,
         annotate_values: bool = True,
         show_total_counts: bool = False,
@@ -1626,6 +1677,7 @@ class OncoGeneBarPlotter(_OncoAggregatePlotterBase):
             show_all=show_all,
             all_column_gap=all_column_gap,
             separate_all_columns=separate_all_columns,
+            column_width_scale_reference=column_width_scale_reference,
             percent_decimals=percent_decimals,
             annotate_values=annotate_values,
             show_total_counts=show_total_counts,
@@ -1650,8 +1702,16 @@ class OncoGeneBarPlotter(_OncoAggregatePlotterBase):
             self._base_plot_state()
         )
         event_types = self._event_types(plot_df)
+        column_widths = [self._column_width(column) for column in columns]
         nrows = int(np.ceil(max(row_positions) + 1 if row_positions else 1))
-        max_x = (max(col_positions) + self.cell_aspect) if col_positions else self.cell_aspect
+        max_x = (
+            max(
+                position + width
+                for position, width in zip(col_positions, column_widths, strict=True)
+            )
+            if col_positions
+            else self.cell_aspect
+        )
         fig, ax, rowlabel_transform, rowlabel_base_x = self._setup_axes(
             len(columns),
             nrows,
@@ -1662,11 +1722,13 @@ class OncoGeneBarPlotter(_OncoAggregatePlotterBase):
 
         bar_colors = dict(getattr(self.heatmap_annotation, "colors", {}) or {})
         bar_y_pad = (1.0 - self.bar_height_fraction) / 2
+        event_summaries = self._column_gene_event_summaries(plot_df, columns)
         for x_idx, column in enumerate(columns):
-            denom = len(pd.Index(column["samples"]).drop_duplicates())
-            column_df = plot_df[plot_df[self.x_col].isin(column["samples"])]
+            column_width = column_widths[x_idx]
+            denom = len(self._column_sample_index(column))
+            column_summaries = event_summaries[x_idx]
             for gene, y in zip(genes_ordered, row_positions, strict=True):
-                gene_df = column_df[column_df[self.y_col] == gene]
+                gene_summary = column_summaries.get(gene, {})
                 border_color = (
                     self.cell_border_color if self.cell_border_color is not None else "none"
                 )
@@ -1675,7 +1737,7 @@ class OncoGeneBarPlotter(_OncoAggregatePlotterBase):
                 )
                 background = plt.Rectangle(
                     (col_positions[x_idx], y),
-                    self.cell_aspect,
+                    column_width,
                     1.0,
                     facecolor=_ensure_opaque_color(self.empty_cell_color, default="white"),
                     edgecolor=border_color,
@@ -1683,7 +1745,7 @@ class OncoGeneBarPlotter(_OncoAggregatePlotterBase):
                     clip_on=False,
                 )
                 ax.add_patch(background)
-                if denom == 0 or gene_df.empty:
+                if denom == 0 or not gene_summary:
                     if self.annotate_values:
                         label = f"{0:.{self.percent_decimals}f}%"
                         if self.empty_label_text_color is not None:
@@ -1695,7 +1757,7 @@ class OncoGeneBarPlotter(_OncoAggregatePlotterBase):
                                 label,
                             )
                         ax.text(
-                            col_positions[x_idx] + self.cell_aspect / 2,
+                            col_positions[x_idx] + column_width / 2,
                             y + 0.5,
                             label,
                             ha="center",
@@ -1707,20 +1769,14 @@ class OncoGeneBarPlotter(_OncoAggregatePlotterBase):
                         )
                     continue
 
-                counts_by_type = (
-                    gene_df[[self.x_col, self.value_col]]
-                    .drop_duplicates()
-                    .assign(_value=lambda frame: frame[self.value_col].astype(str))
-                    .groupby("_value")
-                    .size()
-                )
-                total_altered = gene_df[self.x_col].drop_duplicates().nunique()
+                counts_by_type = gene_summary.get("counts_by_type", {})
+                total_altered = int(gene_summary.get("altered", 0))
                 left = col_positions[x_idx]
                 for event_type in event_types:
                     count = float(counts_by_type.get(str(event_type), 0.0))
                     if count <= 0:
                         continue
-                    width = self.cell_aspect * (count / denom)
+                    width = column_width * (count / denom)
                     patch = plt.Rectangle(
                         (left, y + bar_y_pad),
                         width,
@@ -1736,7 +1792,7 @@ class OncoGeneBarPlotter(_OncoAggregatePlotterBase):
                 label = self._build_cell_label(
                     total_count=total_altered,
                     denom=denom,
-                    counts_by_type=counts_by_type.to_dict(),
+                    counts_by_type=counts_by_type,
                     event_types=event_types,
                 )
                 if label is not None:
@@ -1745,7 +1801,7 @@ class OncoGeneBarPlotter(_OncoAggregatePlotterBase):
                     )
                     text_color, extra_kwargs = self._get_label_style(dominant_face, label)
                     ax.text(
-                        col_positions[x_idx] + self.cell_aspect / 2,
+                        col_positions[x_idx] + column_width / 2,
                         y + 0.5,
                         label,
                         ha="center",
