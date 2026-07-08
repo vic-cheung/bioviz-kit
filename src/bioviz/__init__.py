@@ -22,6 +22,8 @@ Advanced users can import submodules directly:
 - etc.
 """
 
+from importlib.metadata import PackageNotFoundError, version
+
 __all__ = [
     "configs",
     "plots",
@@ -33,7 +35,10 @@ __all__ = [
     "plot_configs",
 ]
 
-__version__ = "0.3.4"
+try:
+    __version__ = version("bioviz-kit") or "0.4.2"
+except PackageNotFoundError:  # pragma: no cover - source tree without installed metadata
+    __version__ = "0.4.2"
 
 # Mapping of convenience aliases to their actual module paths
 _ALIAS_MAP = {
