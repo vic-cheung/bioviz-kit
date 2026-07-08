@@ -1,4 +1,4 @@
-.PHONY: ensure-uv setup install-all ruff format lint ty test clean
+.PHONY: ensure-uv setup install-all ruff format lint ty test clean clean-env
 
 # Detect uv binary (empty if not found)
 UV_BIN := $(shell command -v uv 2>/dev/null)
@@ -89,5 +89,9 @@ test:
 	uv run pytest -q
 
 clean:
+	rm -rf build dist .pytest_cache .ruff_cache .ruff_checks .ty_checks
+	find . -path "./.venv" -prune -o -type d -name "__pycache__" -exec rm -rf {} +
+	find . -path "./.venv" -prune -o -type f \( -name "*.pyc" -o -name "*.pyo" \) -exec rm -f {} +
+
+clean-env:
 	rm -rf .venv
-	rm -f uv.lock
