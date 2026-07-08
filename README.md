@@ -29,16 +29,30 @@ Install from PyPI:
 pip install bioviz-kit
 ```
 
-Or using `uv`:
+Or using `uv` to install into an environment:
 
 ```bash
-uv install bioviz-kit
+uv pip install bioviz-kit
+```
+
+Or add it to a `uv` project:
+
+```bash
+uv add bioviz-kit
+```
+
+Install all optional plot backends when you want every plot family available:
+
+```bash
+pip install "bioviz-kit[all]"
+uv pip install "bioviz-kit[all]"
+uv add "bioviz-kit[all]"
 ```
 
 Or install in development mode:
 
 ```bash
-git clone https://github.com/yourusername/bioviz-kit.git
+git clone https://github.com/vic-cheung/bioviz-kit.git
 cd bioviz-kit
 pip install -e .
 ```
@@ -46,7 +60,13 @@ pip install -e .
 Or using `uv` in editable/development mode:
 
 ```bash
-uv install -e .
+uv pip install -e .
+```
+
+Or add a local editable checkout to another `uv` project:
+
+```bash
+uv add --editable ../bioviz-kit
 ```
 
 ## Requirements
@@ -54,10 +74,10 @@ uv install -e .
 - Python 3.11+
 - pandas
 - matplotlib
+- numpy
 - pydantic
-- lifelines (for KM plots)
-- adjustText (for label placement)
-- seaborn (optional, for some plot types)
+- scipy
+- optional extras: `km`, `volcano`, `line`, `grouped`, `grouped-bar`, or `all`
 
 ## Quick Start
 
