@@ -13,21 +13,31 @@ Install from PyPI:
 
    pip install bioviz-kit
 
-    # Or using `uv`:
+Or using ``uv``:
 
-    uv install bioviz-kit
+.. code-block:: bash
+
+   uv pip install bioviz-kit
 
 Or install in development mode:
 
 .. code-block:: bash
 
-   git clone https://github.com/yourusername/bioviz-kit.git
+   git clone https://github.com/vic-cheung/bioviz-kit.git
    cd bioviz-kit
    pip install -e .
 
-    # Or using `uv` in editable/development mode:
+Or using ``uv`` in editable/development mode:
 
-    uv install -e .
+.. code-block:: bash
+
+   uv pip install -e .
+
+Install all optional plot backends when you want every plot family available:
+
+.. code-block:: bash
+
+   pip install "bioviz-kit[all]"
 
 
 Core Concepts
