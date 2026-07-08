@@ -19,6 +19,7 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/4c/d4/6585f3b6fdb75648bca294664af4becc8aa2fb3fb08f4e4e9fd27e10d773/adjusttext-1.3.0.tar.gz", hash = "sha256:4ab75cd4453af4828876ac3e964f2c49be642ea834f0c1f7449558d5f12cbca1", size = 15724, upload-time = "2024-10-31T16:45:36.101Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/53/1c/8feedd607cc14c5df9aef74fe3af9a99bf660743b842a9b5b1865326b4aa/adjustText-1.3.0-py3-none-any.whl", hash = "sha256:da23d7b24b6db5ffa039bb136bfa556207365e32f48ac74b07ad26dd485bc691", size = 13154, upload-time = "2024-10-31T16:45:35.227Z" },
+    { url = "https://files.pythonhosted.org/packages/2d/80/7ad35ee5321a86b842f9e8516c8ae4c86f58db7b40e82ce9759f94517a50/adjusttext-1.3.0-py3-none-any.whl", hash = "sha256:bc6c118cd9d7caf6ae37f9355e51d840a2d7f64b4fb2956b8401de27c5af803b", size = 13264, upload-time = "2026-06-08T16:40:05.041Z" },
 ]
 
 [[package]]
@@ -84,54 +85,88 @@ name = "bioviz-kit"
 version = "0.4.2"
 source = { editable = "." }
 dependencies = [
-    { name = "adjusttext" },
-    { name = "ipykernel" },
-    { name = "lifelines" },
-    { name = "loguru" },
     { name = "matplotlib" },
     { name = "numpy" },
     { name = "pandas" },
     { name = "pydantic" },
-    { name = "seaborn" },
-    { name = "statsmodels" },
+    { name = "scipy" },
 ]
 
 [package.optional-dependencies]
+all = [
+    { name = "adjusttext" },
+    { name = "lifelines" },
+    { name = "seaborn" },
+    { name = "statsmodels" },
+]
+grouped = [
+    { name = "seaborn" },
+    { name = "statsmodels" },
+]
+grouped-bar = [
+    { name = "statsmodels" },
+]
+km = [
+    { name = "lifelines" },
+]
+line = [
+    { name = "adjusttext" },
+    { name = "seaborn" },
+]
 testing = [
     { name = "pytest" },
+]
+volcano = [
+    { name = "adjusttext" },
 ]
 
 [package.dev-dependencies]
 dev = [
+    { name = "adjusttext" },
     { name = "build" },
     { name = "certifi" },
+    { name = "ipykernel" },
+    { name = "lifelines" },
     { name = "pytest" },
     { name = "ruff" },
+    { name = "seaborn" },
+    { name = "statsmodels" },
     { name = "twine" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "adjusttext", specifier = ">=0.8" },
-    { name = "ipykernel", specifier = ">=7.1.0" },
-    { name = "lifelines", specifier = ">=0.29" },
-    { name = "loguru", specifier = ">=0.7" },
+    { name = "adjusttext", marker = "extra == 'all'", specifier = ">=0.8" },
+    { name = "adjusttext", marker = "extra == 'line'", specifier = ">=0.8" },
+    { name = "adjusttext", marker = "extra == 'volcano'", specifier = ">=0.8" },
+    { name = "lifelines", marker = "extra == 'all'", specifier = ">=0.29" },
+    { name = "lifelines", marker = "extra == 'km'", specifier = ">=0.29" },
     { name = "matplotlib", specifier = ">=3.6" },
     { name = "numpy", specifier = ">=1.24" },
     { name = "pandas", specifier = ">=2.0" },
-    { name = "pydantic", specifier = ">=1.10,<3" },
+    { name = "pydantic", specifier = ">=2,<3" },
     { name = "pytest", marker = "extra == 'testing'" },
-    { name = "seaborn", specifier = ">=0.12" },
-    { name = "statsmodels", specifier = ">=0.14.6" },
+    { name = "scipy", specifier = ">=1.10" },
+    { name = "seaborn", marker = "extra == 'all'", specifier = ">=0.12" },
+    { name = "seaborn", marker = "extra == 'grouped'", specifier = ">=0.12" },
+    { name = "seaborn", marker = "extra == 'line'", specifier = ">=0.12" },
+    { name = "statsmodels", marker = "extra == 'all'", specifier = ">=0.14.6" },
+    { name = "statsmodels", marker = "extra == 'grouped'", specifier = ">=0.14.6" },
+    { name = "statsmodels", marker = "extra == 'grouped-bar'", specifier = ">=0.14.6" },
 ]
-provides-extras = ["testing"]
+provides-extras = ["testing", "volcano", "line", "km", "grouped", "grouped-bar", "all"]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "adjusttext", specifier = ">=0.8" },
     { name = "build", specifier = ">=1.0" },
     { name = "certifi", specifier = ">=2025.0" },
+    { name = "ipykernel", specifier = ">=7.1.0" },
+    { name = "lifelines", specifier = ">=0.29" },
     { name = "pytest", specifier = ">=8.0" },
     { name = "ruff", specifier = ">=0.6" },
+    { name = "seaborn", specifier = ">=0.12" },
+    { name = "statsmodels", specifier = ">=0.14.6" },
     { name = "twine", specifier = ">=4.0" },
 ]
 
@@ -951,19 +986,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/a0/4b/f92ca958b11284f9e80075d6b80b8150a3a231edb55e73a42878f786a54a/lifelines-0.30.3.tar.gz", hash = "sha256:acd1e0ecada4280c7bb2948f39c760a0f9158a57d752c8ca29f984a86c698b7f", size = 690663, upload-time = "2026-03-05T16:54:44.365Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/8a/fb/5ed80a8932630d4ae33af186a87008c9b48f02bc515380acc1a4b1fec162/lifelines-0.30.3-py3-none-any.whl", hash = "sha256:44802480a28d6cb836c7fea4a54ec0ba220eb31c6d7444589637a8bd66066e8c", size = 409055, upload-time = "2026-03-05T16:54:42.414Z" },
-]
-
-[[package]]
-name = "loguru"
-version = "0.7.3"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "colorama", marker = "sys_platform == 'win32'" },
-    { name = "win32-setctime", marker = "sys_platform == 'win32'" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/3a/05/a1dae3dffd1116099471c643b8924f5aa6524411dc6c63fdae648c4f1aca/loguru-0.7.3.tar.gz", hash = "sha256:19480589e77d47b8d85b2c827ad95d49bf31b0dcde16593892eb51dd18706eb6", size = 63559, upload-time = "2024-12-06T11:20:56.608Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/0c/29/0348de65b8cc732daa3e33e67806420b2ae89bdce2b04af740289c5c6c8c/loguru-0.7.3-py3-none-any.whl", hash = "sha256:31a33c10c8e1e10422bfd431aeb5d351c7cf7fa671e3c4df004162264b28220c", size = 61595, upload-time = "2024-12-06T11:20:54.538Z" },
 ]
 
 [[package]]
@@ -2059,15 +2081,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/35/a2/8e3becb46433538a38726c948d3399905a4c7cabd0df578ede5dc51f0ec2/wcwidth-0.6.0.tar.gz", hash = "sha256:cdc4e4262d6ef9a1a57e018384cbeb1208d8abbc64176027e2c2455c81313159", size = 159684, upload-time = "2026-02-06T19:19:40.919Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/68/5a/199c59e0a824a3db2b89c5d2dade7ab5f9624dbf6448dc291b46d5ec94d3/wcwidth-0.6.0-py3-none-any.whl", hash = "sha256:1a3a1e510b553315f8e146c54764f4fb6264ffad731b3d78088cdb1478ffbdad", size = 94189, upload-time = "2026-02-06T19:19:39.646Z" },
-]
-
-[[package]]
-name = "win32-setctime"
-version = "1.2.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/b3/8f/705086c9d734d3b663af0e9bb3d4de6578d08f46b1b101c2442fd9aecaa2/win32_setctime-1.2.0.tar.gz", hash = "sha256:ae1fdf948f5640aae05c511ade119313fb6a30d7eabe25fef9764dca5873c4c0", size = 4867, upload-time = "2024-12-07T15:28:28.314Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/e1/07/c6fe3ad3e685340704d314d765b7912993bcb8dc198f0e7a89382d37974b/win32_setctime-1.2.0-py3-none-any.whl", hash = "sha256:95d644c4e708aba81dc3704a116d8cbc974d70b3bdb8be1d150e36be6e9d1390", size = 4083, upload-time = "2024-12-07T15:28:26.465Z" },
 ]
 
 [[package]]
