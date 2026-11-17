@@ -288,3 +288,8 @@ bioviz-kit is released under the MIT License (c) 2025 Victoria Cheung.
 
 This package was spun out of internal tooling developed at Revolution Medicines.
 Many thanks to the team there for allowing the code to be open sourced.
+
+### Raster row and event columns
+
+See [column-driven rasters](docs/column_driven_rasters.md) for choosing row/event
+columns, preserving compound labels, and adding optional nested subtype bands.

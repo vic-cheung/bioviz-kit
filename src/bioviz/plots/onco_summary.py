@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass, field
 from itertools import pairwise
 from typing import Any, Literal
 
@@ -21,7 +23,33 @@ from bioviz.plots.oncoplot import (
 )
 from bioviz.utils.plotting import resolve_font_family
 
-__all__ = ["OncoPrevalencePlotter", "OncoPrevalenceRasterPlotter", "OncoGeneBarPlotter"]
+__all__ = [
+    "ColumnSpec",
+    "OncoPrevalencePlotter",
+    "OncoPrevalenceRasterPlotter",
+    "OncoGeneBarPlotter",
+]
+
+
+@dataclass(frozen=True)
+class ColumnSpec:
+    """Explicit aggregate-column definition.
+
+    Unlike columns derived from ``group_by``, specs are not required to partition
+    the sample set: a sample may belong to any number of columns. Each column's
+    denominator and event counts are computed independently from its own
+    ``samples`` list, so nested or overlapping groups are represented faithfully.
+
+    ``meta`` maps an annotation name to the value that column represents. When the
+    value is a known key of that annotation's color map, the top-annotation band is
+    painted solid across the whole column instead of being resolved per sample. This
+    is what makes overlapping columns renderable: a sample present in two columns
+    would otherwise be forced to one shared color in both.
+    """
+
+    title: str
+    samples: Sequence[Any]
+    meta: Mapping[str, str] = field(default_factory=dict)
 
 
 class _OncoAggregatePlotterBase(OncoPlotter):
@@ -34,6 +62,7 @@ class _OncoAggregatePlotterBase(OncoPlotter):
         style=None,
         *,
         group_by: list[str] | None = None,
+        column_specs: Sequence[ColumnSpec] | None = None,
         include_overall: bool = True,
         show_all: bool | None = None,
         all_column_gap: float = 0.18,
@@ -60,6 +89,7 @@ class _OncoAggregatePlotterBase(OncoPlotter):
             style=style,
         )
         self.group_by = list(group_by or config.col_split_by or [])
+        self.column_specs = list(column_specs) if column_specs else []
         self.include_overall = include_overall if show_all is None else bool(show_all)
         self.all_column_gap = max(float(all_column_gap), 0.0)
         self.separate_all_columns = bool(separate_all_columns)
@@ -82,6 +112,9 @@ class _OncoAggregatePlotterBase(OncoPlotter):
         sample_cols = [self.x_col] + valid_group_by
         sample_meta = self.df[sample_cols].drop_duplicates(subset=[self.x_col]).copy()
         sample_meta = sample_meta.drop_duplicates(subset=[self.x_col])
+
+        if self.column_specs:
+            return self._columns_from_specs(sample_meta), sample_meta
 
         columns: list[dict[str, Any]] = []
         all_samples = sample_meta[self.x_col].drop_duplicates().tolist()
@@ -125,6 +158,29 @@ class _OncoAggregatePlotterBase(OncoPlotter):
                     }
                 )
         return columns, sample_meta
+
+    def _columns_from_specs(self, sample_meta: pd.DataFrame) -> list[dict[str, Any]]:
+        """Build columns from explicit specs, which may overlap or nest."""
+        known_samples = set(sample_meta[self.x_col].astype(str))
+        columns: list[dict[str, Any]] = []
+        if self.include_overall:
+            columns.append(
+                {
+                    "title": "All",
+                    "samples": sample_meta[self.x_col].drop_duplicates().tolist(),
+                    "meta": {},
+                }
+            )
+        for spec in self.column_specs:
+            samples = [
+                sample
+                for sample in pd.Index(spec.samples).drop_duplicates().tolist()
+                if str(sample) in known_samples
+            ]
+            if not samples:
+                continue
+            columns.append({"title": str(spec.title), "samples": samples, "meta": dict(spec.meta)})
+        return columns
 
     def _column_width(self, column: dict[str, Any]) -> float:
         return float(column.get("__display_width", self.cell_aspect))
@@ -887,6 +943,8 @@ class _OncoAggregatePlotterBase(OncoPlotter):
         self,
         plot_df: pd.DataFrame,
         columns: list[dict[str, Any]],
+        *,
+        subtype_col: str | None = None,
     ) -> list[dict[Any, dict[str, Any]]]:
         required_cols = [self.x_col, self.y_col, self.value_col]
         if any(col not in plot_df.columns for col in required_cols):
@@ -899,8 +957,10 @@ class _OncoAggregatePlotterBase(OncoPlotter):
                 summaries.append({})
                 continue
 
+            # Placeholder rows carry a gene label but no alteration type; counting them
+            # would inflate the numerator with slots that no event band can paint.
             column_events = plot_df.loc[plot_df[self.x_col].isin(samples), required_cols].dropna(
-                subset=[self.x_col, self.y_col]
+                subset=[self.x_col, self.y_col, self.value_col]
             )
             if column_events.empty:
                 summaries.append({})
@@ -921,7 +981,21 @@ class _OncoAggregatePlotterBase(OncoPlotter):
                     index=False
                 ):
                     sample_events.setdefault(str(sample), set()).add(str(event_type))
+                # Preserve optional subtype evidence separately: adding subtypes must
+                # not turn one patient/event into multiple prevalence counts.
+                sample_subtypes: dict[str, dict[str, set[str | None]]] = {}
+                if subtype_col is not None:
+                    subtype_rows = plot_df.loc[
+                        plot_df[self.x_col].isin(samples) & plot_df[self.y_col].eq(gene),
+                        [self.x_col, self.value_col, subtype_col],
+                    ].dropna(subset=[self.x_col, self.value_col])
+                    for sample, event, subtype in subtype_rows.itertuples(index=False, name=None):
+                        value = None if pd.isna(subtype) else str(subtype)
+                        sample_subtypes.setdefault(str(sample), {}).setdefault(
+                            str(event), set()
+                        ).add(value)
                 gene_summaries[gene] = {
+                    "sample_subtypes": sample_subtypes,
                     "altered": int(gene_events[self.x_col].drop_duplicates().nunique()),
                     "counts_by_type": counts_by_type,
                     "sample_events": sample_events,
@@ -1097,6 +1171,14 @@ class OncoPrevalencePlotter(_OncoAggregatePlotterBase):
 
 
 class OncoPrevalenceRasterPlotter(_OncoAggregatePlotterBase):
+    """One slot per patient and exact ``config.y_col`` value.
+
+    Event categories come from ``heatmap_annotation.values`` (or ``value_col``
+    when no annotation is supplied). Labels are never split or normalized.
+    Optional subtype bands divide a parent event's region in top-to-bottom
+    order. All column names, categories, and colors are supplied by the caller.
+    """
+
     def __init__(
         self,
         df: pd.DataFrame,
@@ -1106,6 +1188,7 @@ class OncoPrevalenceRasterPlotter(_OncoAggregatePlotterBase):
         style=None,
         *,
         group_by: list[str] | None = None,
+        column_specs: Sequence[ColumnSpec] | None = None,
         include_overall: bool = True,
         show_all: bool | None = None,
         all_column_gap: float = 0.18,
@@ -1124,6 +1207,10 @@ class OncoPrevalenceRasterPlotter(_OncoAggregatePlotterBase):
         label_bbox_edgecolor: str = "none",
         label_bbox_boxstyle: str = "round,pad=0.18",
         event_band_order: list[str] | None = None,
+        event_band_mode: Literal["global", "per_sample"] = "global",
+        event_subtype_col: str | None = None,
+        event_subtype_bands: Mapping[str, Sequence[str]] | None = None,
+        event_subtype_colors: Mapping[str, str] | None = None,
         heatmap_width_fraction: float = 0.74,
         empty_cell_color: str = "#D9D9D9",
         empty_band_color: str | None = None,
@@ -1134,6 +1221,8 @@ class OncoPrevalenceRasterPlotter(_OncoAggregatePlotterBase):
         slot_padding_fraction: float = 0.04,
         label_offset_fraction: float = 0.14,
         label_offset_points: float | int | None = None,
+        auto_label_gap: bool = False,
+        auto_label_gap_pad_points: float = 6.0,
     ) -> None:
         super().__init__(
             df=df,
@@ -1142,6 +1231,7 @@ class OncoPrevalenceRasterPlotter(_OncoAggregatePlotterBase):
             row_groups_color_dict=row_groups_color_dict,
             style=style,
             group_by=group_by,
+            column_specs=column_specs,
             include_overall=include_overall,
             show_all=show_all,
             all_column_gap=all_column_gap,
@@ -1163,6 +1253,17 @@ class OncoPrevalenceRasterPlotter(_OncoAggregatePlotterBase):
         self.event_band_order = (
             [str(value) for value in event_band_order] if event_band_order else []
         )
+        if event_band_mode not in ("global", "per_sample"):
+            raise ValueError("event_band_mode must be 'global' or 'per_sample'")
+        self.event_band_mode = event_band_mode
+        self.event_subtype_col = event_subtype_col
+        if any(isinstance(values, str) for values in (event_subtype_bands or {}).values()):
+            raise ValueError("Subtype bands must be sequences of labels, not a single string")
+        self.event_subtype_bands = {
+            str(parent): list(values) for parent, values in (event_subtype_bands or {}).items()
+        }
+        self.event_subtype_colors = dict(event_subtype_colors or {})
+        self._validate_event_subtypes()
         self.heatmap_width_fraction = min(max(float(heatmap_width_fraction), 0.35), 1.0)
         self.empty_cell_color = _ensure_opaque_color(empty_cell_color, default="#D9D9D9")
         fallback_band = empty_band_color if empty_band_color is not None else empty_cell_color
@@ -1176,12 +1277,156 @@ class OncoPrevalenceRasterPlotter(_OncoAggregatePlotterBase):
         self.label_offset_points = (
             None if label_offset_points is None else max(float(label_offset_points), 0.0)
         )
+        self.auto_label_gap = bool(auto_label_gap)
+        self.auto_label_gap_pad_points = max(float(auto_label_gap_pad_points), 0.0)
+
+    def _validate_event_subtypes(self) -> None:
+        if bool(self.event_subtype_col) != bool(self.event_subtype_bands):
+            raise ValueError("event_subtype_col and event_subtype_bands must be supplied together")
+        if not self.event_subtype_col:
+            if self.event_subtype_colors:
+                raise ValueError("event_subtype_colors requires event_subtype_bands")
+            return
+        if self.event_subtype_col in {self.x_col, self.y_col, self.value_col}:
+            raise ValueError(
+                "The subtype column must differ from the patient, row, and event columns"
+            )
+        if self.event_subtype_col not in self.df.columns:
+            raise ValueError(f"Missing event subtype column: {self.event_subtype_col}")
+        for parent, values in self.event_subtype_bands.items():
+            if not values or any(not isinstance(value, str) or not value for value in values):
+                raise ValueError(f"Subtype bands for {parent!r} must be nonempty strings")
+            if len(values) != len(set(values)):
+                raise ValueError(f"Duplicate subtype bands for {parent!r}")
+            missing_colors = set(values) - self.event_subtype_colors.keys()
+            if missing_colors:
+                raise ValueError(f"Missing subtype colors: {sorted(missing_colors)}")
+            observed = (
+                self.df.loc[self.df[self.value_col].eq(parent), self.event_subtype_col]
+                .dropna()
+                .astype(str)
+            )
+            unknown = set(observed) - set(values)
+            if unknown:
+                raise ValueError(f"Unconfigured subtypes for {parent!r}: {sorted(unknown)}")
+
+    def _event_regions(
+        self,
+        event: str,
+        subtypes: set[str | None],
+        parent_color: str,
+    ) -> list[tuple[float, float, str]]:
+        """Return relative top offset, height, and color within one event region."""
+        bands = self.event_subtype_bands.get(event)
+        if not bands:
+            return [(0.0, 1.0, parent_color)]
+        # Missing subtype evidence remains visible in the generic parent color.
+        # Known subtypes overlay their fixed positions; absent bands remain gray.
+        regions = [(0.0, 1.0, parent_color)] if not subtypes or None in subtypes else []
+        for index, subtype in enumerate(bands):
+            if subtype in subtypes:
+                regions.append(
+                    (index / len(bands), 1.0 / len(bands), self.event_subtype_colors[subtype])
+                )
+        return regions
+
+    def _label_gap_points(self, columns: list[dict[str, Any]]) -> tuple[list[float], float]:
+        """Width in points each column's row label needs, plus the axes width in inches."""
+        labels: list[str] = []
+        for column in columns:
+            denom = len(self._column_sample_index(column))
+            labels.append(self._build_cell_label(total_count=denom, denom=denom) or "")
+        if not any(labels):
+            return [0.0] * len(columns), 0.0
+
+        # Mirrors _setup_axes so the measured axes geometry matches the real figure.
+        probe_fig, probe_ax = plt.subplots(figsize=self.figsize)
+        try:
+            probe_fig.subplots_adjust(top=self.fig_top_margin, bottom=self.fig_bottom_margin)
+            axes_width_inches = probe_ax.get_position().width * probe_fig.get_figwidth()
+            renderer = probe_fig.canvas.get_renderer()
+            fontsize = self._label_font_size()
+            offset_points = self.label_offset_points or 0.0
+            # Scale the trailing pad with the label font so pages that shrink the row
+            # count (and therefore grow the font) keep proportional breathing room.
+            pad_points = max(self.auto_label_gap_pad_points, 1.2 * fontsize)
+            widths: list[float] = []
+            for label in labels:
+                if not label:
+                    widths.append(0.0)
+                    continue
+                artist = probe_fig.text(0.0, 0.0, label, fontsize=fontsize)
+                extent = artist.get_window_extent(renderer=renderer)
+                artist.remove()
+                width_points = extent.width * 72.0 / probe_fig.dpi
+                widths.append(width_points + offset_points + pad_points)
+        finally:
+            plt.close(probe_fig)
+        return widths, axes_width_inches
+
+    def _space_columns_for_labels(
+        self,
+        columns: list[dict[str, Any]],
+        column_widths: list[float],
+    ) -> list[float]:
+        """Re-space columns so each row label fits before the next column starts.
+
+        Labels are drawn to the right of their column without reserving any width, so
+        at ``heatmap_width_fraction=1.0`` a wide label runs into the neighbouring
+        column. Each column is measured at its worst case (``100% (n/n)``) and the
+        following gap is widened to fit it.
+
+        The conversion from points to data units depends on the x-limit, which in turn
+        depends on the gaps being solved for, so the layout is iterated to a fixed
+        point. Widening only ever increases the span, so this converges from below.
+        """
+        required_points, axes_width_inches = self._label_gap_points(columns)
+        if axes_width_inches <= 0 or not any(required_points):
+            return []
+
+        def positions(gaps: list[float]) -> list[float]:
+            out: list[float] = []
+            current_x = 0.0
+            for idx, width in enumerate(column_widths):
+                out.append(current_x)
+                current_x += width
+                if idx < len(column_widths) - 1:
+                    current_x += gaps[idx]
+            return out
+
+        gaps = [self.all_column_gap] * max(len(columns) - 1, 0)
+        for _ in range(6):
+            col_positions = positions(gaps)
+            max_x = max(
+                (
+                    position + width
+                    for position, width in zip(col_positions, column_widths, strict=True)
+                ),
+                default=self.cell_aspect,
+            )
+            xlim_span = max(max(len(columns), max_x) + 1.0, 1e-6)
+            pts_per_data_unit = (axes_width_inches * 72.0) / xlim_span
+            if pts_per_data_unit <= 0:
+                break
+            updated = [
+                max(self.all_column_gap, required_points[idx] / pts_per_data_unit)
+                for idx in range(len(gaps))
+            ]
+            if all(abs(new - old) < 1e-4 for new, old in zip(updated, gaps, strict=True)):
+                gaps = updated
+                break
+            gaps = updated
+        return positions(gaps)
 
     def plot(self) -> plt.Figure:
         plot_df, columns, sample_meta, genes_ordered, row_positions, gene_to_idx, col_positions = (
             self._base_plot_state()
         )
         column_widths = [self._column_width(column) for column in columns]
+        if self.auto_label_gap and len(columns) > 1:
+            respaced = self._space_columns_for_labels(columns, column_widths)
+            if respaced:
+                col_positions = respaced
         ordered_event_types = self.event_band_order or self._event_types(plot_df)
         seen_event_types = {str(value) for value in ordered_event_types}
         event_types = list(ordered_event_types)
@@ -1211,7 +1456,11 @@ class OncoPrevalenceRasterPlotter(_OncoAggregatePlotterBase):
 
         bar_colors = dict(getattr(self.heatmap_annotation, "colors", {}) or {})
         band_height = 1.0 / max(len(event_types), 1)
-        event_summaries = self._column_gene_event_summaries(plot_df, columns)
+        event_summaries = self._column_gene_event_summaries(
+            plot_df,
+            columns,
+            subtype_col=self.event_subtype_col,
+        )
         point_label_transform = (
             ax.transData
             + mtransforms.ScaledTranslation(
@@ -1274,6 +1523,48 @@ class OncoPrevalenceRasterPlotter(_OncoAggregatePlotterBase):
                             slot_width / 2.0,
                         )
                         effective_overlap = min(seam_overlap, slot_padding)
+                        if self.event_band_mode == "per_sample" or self.event_subtype_col:
+                            # Row identity is already resolved by y_col. Only this
+                            # patient's events on this row participate in division.
+                            band_types = (
+                                [event for event in event_types if event in present_types]
+                                if self.event_band_mode == "per_sample"
+                                else event_types
+                            )
+                            if not band_types:
+                                continue
+                            active_height = 1.0 / len(band_types)
+                            draw_left = max(
+                                heatmap_left, slot_left + slot_padding - effective_overlap
+                            )
+                            draw_right = min(
+                                heatmap_right, slot_right - slot_padding + effective_overlap
+                            )
+                            subtype_lookup = gene_summary.get("sample_subtypes", {}).get(sample, {})
+                            for active_idx, event_type in enumerate(band_types):
+                                if event_type not in present_types:
+                                    continue
+                                regions = self._event_regions(
+                                    event_type,
+                                    subtype_lookup.get(event_type, set()),
+                                    bar_colors.get(str(event_type), "#808080"),
+                                )
+                                for offset, height, color in regions:
+                                    ax.add_patch(
+                                        plt.Rectangle(
+                                            (draw_left, y + (active_idx + offset) * active_height),
+                                            max(draw_right - draw_left, 0.0),
+                                            height * active_height,
+                                            facecolor=_ensure_opaque_color(
+                                                color, default="#808080"
+                                            ),
+                                            edgecolor="none",
+                                            linewidth=0,
+                                            antialiased=False,
+                                            clip_on=False,
+                                        )
+                                    )
+                            continue
                         for event_type in event_types:
                             present = str(event_type) in present_types
                             occupied_by_event[str(event_type)].append(present)
@@ -1410,6 +1701,18 @@ class OncoPrevalenceRasterPlotter(_OncoAggregatePlotterBase):
                 )
             else:
                 mutation_handles.append(Patch(facecolor=color, label=str(event_type)))
+
+        for parent, bands in self.event_subtype_bands.items():
+            if parent not in event_types:
+                continue
+            for index, subtype in enumerate(bands):
+                position = ("top", "bottom")[index] if len(bands) == 2 else f"band {index + 1}"
+                mutation_handles.append(
+                    Patch(
+                        facecolor=self.event_subtype_colors[subtype],
+                        label=f"{parent}: {subtype} ({position})",
+                    )
+                )
 
         for spine in ax.spines.values():
             spine.set_visible(False)
@@ -1556,7 +1859,31 @@ class OncoPrevalenceRasterPlotter(_OncoAggregatePlotterBase):
                     )
                 )
 
-            if samples:
+            column_value = column.get("meta", {}).get(ann_name)
+            column_color = (
+                ann_config.colors.get(str(column_value))
+                if column_value is not None and str(column_value).strip() != ""
+                else None
+            )
+            if column_color is not None:
+                # Column-level override: the whole band takes the column's own value.
+                # Required for overlapping columns, where a sample appearing in more
+                # than one column would otherwise be forced to a single shared color.
+                # Unknown values fall through to per-sample rendering below.
+                ax.add_patch(
+                    plt.Rectangle(
+                        (x, annotation_y),
+                        heatmap_width,
+                        height,
+                        facecolor=column_color,
+                        edgecolor="none",
+                        linewidth=0,
+                        antialiased=False,
+                        clip_on=False,
+                        zorder=11,
+                    )
+                )
+            elif samples:
                 slot_width = heatmap_width / max(len(samples), 1)
                 run_start = None
                 run_color = None

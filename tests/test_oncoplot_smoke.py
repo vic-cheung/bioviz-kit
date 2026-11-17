@@ -3,6 +3,8 @@ import matplotlib.colors as mcolors
 import matplotlib.text as mtext
 import numpy as np
 import pandas as pd
+import pytest
+from matplotlib.patches import Rectangle
 
 from bioviz.configs import (
     HeatmapAnnotationConfig,
@@ -11,6 +13,7 @@ from bioviz.configs import (
     TopAnnotationConfig,
 )
 from bioviz.plots import (
+    ColumnSpec,
     OncoGeneBarPlotter,
     OncoPlotter,
     OncoPrevalencePlotter,
@@ -661,12 +664,12 @@ def test_onco_gene_bar_plotter_draws_grouped_in_cell_bars():
 def test_onco_prevalence_raster_plotter_draws_split_event_bands_and_count_labels():
     pdf = pd.DataFrame(
         [
-            {"patient_id": "P1", "gene": "TP53", "mut_type": "SV", "arm": "G12D"},
-            {"patient_id": "P1", "gene": "TP53", "mut_type": "CNV", "arm": "G12D"},
-            {"patient_id": "P2", "gene": "TP53", "mut_type": "SV", "arm": "G12D"},
-            {"patient_id": "P2", "gene": "KRAS", "mut_type": "CNV", "arm": "G12D"},
-            {"patient_id": "P3", "gene": "TP53", "mut_type": "CNV", "arm": "G12R"},
-            {"patient_id": "P4", "gene": "TP53", "mut_type": "SV", "arm": "G12R"},
+            {"patient_id": "P1", "gene": "GENE1", "mut_type": "SV", "arm": "Group A"},
+            {"patient_id": "P1", "gene": "GENE1", "mut_type": "CNV", "arm": "Group A"},
+            {"patient_id": "P2", "gene": "GENE1", "mut_type": "SV", "arm": "Group A"},
+            {"patient_id": "P2", "gene": "GENE2", "mut_type": "CNV", "arm": "Group A"},
+            {"patient_id": "P3", "gene": "GENE1", "mut_type": "CNV", "arm": "Group B"},
+            {"patient_id": "P4", "gene": "GENE1", "mut_type": "SV", "arm": "Group B"},
         ]
     )
 
@@ -696,7 +699,7 @@ def test_onco_prevalence_raster_plotter_draws_split_event_bands_and_count_labels
     ax = fig.axes[0]
 
     xticklabels = [tick.get_text() for tick in ax.get_xticklabels()]
-    assert xticklabels == ["G12D", "G12R"]
+    assert xticklabels == ["Group A", "Group B"]
     texts = {text.get_text() for text in ax.texts}
     assert "100% (2/2)" in texts
     assert "50% (1/2)" in texts
@@ -719,11 +722,247 @@ def test_onco_prevalence_raster_plotter_draws_split_event_bands_and_count_labels
     assert any(round(float(patch.get_height()), 2) == 0.5 for patch in cnv_patches)
 
 
+def test_onco_prevalence_raster_plotter_supports_overlapping_column_specs():
+    """Nested columns keep independent denominators and shared samples."""
+    pdf = pd.DataFrame(
+        [
+            {"patient_id": "P1", "gene": "GENE1", "mut_type": "SV", "arm": "Alpha"},
+            {"patient_id": "P2", "gene": "GENE1", "mut_type": "SV", "arm": "Beta"},
+            {"patient_id": "P3", "gene": "GENE1", "mut_type": "CNV", "arm": "Gamma"},
+            {"patient_id": "P4", "gene": "GENE1", "mut_type": "SV", "arm": "Delta"},
+            {"patient_id": "P5", "gene": "GENE2", "mut_type": "CNV", "arm": "Epsilon"},
+        ]
+    )
+
+    heat = HeatmapAnnotationConfig(
+        values="mut_type",
+        colors={"SV": "#7A4DA3", "CNV": "#F1222A"},
+        legend_title="Genetic alteration",
+        legend_value_order=["SV", "CNV"],
+    )
+    cfg = OncoplotConfig(
+        heatmap_annotation=heat,
+        x_col="patient_id",
+        y_col="gene",
+        show_column_labels=True,
+        cell_aspect=1.4,
+    )
+
+    # "Subset" is a strict subset of "Superset"; the other columns are disjoint.
+    specs = [
+        ColumnSpec(title="Group A", samples=["P1"]),
+        ColumnSpec(title="Group B", samples=["P2"]),
+        ColumnSpec(title="Subset", samples=["P4", "P5"]),
+        ColumnSpec(title="Superset", samples=["P3", "P4", "P5"]),
+    ]
+
+    plotter = OncoPrevalenceRasterPlotter(
+        pdf,
+        cfg,
+        column_specs=specs,
+        include_overall=False,
+        event_band_order=["SV", "CNV"],
+        show_total_counts=True,
+        percent_decimals=0,
+    )
+    fig = plotter.plot()
+    ax = fig.axes[0]
+
+    xticklabels = [tick.get_text() for tick in ax.get_xticklabels()]
+    assert xticklabels == ["Group A", "Group B", "Subset", "Superset"]
+
+    columns, _ = plotter._build_aggregate_columns()
+    by_title = {column["title"]: column["samples"] for column in columns}
+    # Overlap is preserved rather than collapsed into a partition.
+    assert set(by_title["Subset"]) < set(by_title["Superset"])
+    assert sum(len(samples) for samples in by_title.values()) > pdf["patient_id"].nunique()
+
+    # Denominators are computed per column, not from the whole cohort.
+    texts = {text.get_text() for text in ax.texts}
+    assert "100% (1/1)" in texts  # GENE1 within Group A / Group B
+    assert "50% (1/2)" in texts  # GENE1 within Subset (denominator 2)
+    assert "67% (2/3)" in texts  # GENE1 within Superset (denominator 3)
+
+
+def test_onco_prevalence_raster_plotter_column_meta_overrides_top_annotation():
+    """ColumnSpec.meta paints a top-annotation band solid across the whole column."""
+    pdf = pd.DataFrame(
+        [
+            {"patient_id": "P1", "gene": "GENE1", "mut_type": "SV", "arm": "Alpha"},
+            {"patient_id": "P2", "gene": "GENE1", "mut_type": "SV", "arm": "Beta"},
+            {"patient_id": "P3", "gene": "GENE1", "mut_type": "CNV", "arm": "Gamma"},
+        ]
+    )
+
+    heat = HeatmapAnnotationConfig(
+        values="mut_type",
+        colors={"SV": "#7A4DA3", "CNV": "#F1222A"},
+        legend_title="Genetic alteration",
+        legend_value_order=["SV", "CNV"],
+    )
+    arm_annotation = TopAnnotationConfig(
+        values=pdf.set_index("patient_id")["arm"],
+        colors={"Alpha": "#111111", "Beta": "#222222", "Gamma": "#333333", "Merged": "#D55E00"},
+        display_name="Arm",
+        legend_title="Arm",
+        na_color="none",
+        draw_border=False,
+    )
+    cfg = OncoplotConfig(
+        heatmap_annotation=heat,
+        x_col="patient_id",
+        y_col="gene",
+        show_column_labels=True,
+        cell_aspect=1.4,
+        top_annotations={"arm": arm_annotation},
+        top_annotation_order=["arm"],
+    )
+
+    specs = [
+        # Overridden: one solid band even though the samples carry different values.
+        ColumnSpec(title="Merged", samples=["P1", "P2", "P3"], meta={"arm": "Merged"}),
+        # Unknown meta value falls through to per-sample rendering.
+        ColumnSpec(title="Passthrough", samples=["P1", "P2"], meta={"arm": "Not A Color Key"}),
+    ]
+
+    plotter = OncoPrevalenceRasterPlotter(
+        pdf,
+        cfg,
+        column_specs=specs,
+        include_overall=False,
+        event_band_order=["SV", "CNV"],
+    )
+    fig = plotter.plot()
+    ax = fig.axes[0]
+
+    def facecolors(hex_color):
+        target = mcolors.to_rgba(hex_color)
+        return [
+            patch
+            for patch in ax.patches
+            if isinstance(patch, Rectangle) and mcolors.to_rgba(patch.get_facecolor()) == target
+        ]
+
+    merged_patches = facecolors("#D55E00")
+    assert len(merged_patches) == 1
+    # The override spans the full column, not a per-sample slot.
+    column_width = plotter._column_width(plotter._build_aggregate_columns()[0][0])
+    assert merged_patches[0].get_width() == pytest.approx(
+        column_width * plotter.heatmap_width_fraction
+    )
+
+    # The passthrough column still resolves Alpha/Beta per sample.
+    assert len(facecolors("#111111")) == 1
+    assert len(facecolors("#222222")) == 1
+    # Gamma only exists in the overridden column, so it is never drawn per sample.
+    assert facecolors("#333333") == []
+
+
+def test_onco_prevalence_raster_plotter_ignores_typeless_placeholder_rows():
+    """Rows with no alteration type must not count toward the cell numerator."""
+    pdf = pd.DataFrame(
+        [{"patient_id": f"P{idx}", "gene": "GENE1", "mut_type": "SV"} for idx in range(1, 9)]
+        # P9/P10 are unaltered placeholders that still carry the gene label.
+        + [{"patient_id": "P9", "gene": "GENE1", "mut_type": None}]
+        + [{"patient_id": "P10", "gene": "GENE1", "mut_type": None}]
+    )
+
+    heat = HeatmapAnnotationConfig(
+        values="mut_type",
+        colors={"SV": "#7A4DA3"},
+        legend_title="Genetic alteration",
+        legend_value_order=["SV"],
+    )
+    cfg = OncoplotConfig(heatmap_annotation=heat, x_col="patient_id", y_col="gene")
+
+    plotter = OncoPrevalenceRasterPlotter(
+        pdf,
+        cfg,
+        column_specs=[ColumnSpec(title="All", samples=[f"P{idx}" for idx in range(1, 11)])],
+        include_overall=False,
+        event_band_order=["SV"],
+        show_total_counts=True,
+        percent_decimals=0,
+    )
+    fig = plotter.plot()
+    ax = fig.axes[0]
+    assert any(text.get_text() == "80% (8/10)" for text in ax.texts)
+
+
+def test_onco_prevalence_raster_plotter_auto_label_gap_prevents_overlap():
+    """auto_label_gap widens inter-column gaps so labels clear the next column."""
+    pdf = pd.DataFrame(
+        [{"patient_id": f"P{idx}", "gene": "GENE1", "mut_type": "SV"} for idx in range(1, 41)]
+    )
+
+    heat = HeatmapAnnotationConfig(
+        values="mut_type",
+        colors={"SV": "#7A4DA3"},
+        legend_title="Genetic alteration",
+        legend_value_order=["SV"],
+    )
+    cfg = OncoplotConfig(
+        heatmap_annotation=heat,
+        x_col="patient_id",
+        y_col="gene",
+        show_column_labels=True,
+        cell_aspect=1.4,
+        figsize=(10.0, 6.0),
+    )
+    specs = [
+        ColumnSpec(title="Left", samples=[f"P{idx}" for idx in range(1, 31)]),
+        ColumnSpec(title="Right", samples=[f"P{idx}" for idx in range(31, 41)]),
+    ]
+
+    def build(**overrides):
+        return OncoPrevalenceRasterPlotter(
+            pdf,
+            cfg,
+            column_specs=specs,
+            include_overall=False,
+            event_band_order=["SV"],
+            show_total_counts=True,
+            percent_decimals=0,
+            heatmap_width_fraction=1.0,
+            all_column_gap=0.05,
+            separate_all_columns=True,
+            label_offset_points=3.0,
+            **overrides,
+        )
+
+    tight = build()
+    tight.plot()
+    _, tight_columns, *_, tight_positions = tight._base_plot_state()
+    tight_gap = tight_positions[1] - (tight_positions[0] + tight._column_width(tight_columns[0]))
+
+    spaced = build(auto_label_gap=True)
+    widths = [spaced._column_width(column) for column in spaced._build_aggregate_columns()[0]]
+    spaced_positions = spaced._space_columns_for_labels(
+        spaced._build_aggregate_columns()[0], widths
+    )
+    spaced_gap = spaced_positions[1] - (spaced_positions[0] + widths[0])
+
+    assert tight_gap == pytest.approx(0.05)
+    assert spaced_gap > tight_gap
+    # The gap must clear the widest label the left column can produce.
+    fig = spaced.plot()
+    ax = fig.axes[0]
+    renderer = fig.canvas.get_renderer()
+    label = next(text for text in ax.texts if text.get_text() == "100% (30/30)")
+    label_right = ax.transData.inverted().transform(
+        (
+            label.get_window_extent(renderer=renderer).x1,
+            0,
+        )
+    )[0]
+    assert label_right < spaced_positions[1]
+
+
 def test_onco_prevalence_raster_plotter_accepts_point_label_offset():
     pdf = pd.DataFrame(
         [
-            {"patient_id": "P1", "gene": "TP53", "mut_type": "SV", "arm": "G12D"},
-            {"patient_id": "P2", "gene": "TP53", "mut_type": "SV", "arm": "G12D"},
+            {"patient_id": "P1", "gene": "GENE1", "mut_type": "SV", "arm": "Group A"},
+            {"patient_id": "P2", "gene": "GENE1", "mut_type": "SV", "arm": "Group A"},
         ]
     )
 

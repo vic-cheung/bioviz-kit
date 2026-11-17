@@ -28,6 +28,7 @@ __all__ = [
     "plot_oncoplot",
     "DistributionPlotter",
     "OncoPlotter",
+    "ColumnSpec",
     "OncoPrevalencePlotter",
     "OncoPrevalenceRasterPlotter",
     "OncoGeneBarPlotter",
@@ -63,6 +64,7 @@ _PUBLIC_FUNCS = {
     # oncoplot exports
     "plot_oncoplot": ("bioviz.plots.oncoplot", "plot_oncoplot"),
     "OncoPlotter": ("bioviz.plots.oncoplot", "OncoPlotter"),
+    "ColumnSpec": ("bioviz.plots.onco_summary", "ColumnSpec"),
     "OncoPrevalencePlotter": ("bioviz.plots.onco_summary", "OncoPrevalencePlotter"),
     "OncoPrevalenceRasterPlotter": (
         "bioviz.plots.onco_summary",
