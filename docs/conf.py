@@ -1,12 +1,12 @@
 # Configuration file for the Sphinx documentation builder.
 
-from importlib.metadata import PackageNotFoundError, version
+from importlib import metadata
 
 project = "bioviz-kit"
 author = "Victoria Cheung"
 try:
-    release = version("bioviz-kit") or "0.4.2"
-except PackageNotFoundError:
+    release = metadata.version("bioviz-kit") or "0.4.2"
+except metadata.PackageNotFoundError:
     release = "0.4.2"
 
 extensions = [
