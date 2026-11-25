@@ -36,9 +36,9 @@ __all__ = [
 ]
 
 try:
-    __version__ = version("bioviz-kit") or "0.4.2"
+    __version__ = version("bioviz-kit") or "0.4.3"
 except PackageNotFoundError:  # pragma: no cover - source tree without installed metadata
-    __version__ = "0.4.2"
+    __version__ = "0.4.3"
 
 # Mapping of convenience aliases to their actual module paths
 _ALIAS_MAP = {

@@ -173,7 +173,7 @@ fig = OncoPlotter(df, config).plot()
 fig.savefig("oncoplot.pdf", bbox_inches="tight")
 ```
 
-See the [prevalence raster guide](docs/column_driven_rasters.rst) for cohort
+See the [prevalence raster guide](https://bioviz-kit.readthedocs.io/en/latest/column_driven_rasters.html) for cohort
 prevalence, event columns, and nested subtype bands.
 
 ### Forest Plots

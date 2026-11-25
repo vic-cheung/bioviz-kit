@@ -5,9 +5,9 @@ from importlib import metadata
 project = "bioviz-kit"
 author = "Victoria Cheung"
 try:
-    release = metadata.version("bioviz-kit") or "0.4.2"
+    release = metadata.version("bioviz-kit") or "0.4.3"
 except metadata.PackageNotFoundError:
-    release = "0.4.2"
+    release = "0.4.3"
 
 extensions = [
     "sphinx.ext.autodoc",
