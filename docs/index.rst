@@ -4,6 +4,8 @@ bioviz-kit Documentation
 **bioviz-kit** is a framework-agnostic visualization library for publication-ready
 clinical and biological data plots.
 
+Browse the `GitHub repository <https://github.com/vic-cheung/bioviz-kit>`_.
+
 .. image:: https://img.shields.io/badge/License-MIT-yellow.svg
    :target: https://opensource.org/licenses/MIT
    :alt: License: MIT
