@@ -42,3 +42,5 @@ Rprof.out
 .ruff_checks/
 docs/_build/
 
+# --- Workspace Files ---
+*.code-workspace
