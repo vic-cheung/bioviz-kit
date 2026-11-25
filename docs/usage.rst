@@ -145,8 +145,10 @@ Oncoplots
 ---------
 
 Oncoplots (mutation landscapes) show the mutation status of genes across samples.
-The plotter requires column mappings (``x_col``, ``y_col``, ``value_col``, ``row_group_col``)
-plus optional row_groups DataFrame and top annotations.
+Set ``x_col``, ``y_col``, and ``value_col`` to your sample, row, and event columns.
+Provide colors through ``heatmap_annotation`` or ``row_values_color_dict``.
+Row groups and top annotations are optional. ``plot()`` returns a Matplotlib
+``Figure``.
 
 .. code-block:: python
 
@@ -244,11 +246,15 @@ plus optional row_groups DataFrame and top annotations.
 
 Key configuration options:
 
-- ``x_col``, ``y_col``, ``value_col``, ``row_group_col`` - Required column mappings
+- ``x_col``, ``y_col``, ``value_col`` - Required column mappings
 - ``heatmap_annotation`` - Controls cell rendering (colors, triangles)
 - ``top_annotations`` - Dict of annotation name → TopAnnotationConfig
 - ``col_split_by`` / ``col_split_order`` - Split columns by a categorical variable
-- ``row_group_order`` - Custom ordering for pathway/row-group bars
+- ``row_group_col`` / ``row_group_order`` - Add and order pathway or row-group bars
+- ``right_summary_bars`` - Show alteration counts and unique-sample prevalence next to each row
+
+See :doc:`column_driven_rasters` for cohort-level prevalence with one slot per
+patient in each cohort column.
 
 
 Forest Plots

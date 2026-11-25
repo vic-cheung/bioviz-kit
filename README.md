@@ -145,6 +145,8 @@ fig.savefig("volcano.pdf", bbox_inches="tight")
 ### Oncoplots
 
 ```python
+import pandas as pd
+
 from bioviz.configs import OncoplotConfig
 from bioviz.plots import OncoPlotter
 
@@ -156,16 +158,23 @@ df = pd.DataFrame({
 })
 
 config = OncoplotConfig(
-    sample_col="sample",
-    gene_col="gene",
-    variant_col="variant_class",
-    title="Mutation Landscape",
+    x_col="sample",
+    y_col="gene",
+    value_col="variant_class",
+    fig_title="Mutation Landscape",
+    row_values_color_dict={
+        "Missense": "#1f77b4",
+        "Nonsense": "#2ca02c",
+        "Amplification": "#ff7f0e",
+    },
 )
 
-plotter = OncoPlotter(df, config)
-fig, axes = plotter.plot()
+fig = OncoPlotter(df, config).plot()
 fig.savefig("oncoplot.pdf", bbox_inches="tight")
 ```
+
+See the [prevalence raster guide](docs/column_driven_rasters.rst) for cohort
+prevalence, event columns, and nested subtype bands.
 
 ### Forest Plots
 
@@ -288,8 +297,3 @@ bioviz-kit is released under the MIT License (c) 2025 Victoria Cheung.
 
 This package was spun out of internal tooling developed at Revolution Medicines.
 Many thanks to the team there for allowing the code to be open sourced.
-
-### Raster row and event columns
-
-See [column-driven rasters](docs/column_driven_rasters.md) for choosing row/event
-columns, preserving compound labels, and adding optional nested subtype bands.

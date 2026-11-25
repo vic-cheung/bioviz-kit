@@ -59,6 +59,7 @@ Contents
    :caption: User Guide
 
    usage
+   column_driven_rasters
 
 .. toctree::
    :maxdepth: 2

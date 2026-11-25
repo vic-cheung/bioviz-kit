@@ -91,6 +91,23 @@ OncoPlotter
    :show-inheritance:
 
 
+OncoPrevalenceRasterPlotter
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. autoclass:: bioviz.plots.OncoPrevalenceRasterPlotter
+   :members: plot
+
+See :doc:`column_driven_rasters` for examples of event columns and subtype bands.
+
+
+ColumnSpec
+~~~~~~~~~~
+
+.. autoclass:: bioviz.plots.ColumnSpec
+   :members:
+   :undoc-members:
+
+
 ForestPlotter
 ~~~~~~~~~~~~~
 
